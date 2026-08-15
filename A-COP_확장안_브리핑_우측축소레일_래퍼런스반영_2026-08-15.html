@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A-COP 확장안 — Agent-Native Autonomous Commerce</title>
+<style>
+:root{
+  --bg:#f3f6fb;--paper:#fff;--ink:#132238;--muted:#5f6f82;--line:#dbe3ec;
+  --navy:#102a43;--blue:#2563eb;--cyan:#0891b2;--green:#0f766e;--purple:#6d28d9;
+  --orange:#c2410c;--red:#b91c1c;--amber:#b45309;--soft-blue:#eff6ff;--soft-green:#ecfdf5;
+  --soft-purple:#f5f3ff;--soft-orange:#fff7ed;--soft-red:#fef2f2;--shadow:0 12px 34px rgba(15,23,42,.08)
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Arial,"Noto Sans KR",sans-serif;line-height:1.68;overflow-x:hidden}
+a{color:#1d4ed8;text-decoration:none} a:hover{text-decoration:underline}
+.hero{background:radial-gradient(circle at 85% 15%,rgba(56,189,248,.23),transparent 30%),linear-gradient(135deg,#071a2f,#123b67 55%,#0f766e);color:#fff;padding:54px 28px 46px}
+.hero-inner{max-width:1320px;margin:0 auto}.eyebrow{display:inline-flex;gap:8px;align-items:center;padding:6px 11px;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(255,255,255,.08);font-size:13px;font-weight:800;letter-spacing:.04em}
+.hero h1{font-size:clamp(34px,5vw,62px);line-height:1.08;margin:19px 0 15px;max-width:1050px}.hero .sub{font-size:19px;max-width:1030px;color:#dcecff;margin:0 0 24px}.hero-note{display:inline-block;padding:10px 13px;border-left:4px solid #67e8f9;background:rgba(255,255,255,.09);border-radius:8px;font-weight:700}
+.hero-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:26px}.hero-card{padding:16px;border:1px solid rgba(255,255,255,.22);border-radius:16px;background:rgba(255,255,255,.08);backdrop-filter:blur(4px)}.hero-card strong{display:block;font-size:17px;margin-bottom:4px}.hero-card span{font-size:13px;color:#dbeafe}
+.shell{max-width:1180px;margin:0 auto;padding:24px;min-width:0}
+
+.toc::before{content:"PAGE INDEX";display:block;padding:4px 9px 8px;color:#64748b;font-size:10px;font-weight:900;letter-spacing:.12em;border-bottom:1px solid #e2e8f0;margin-bottom:5px}
+
+.toc a:hover,.toc a:focus{background:#eaf2ff;color:#1d4ed8;text-decoration:none;outline:none}
+.toc::-webkit-scrollbar{width:5px}.toc::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px}
+@media (max-width:1380px){.shell{max-width:1050px;margin-left:max(20px,calc((100vw - 1220px)/2));margin-right:205px}}
+@media (max-width:1050px){.shell{max-width:none;margin:0;padding:18px 16px}.toc:hover,.toc:focus-within{opacity:1}}
+@media (max-width:760px){.shell{padding:14px 10px}}
+section{background:var(--paper);border:1px solid #e1e8f0;border-radius:20px;padding:26px;margin:0 0 20px;box-shadow:var(--shadow);scroll-margin-top:86px;min-width:0}
+h2{font-size:27px;line-height:1.25;margin:0 0 10px;color:#0f172a} h3{font-size:19px;margin:22px 0 9px;color:#16263a} h4{margin:15px 0 7px;color:#24364b}.lead{color:var(--muted);font-size:16px;margin:0 0 17px}.small{font-size:13px;color:var(--muted)}
+.summary-band{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}.thesis{padding:22px;border-radius:17px;background:linear-gradient(135deg,#eff6ff,#ecfeff);border:1px solid #bae6fd;font-size:20px;font-weight:850}.status-box{display:grid;gap:8px}.status-row{display:grid;grid-template-columns:104px 1fr;gap:8px;padding:10px;border:1px solid var(--line);border-radius:11px}.badge{display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;letter-spacing:.03em;border-radius:999px;padding:4px 8px}.confirmed{background:#dcfce7;color:#166534}.hypothesis{background:#fef3c7;color:#92400e}.gate{background:#fee2e2;color:#991b1b}.stretch{background:#ede9fe;color:#5b21b6}.pass{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.block{background:#fee2e2;color:#991b1b}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-width:0}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;min-width:0}.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;min-width:0}.grid2>*,.grid3>*,.grid4>*,.arch-row>*,.timeline>*,.req-grid>*{min-width:0}.card{border:1px solid var(--line);border-radius:15px;padding:16px;background:#fff;min-width:0;overflow-wrap:break-word;word-break:normal}.card h3{margin-top:0}.card.blue{border-top:5px solid var(--blue)}.card.green{border-top:5px solid var(--green)}.card.purple{border-top:5px solid var(--purple)}.card.orange{border-top:5px solid var(--orange)}
+.kpi{font-size:31px;font-weight:900;color:#1d4ed8;line-height:1}.kpi-label{font-size:13px;color:var(--muted);margin-top:7px}.callout{padding:15px 17px;border-left:5px solid var(--blue);background:var(--soft-blue);border-radius:11px;margin:15px 0}.callout.warn{border-color:var(--amber);background:#fffbeb}.callout.danger{border-color:var(--red);background:var(--soft-red)}
+.flow{display:flex;align-items:stretch;gap:8px;overflow-x:auto;padding:8px 1px}.node{min-width:155px;flex:1;border:1px solid #b8c7d9;border-radius:13px;padding:12px;text-align:center;background:#fff;font-weight:850}.node small{display:block;color:var(--muted);font-size:11px;margin-top:4px;font-weight:650}.node.blue{background:var(--soft-blue);border-color:#93c5fd}.node.green{background:var(--soft-green);border-color:#86efac}.node.purple{background:var(--soft-purple);border-color:#c4b5fd}.node.orange{background:var(--soft-orange);border-color:#fdba74}.arrow{display:flex;align-items:center;justify-content:center;min-width:27px;font-size:25px;color:#64748b;font-weight:900}
+.arch{border:1px solid var(--line);border-radius:18px;padding:18px;background:linear-gradient(180deg,#fff,#f8fbff)}.arch-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.arch-box{padding:13px;border-radius:12px;border:1px solid #bfdbfe;background:#eff6ff;text-align:center;font-weight:850}.arch-box.green{background:#ecfdf5;border-color:#86efac}.arch-box.purple{background:#f5f3ff;border-color:#c4b5fd}.arch-box.orange{background:#fff7ed;border-color:#fdba74}.down{text-align:center;font-size:26px;font-weight:900;color:#64748b;padding:3px}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}th,td{padding:10px 11px;border-bottom:1px solid #e5eaf1;vertical-align:top;text-align:left}th{background:#f1f5f9;color:#24364b;font-size:12px;letter-spacing:.02em}tr:last-child td{border-bottom:0}.mono{white-space:pre-wrap;overflow-x:auto;background:#0f172a;color:#e2e8f0;border-radius:13px;padding:15px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.6}
+.price-stack{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center}.price-list{border:1px solid var(--line);border-radius:14px;padding:14px}.price-line{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed #d8e0ea}.price-line:last-child{border-bottom:0;font-weight:900}.equal{font-size:32px;text-align:center;color:#2563eb;font-weight:900}
+.dual{display:grid;grid-template-columns:1fr 54px 1fr;gap:10px;align-items:stretch}.ledger{border-radius:15px;padding:16px}.ledger.customer{background:#eff6ff;border:2px solid #60a5fa}.ledger.upstream{background:#fff7ed;border:2px solid #fb923c}.link-center{display:flex;align-items:center;justify-content:center;font-weight:900;color:#64748b;text-align:center}
+.timeline{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.week{border:1px solid var(--line);border-radius:13px;padding:12px;background:#fff}.week b{display:block;color:#1d4ed8;margin-bottom:5px}.week.gate-week{border-top:5px solid var(--red)}
+.req-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.req{border:1px solid var(--line);border-radius:11px;padding:10px;background:#fbfdff}.req code{font-weight:900;color:#1d4ed8}.req .s{float:right}
+details{border:1px solid var(--line);border-radius:13px;background:#fff;margin:8px 0;overflow:hidden}summary{cursor:pointer;padding:13px 15px;font-weight:900;background:#f8fafc}details>div{padding:14px 15px}.source-list li{margin-bottom:7px}.footer{text-align:center;color:var(--muted);font-size:12px;padding:12px 0 40px}
+@media(max-width:980px){.hero-grid,.grid4,.arch-row{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3,.req-grid,.timeline{grid-template-columns:repeat(2,minmax(0,1fr))}.summary-band,.price-stack{grid-template-columns:1fr}.equal{transform:rotate(90deg)}.dual{grid-template-columns:1fr}.link-center{padding:4px}}
+@media(max-width:640px){.hero{padding:38px 18px}.hero h1{font-size:36px}.shell{padding:14px}section{padding:19px}.hero-grid,.grid2,.grid3,.grid4,.arch-row,.req-grid,.timeline{grid-template-columns:1fr}.flow{flex-direction:column}.arrow{transform:rotate(90deg)}.dual{grid-template-columns:1fr}}
+@media print{body{background:#fff}section{box-shadow:none;break-inside:avoid}.hero{background:#102a43!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+/* ===== Reference-style right compact rail + expandable TOC ===== */
+:root{
+  --acop-rail-brand:#3157d5;
+  --acop-rail-bg:#f7f8fb;
+}
+.acop-part-rail{
+  --acop-rail-count:1;
+  position:fixed;
+  top:50%;
+  right:7px;
+  z-index:2147483001;
+  width:30px;
+  height:min(72dvh,640px);
+  padding:4px 2px;
+  overflow:visible;
+  transform:translateY(-50%);
+  border:0;
+  background:transparent;
+  cursor:pointer;
+}
+.acop-rail-list{
+  display:grid;
+  grid-template-rows:repeat(var(--acop-rail-count),minmax(6px,1fr));
+  width:100%;
+  height:100%;
+  margin:0;
+  padding:0;
+  overflow:visible;
+}
+.acop-rail-item{
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:100%;
+  min-height:0;
+}
+.acop-rail-label{
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip-path:inset(50%);
+  white-space:nowrap;
+}
+.acop-rail-dot{
+  display:block;
+  width:20px;
+  height:2px;
+  border-radius:999px;
+  background:#b8bec8;
+  transition:.16s;
+}
+.acop-rail-item.is-active .acop-rail-dot{
+  width:24px;
+  height:3px;
+  background:#111827;
+}
+.acop-part-toc-overlay{
+  position:fixed;
+  inset:0;
+  z-index:2147483006;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:.16s;
+}
+.acop-part-toc-overlay.is-open{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+.acop-part-toc-panel{
+  position:absolute;
+  top:8px;
+  right:4px;
+  bottom:8px;
+  width:min(320px,calc(100vw - 8px));
+  overflow:hidden;
+  border:1px solid #d8dee8;
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 20px 55px rgba(15,23,42,.18);
+}
+.acop-part-toc-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:14px;
+  border-bottom:1px solid #e7ebf0;
+}
+.acop-part-toc-close{
+  width:30px;
+  height:30px;
+  border:0;
+  border-radius:50%;
+  background:#f1f3f6;
+  font-size:1.3rem;
+  cursor:pointer;
+}
+.acop-part-toc-head strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:.88rem;
+}
+.acop-part-toc-list{
+  height:calc(100% - 59px);
+  padding:8px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+}
+.acop-part-toc-list::-webkit-scrollbar{display:none}
+.acop-part-toc-list a{
+  display:block;
+  height:44px;
+  padding:11px 12px;
+  border-radius:10px;
+  color:#344054;
+  text-decoration:none;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:.9rem;
+}
+.acop-part-toc-list a:hover{background:#f7f8fb}
+.acop-part-toc-list a.is-active{
+  background:#f0f2f5;
+  color:#111827;
+  font-weight:800;
+}
+body.acop-toc-open{overflow:hidden}
+@media(max-width:760px){
+  .acop-part-rail{right:3px}
+  .acop-part-toc-panel{right:4px;width:min(320px,calc(100vw - 8px))}
+}
+@media print{
+  .acop-part-rail,.acop-part-toc-overlay{display:none!important}
+}
+
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">A-COP EXPANSION · VERIFIED DELTA BRIEFING</span>
+    <h1>B2B A-COP을 실제 쇼핑몰에 적용해, 고객 맞춤형 Agentic Operations 구축 역량을 증명한다</h1>
+    <p class="sub">우리가 판매하려는 본체는 고객사 요구·데이터 포맷·업무 정책에 맞춰 조립하는 B2B A-COP CS/Customer Operations Platform이다. 자체 Agent-native 쇼핑몰은 그 기술을 실제 거래 환경에 적용해 운영하고 데이터를 얻는 Reference Implementation이며, 장기적으로는 사이트·쇼핑몰 운영 전체를 Agentic하게 조립하는 플랫폼까지 확장한다.</p>
+    <div class="hero-note">이 문서는 기존 A-COP 기본 구조를 반복하지 않고, 이번 대화에서 추가된 확장안만 다룬다.</div>
+    <div class="hero-grid">
+      <div class="hero-card"><strong>Agent-native Store</strong><span>사람 Web + Personal Agent API</span></div>
+      <div class="hero-card"><strong>Dynamic Procurement</strong><span>외부 Item → 검증 → 임시 SKU → Quote → 구매</span></div>
+      <div class="hero-card"><strong>Exception-only Ops</strong><span>정상 업무는 Agent, 예외만 사람</span></div>
+      <div class="hero-card"><strong>B2B A-COP Platform</strong><span>요구사항 · 데이터 · 정책에 맞춰 CS/Operations 조립</span></div>
+    </div>
+  </div>
+</header>
+<main class="shell">
+
+<section id="summary" data-lecture-section="summary">
+  <h2>1. 한눈에 보는 최종 결론</h2>
+  <p class="lead"><strong>우리가 고객에게 판매하는 것은 쇼핑몰 자체가 아니라 고객사 맞춤형 B2B A-COP 플랫폼이다.</strong> 자체몰은 “필요한 데이터·정책·연동조건을 주면 이런 시스템을 실제로 구성해드릴 수 있다”는 것을 입증하는 Testbed·Reference·평가 데이터 생산 환경이다.</p>
+  <div class="summary-band">
+    <div class="thesis">현재 제품의 중심은 CS/Customer Operations 자동화다. 이를 자체 쇼핑몰에 실제 적용해 주문·배송·반품·환불까지 확장 가능한 모듈 구조를 검증하고, 고객사별 요구 포맷에 맞춘 구축 능력을 B2B Reference로 만든다.</div>
+    <div class="status-box">
+      <div class="status-row"><span class="badge confirmed">확정</span><span>Agent API·동적 SKU·Quote·운영 자동화·Pilot·B2B 모듈화</span></div>
+      <div class="status-row"><span class="badge hypothesis">가설</span><span>전담 운영자 없이 일정 주문량을 안전하게 운영 가능</span></div>
+      <div class="status-row"><span class="badge gate">Live Gate</span><span>거래모델·외부 API 권한·통관·개인정보 국외이전</span></div>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:16px"><strong>제품 경계:</strong> 현재 B2B 판매 본체 = A-COP CS / Customer Operations Platform. 이번 Commerce Extension = 자체 Reference Store에서 실제 운영범위를 확장·검증하는 Vertical. 장기 Vision = 고객이 요구사항과 데이터 포맷을 주면 필요한 사이트·쇼핑몰·운영 모듈까지 조립해 제공하는 Agentic Business Platform.</div>
+  <div class="grid4" style="margin-top:16px">
+    <div class="card blue"><div class="kpi">최대 46명</div><div class="kpi-label">팀 6 + 같은 기수 20 + 부트캠프 추가 20 Pilot</div></div>
+    <div class="card green"><div class="kpi">180만원</div><div class="kpi-label">외부 확장 포함 최대 Pilot·리스크 예산</div></div>
+    <div class="card purple"><div class="kpi">1인 1개</div><div class="kpi-label">실물 주문 범위 통제</div></div>
+    <div class="card orange"><div class="kpi">0→Gold</div><div class="kpi-label">실제 사건을 회귀 데이터로 승격</div></div>
+  </div>
+  <div class="callout warn"><strong>가장 중요한 교정:</strong> 공급처가 환불을 승인해야만 고객에게 환불하는 구조로 만들지 않는다. 고객 환불 책임과 공급처 비용 회수는 별도 Ledger와 별도 판단이다.</div>
+</section>
+
+<section id="scope" data-lecture-section="scope">
+  <h2>2. 이번 확장안에 새로 추가되는 것</h2>
+  <p class="lead">기존 A-COP CS/Customer Operations Platform을 제품 본체로 유지한다. 아래 Commerce Extension은 “A-COP의 모듈을 고객 도메인에 맞춰 얼마나 멀리 확장할 수 있는가”를 실제 자체몰에서 입증하기 위한 Reference Vertical이다.</p>
+  <div class="grid3">
+    <div class="card blue"><h3>Customer-facing</h3><p>Agent Commerce Gateway, REST/MCP, UCP-shaped capability, 일반 Web fallback.</p></div>
+    <div class="card green"><h3>Transaction-facing</h3><p>External Item Verification, Temporary SKU, Quote, Procurement, Order/Shipment.</p></div>
+    <div class="card purple"><h3>Operations-facing</h3><p>Evidence Pipeline, Dual Refund Ledger, Store Manager, Pilot/Evaluation Factory.</p></div>
+  </div>
+  <h3>확장 컴포넌트 맵</h3>
+  <div class="arch">
+    <div class="arch-row">
+      <div class="arch-box">Personal Agent<br><span class="small">검색·비교·요청</span></div>
+      <div class="arch-box">Agent Commerce Gateway<br><span class="small">권한·동의·승인</span></div>
+      <div class="arch-box">Reference Store<br><span class="small">Web/Agent 접점</span></div>
+      <div class="arch-box">Pilot Credit<br><span class="small">한도·원장</span></div>
+    </div><div class="down">↓</div>
+    <div class="arch-row">
+      <div class="arch-box purple">Dynamic Catalog<br><span class="small">검증·Snapshot·SKU</span></div>
+      <div class="arch-box purple">Quote & Procurement<br><span class="small">가격·구매·재시도</span></div>
+      <div class="arch-box purple">Autonomous Ops<br><span class="small">주문·배송·VOC</span></div>
+      <div class="arch-box purple">Return & Evidence<br><span class="small">사진·환불·회수</span></div>
+    </div><div class="down">↓</div>
+    <div class="arch-row">
+      <div class="arch-box orange">MarketplacePort / Adapter</div><div class="arch-box orange">PG / Payment</div><div class="arch-box orange">Carrier / Customs</div><div class="arch-box orange">Private Blob / Notification</div>
+    </div>
+  </div>
+</section>
+
+<section id="journey" data-lecture-section="journey">
+  <h2>3. 고객은 자기 Agent만으로 쇼핑한다</h2>
+  <p class="lead"><strong>검색·추천은 사용자의 Personal Agent가 담당한다.</strong> A-COP은 전달받은 외부 Item의 거래 가능성·가격·정책·실제 Side Effect를 책임진다.</p>
+  <div class="flow">
+    <div class="node blue">사용자 요구<small>“10만원 이하 제품 찾아줘”</small></div><div class="arrow">→</div>
+    <div class="node blue">Personal Agent<small>해외몰 검색·비교</small></div><div class="arrow">→</div>
+    <div class="node purple">후보 제출<small>URL/ID/Variant/한도</small></div><div class="arrow">→</div>
+    <div class="node green">A-COP 검증<small>구매·배송·규제·반품</small></div><div class="arrow">→</div>
+    <div class="node orange">Quote 승인<small>TTL·최대금액</small></div><div class="arrow">→</div>
+    <div class="node green">구매·배송·사후처리<small>Order/Case/Refund</small></div>
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card blue"><h3>고객 Agent가 담당</h3><ul><li>자연어 요구 정리</li><li>외부 상품 탐색·비교</li><li>사용자 선호·예산 반영</li><li>선택한 상품 후보 전달</li></ul></div>
+    <div class="card green"><h3>A-COP이 담당</h3><ul><li>상품·옵션·재고 재검증</li><li>한국 배송·통관·규제품목 판정</li><li>총비용·Quote·승인</li><li>주문·배송·취소·반품·환불</li></ul></div>
+  </div>
+  <details><summary>Agent Tool 초안</summary><div class="mono">submit_external_item(candidate)
+verify_external_item(request_id)
+get_quote(quote_id)
+approve_quote(quote_id, approval_token)
+create_order(quote_id)
+get_order(order_id)
+get_shipment(order_id)
+open_case(order_id, issue)
+upload_return_evidence(case_id, file)
+request_cancel(order_id)
+request_return(order_id, reason)
+get_refund_status(case_id)</div></details>
+</section>
+
+<section id="procurement" data-lecture-section="procurement">
+  <h2>4. 외부 상품을 즉석 판매품목으로 바꾸는 자동화 공정</h2>
+  <div class="flow">
+    <div class="node blue">External Item</div><div class="arrow">→</div><div class="node purple">Purchasability Verification</div><div class="arrow">→</div><div class="node green">Product Snapshot</div><div class="arrow">→</div><div class="node green">Temporary SKU</div><div class="arrow">→</div><div class="node orange">Transparent Quote</div><div class="arrow">→</div><div class="node blue">Approved Procurement</div>
+  </div>
+  <h3>“구매 가능” 판정은 URL 존재 여부가 아니다</h3>
+  <div class="grid4">
+    <div class="card"><strong>상품·옵션</strong><p class="small">Active, Variant, Quantity</p></div>
+    <div class="card"><strong>가격·판매자</strong><p class="small">Snapshot, Seller, Currency</p></div>
+    <div class="card"><strong>배송·통관</strong><p class="small">KR Shipping, Duty, Restriction</p></div>
+    <div class="card"><strong>반품·권한</strong><p class="small">Policy, API Capability, Risk</p></div>
+  </div>
+  <h3>Quote 가격 투명성</h3>
+  <div class="price-stack">
+    <div class="price-list">
+      <div class="price-line"><span>공급처 원가</span><b>62,000</b></div><div class="price-line"><span>국제·국내 배송</span><b>15,000</b></div><div class="price-line"><span>세금·결제·환전</span><b>3,700</b></div><div class="price-line"><span>처리비·Risk Reserve</span><b>4,800</b></div><div class="price-line"><span>Pilot Platform Margin</span><b>0</b></div>
+    </div>
+    <div class="equal">−</div>
+    <div class="price-list">
+      <div class="price-line"><span>Pilot Credit</span><b>30,000</b></div><div class="price-line"><span>예상 고객결제</span><b>55,500</b></div><div class="price-line"><span>Quote TTL</span><b>15분</b></div><div class="price-line"><span>가격변동 허용</span><b>3%</b></div><div class="price-line"><span>초과 시</span><b>재승인</b></div>
+    </div>
+  </div>
+  <div class="callout"><strong>핵심 불변조건:</strong> 사용자 승인 전 구매 금지, 만료 Quote 구매 금지, 승인금액 초과 시 재승인, 동일 Idempotency Key로 외부 주문 2회 생성 금지.</div>
+  <h3>Demand-generated Catalog</h3>
+  <p>반복 요청된 외부 상품은 매번 재검증하여 SKU를 재사용하고, 수요·배송 SLA·반품률·공급처 신뢰가 안정된 상품만 영구 Catalog 승격 후보로 만든다. 초기에는 자동승격하지 않고 Store Manager가 제안하고 사람이 승인한다.</p>
+</section>
+
+<section id="ops" data-lecture-section="ops">
+  <h2>5. 판매자 운영도 Agent가 처리한다</h2>
+  <p class="lead">목표는 “사람이 절대 없다”가 아니라, 정상·저위험 업무는 자동으로 끝나고 사람은 예외만 감독하는 구조다.</p>
+  <div class="flow">
+    <div class="node blue">ORDER_CREATED</div><div class="arrow">→</div><div class="node purple">Order Agent</div><div class="arrow">→</div><div class="node purple">Procurement Agent</div><div class="arrow">→</div><div class="node purple">Logistics Agent</div><div class="arrow">→</div><div class="node green">Delivered / Closed</div>
+  </div>
+  <div class="grid3" style="margin-top:16px">
+    <div class="card green"><h3>자동 처리</h3><ul><li>조회·상태동기화</li><li>승인된 Quote 구매</li><li>배송추적·선제안내</li><li>저위험 Case 응답</li></ul></div>
+    <div class="card orange"><h3>Approval</h3><ul><li>고액 구매·환불</li><li>정책 충돌</li><li>판매중지</li><li>민감 Evidence 외부제공</li></ul></div>
+    <div class="card purple"><h3>Store Manager</h3><ul><li>공급처·배송 SLA</li><li>Refund/Recovery 손실</li><li>Agent 오류·중복 Action</li><li>VOC 급증·판매중지 제안</li></ul></div>
+  </div>
+  <div class="callout warn"><strong>외부 표현:</strong> “앉아만 있으면 돈이 벌린다”가 아니라 “Operator Minutes / 100 Orders와 Human Escalation Rate를 실제로 낮춘 Exception-only Operations”라고 주장한다.</div>
+</section>
+
+<section id="refund" data-lecture-section="refund">
+  <h2>6. 사진 증빙을 실제 반품 Case로 연결한다</h2>
+  <div class="flow">
+    <div class="node blue">고객 신고+사진</div><div class="arrow">→</div><div class="node purple">Evidence Package</div><div class="arrow">→</div><div class="node green">Return Policy 판단</div><div class="arrow">→</div><div class="node orange">Marketplace 제출</div><div class="arrow">→</div><div class="node blue">WAIT / RESUME</div><div class="arrow">→</div><div class="node green">고객 환불+비용 회수</div>
+  </div>
+  <div class="grid2" style="margin-top:15px">
+    <div class="card blue"><h3>Evidence Pipeline</h3><ul><li>파일형식·크기·악성파일 검사</li><li>EXIF 제거·접근통제</li><li>주문·상품·Variant 연결</li><li>중복 Evidence 확인</li><li>Marketplace별 형식 변환</li></ul></div>
+    <div class="card purple"><h3>외부 상태</h3><ul><li>APPROVED</li><li>REJECTED</li><li>MORE_EVIDENCE_REQUIRED</li><li>RETURN_SHIPMENT_REQUIRED</li><li>TIMEOUT / DISPUTE</li></ul></div>
+  </div>
+  <h3>두 개의 Ledger를 절대 합치지 않는다</h3>
+  <div class="dual">
+    <div class="ledger customer"><h3>Customer Refund Ledger</h3><p>우리와 고객 사이의 환불 책임과 지급 상태.</p><b>PENDING → APPROVED → PAID / DENIED</b></div>
+    <div class="link-center">같은 Case<br>≠ 같은 Transaction</div>
+    <div class="ledger upstream"><h3>Upstream Recovery Ledger</h3><p>우리와 해외 Seller/Marketplace 사이의 비용 회수.</p><b>SUBMITTED → RECOVERED / REJECTED / WRITTEN_OFF</b></div>
+  </div>
+  <div class="callout danger"><strong>금지:</strong> 팀원이나 테스터가 허위 파손·허위 반품을 실제 외부 판매처에 제출하는 실험. 거절·추가증빙·분쟁 Scenario는 Mock/Sandbox에서만 만든다.</div>
+</section>
+
+<section class="section">
+<h2>최대 46명 Pilot + 외부 확장: 실제 사용과 의도적 테스트를 분리한다</h2>
+<p class="lead">
+Pilot은 <strong>팀 내부 6명</strong>, <strong>같은 기수 약 20명</strong>,
+<strong>같은 부트캠프 내 추가 약 20명</strong>의 세 그룹으로 나누고,
+외부 사용자까지 사업자 등록 후 확장하는 경우에는 별도의 환불·파손 리스크 Reserve를 둔다.
+전체 Pilot·리스크 예산 상한은 <strong>180만원</strong>이다.
+</p>
+
+<div class="grid-3">
+  <div class="card">
+    <h3>1. Internal · 팀원 6명 × 5만원 = 30만원</h3>
+    <p>우리 팀 6명에게 각 5만원 한도로 제공해 실제 사이트를 사용하고 의도적인 Edge Case까지 검증한다.</p>
+    <ul>
+      <li>실제 상품 구매·결제·배송·취소·반품·환불</li>
+      <li>중복 요청, Quote 만료, 가격 변경, 배송 중 취소</li>
+      <li>Evidence 추가 제출, Agent 오판, 외부 API Timeout</li>
+      <li>자연 사용자 데이터가 아닌 <code>INTERNAL_SCENARIO</code>로 별도 표기</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>2. Same Cohort · 같은 기수 약 20명 × 1만원</h3>
+    <p>같은 기수에서 약 20명을 선별해 각 1만원 수준의 테스트 크레딧을 제공한다.</p>
+    <ul>
+      <li>기본 예상 직접 지급액: 약 20만원</li>
+      <li>인원 변동·추가 보상을 고려한 그룹 예산 상한: <strong>최대 30만원</strong></li>
+      <li>Agent 연결·상품 요청·주문·배송조회·CS 사용성 검증</li>
+      <li><code>INCENTIVIZED_PILOT_COHORT</code>로 별도 표기</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>3. Same Bootcamp · 추가 약 20명 × 1만원 = 약 20만원</h3>
+    <p>같은 기수 밖이지만 동일 부트캠프에 참여하는 인원으로 Pilot을 한 단계 확장한다.</p>
+    <ul>
+      <li>추가 약 20명에게 각 1만원 수준 테스트 크레딧 제공</li>
+      <li>예상 직접 지급액: 약 20만원</li>
+      <li>초기 Cohort와 다른 사용자군에서 Agent UX·주문·CS 재검증</li>
+      <li><code>INCENTIVIZED_PILOT_BOOTCAMP</code>로 별도 표기</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3>4. External Expansion · 환불·파손 리스크 Reserve 최대 100만원</h3>
+  <p>
+  사업자 등록 후 부트캠프 외부 사용자까지 실제 서비스를 확장할 경우,
+  환불·파손·반품·재배송·공급처 회수 실패 등에 대응하기 위한
+  <strong>리스크 관리 예산을 최대 100만원</strong>으로 잡는다.
+  </p>
+  <ul>
+    <li>고객 환불 선지급</li>
+    <li>파손·불량 상품 보상</li>
+    <li>반품·재배송 비용</li>
+    <li>해외 판매처 환불 거절 또는 Supplier Recovery 실패</li>
+    <li>국제·국내 배송 과정의 예상 밖 손실</li>
+  </ul>
+</div>
+
+<div class="why-box">
+<strong>최대 총 예산: 180만원</strong><br/>
+팀 내부 30만원
++ 같은 기수 Pilot 최대 30만원
++ 같은 부트캠프 추가 Pilot 약 20만원
++ 외부 확장 시 환불·파손 등 리스크 Reserve 최대 100만원
+= <strong>최대 180만원</strong>.
+<br/><br/>
+외부 확장을 하지 않으면 100만원 리스크 Reserve는 실제 집행하지 않을 수 있으며,
+180만원은 전체 확장 시나리오를 포함한 <strong>예산 상한</strong>이다.
+</div>
+</section>
+
+<section id="evaluation" data-lecture-section="evaluation">
+  <h2>8. 실운영 자체가 Evaluation Factory가 된다</h2>
+  <div class="arch">
+    <div class="arch-row"><div class="arch-box">Organic Case</div><div class="arch-box">Incentivized Case</div><div class="arch-box">Internal Scenario</div><div class="arch-box">Synthetic Mock</div></div>
+    <div class="down">↓ 사람 검수·정책 버전·개인정보 제거 ↓</div>
+    <div class="arch-row"><div class="arch-box green">Gold Case</div><div class="arch-box green">Regression Fixture</div><div class="arch-box green">Benchmark</div><div class="arch-box green">B2B Evidence</div></div>
+  </div>
+  <div class="grid4" style="margin-top:15px">
+    <div class="card"><strong>운영</strong><p class="small">Automation, Escalation, MTTR, Reopen</p></div>
+    <div class="card"><strong>안전</strong><p class="small">Incorrect, Duplicate, Unauthorized</p></div>
+    <div class="card"><strong>경제</strong><p class="small">Cost/Order, Recovery, Refund Loss</p></div>
+    <div class="card"><strong>제품</strong><p class="small">Agent E2E, Adapter, Reuse</p></div>
+  </div>
+  <div class="callout warn"><strong>Gold Label 원칙:</strong> 외부 판매처의 APPROVED/REJECTED는 중요한 관측값이지만 단독 정답이 아니다. <code>customer_refund_eligible</code>, <code>supplier_decision</code>, <code>human_policy_review</code>, <code>final_customer_action</code>, <code>upstream_recovery_status</code>를 별도 라벨로 저장한다.</div>
+</section>
+
+<section id="b2b" data-lecture-section="b2b">
+  <h2>9. B2B로 파는 본체 — 고객 맞춤형 A-COP CS / Agentic Operations Platform</h2>
+  <p class="lead">우리가 고객에게 파는 것은 특정 쇼핑몰 템플릿이 아니다. <strong>고객이 자신의 업무·데이터 포맷·정책·연동 시스템을 주면, 필요한 A-COP Module과 Agent Workflow를 조립해 고객사 전용 운영 시스템으로 구축해주는 것</strong>이 현재의 B2B 상품이다.</p>
+
+  <div class="summary-band">
+    <div class="thesis">“어떤 문의가 들어오고, 어떤 데이터를 가지고 있고, 어떤 업무를 어디까지 자동화하고 싶은지 주세요. A-COP의 Case·Agent Team·RAG·Action·Approval·Monitoring 모듈을 그 업무에 맞춰 구성해드리겠습니다.”</div>
+    <div class="status-box">
+      <div class="status-row"><span class="badge confirmed">현재 Product</span><span>CS / Customer Operations Platform 구축</span></div>
+      <div class="status-row"><span class="badge hypothesis">Reference</span><span>자체 쇼핑몰에 실제 적용·운영·Pilot 데이터 확보</span></div>
+      <div class="status-row"><span class="badge gate">Vision</span><span>사이트·Commerce 전체 운영까지 조립하는 Agentic Platform</span></div>
+    </div>
+  </div>
+
+  <h3>고객이 주는 것 → 우리가 만들어 주는 것</h3>
+  <div class="grid2">
+    <div class="card blue"><h3>고객사 Input</h3><ul>
+      <li>문의/리뷰/상담/주문 등 보유 데이터 포맷</li>
+      <li>FAQ·정책·약관·업무 매뉴얼</li>
+      <li>사용 중인 CRM·ERP·쇼핑몰·PG·사내 API</li>
+      <li>자동화하고 싶은 업무와 사람 승인 기준</li>
+      <li>브랜드·UI·배포·보안 요구사항</li>
+    </ul></div>
+    <div class="card green"><h3>A-COP Delivery</h3><ul>
+      <li>고객 도메인용 Case Schema / State Workflow</li>
+      <li>업무별 Agent Team Module / RAG / Memory</li>
+      <li>Tool·Action·Approval·Audit 정책</li>
+      <li>기존 시스템 Integration Adapter</li>
+      <li>운영자 Console·Observability·Evaluation</li>
+      <li>필요하면 고객용 사이트/Storefront까지 통합 제공</li>
+    </ul></div>
+  </div>
+
+  <h3>현재 판매 단위</h3>
+  <div class="grid3">
+    <div class="card blue"><h3>A-COP License / Runtime</h3><p>Case · Shared State · Team Registry · Action · Audit · Observability 공통 기반.</p></div>
+    <div class="card green"><h3>Domain Modules</h3><p>현재는 CS/VOC가 핵심. Commerce에서는 Order·Logistics·Refund 등 필요한 Module을 추가.</p></div>
+    <div class="card purple"><h3>Agent Workflow Configuration</h3><p>고객사의 승인·예외·업무순서·RAG Scope·Tool 권한을 설정.</p></div>
+    <div class="card orange"><h3>Integration</h3><p>CRM · ERP · 기존몰 · PG · Supplier · Carrier 등 실제 고객 시스템 연결.</p></div>
+    <div class="card blue"><h3>Deployment</h3><p>Managed Cloud / Private 환경 및 고객 인프라 요구에 맞춘 배포.</p></div>
+    <div class="card green"><h3>Operation Monitoring</h3><p>Agent 실패 · 비용 · Human Escalation · SLA · Action 오류를 지속 관측.</p></div>
+  </div>
+
+  <div class="callout"><strong>자체몰을 만드는 목적:</strong> 쇼핑몰 사업 자체가 최종 제품이 아니라, 우리가 판매하는 A-COP을 실제 사업 프로세스에 직접 적용해 “설계 → 구축 → 운영 → 데이터 → 평가 → 개선”의 전 과정을 증명하기 위해서다.</div>
+
+  <h3>Reference Store가 B2B 영업자료가 되는 흐름</h3>
+  <div class="flow">
+    <div class="node blue">A-COP Core</div><div class="arrow">→</div>
+    <div class="node purple">우리 Commerce 요구사항 적용</div><div class="arrow">→</div>
+    <div class="node green">실제 Reference Store 운영</div><div class="arrow">→</div>
+    <div class="node orange">Order·CS·Refund KPI 확보</div><div class="arrow">→</div>
+    <div class="node green">B2B Case Study</div><div class="arrow">→</div>
+    <div class="node blue">고객 요구에 맞춘 재조립</div>
+  </div>
+
+  <h3>확장 비전</h3>
+  <div class="mono">Phase A  A-COP CS / Customer Operations Platform  ← 현재 판매 중심
+    ↓
+Phase B  Domain-specific Agentic Operations Packs
+         (Commerce / Subscription / Booking / Support 등)
+    ↓
+Phase C  고객 요구사항 + 데이터 포맷 + Policy + Integration을 입력하면
+         사이트/Storefront + Agent Workflow + Back-office Operations를 조립하는
+         Agentic Site / Commerce Platform</div>
+
+  <h3>수익 구조</h3>
+  <div class="mono">초기 분석·구축비
++ A-COP Runtime / License
++ 선택 Domain Module
++ Integration / Custom Workflow
++ Usage (Case / Agent Run / Action)
++ Monitoring / SLA / Maintenance
++ 필요 시 Site / Storefront 구축</div>
+  <div class="callout"><strong>포지셔닝:</strong> “AI 쇼핑몰 제작 대행”이 아니라 <strong>모듈화된 Agentic Customer Operations 기술을 고객사 요구에 맞게 구축하고, 필요 시 사이트 전체까지 확장 제공하는 B2B 플랫폼/제품화 서비스</strong>다.</div>
+</section>
+
+<section id="market" data-lecture-section="market">
+  <h2>10. 기존 시장과의 교차검증</h2>
+  <p class="lead">유사한 조각은 이미 존재한다. A-COP의 주장은 “최초”가 아니라, 이 조각들을 실제 운영·안전·평가·B2B 조립까지 연결한다는 것이다.</p>
+  <div class="table-wrap"><table><thead><tr><th>공식 제품/표준</th><th>확인된 기능</th><th>우리에게 주는 결론</th></tr></thead><tbody>
+    <tr><td>Shopify Agentic Commerce</td><td>UCP/MCP 기반 Discovery·Cart·Checkout·Order</td><td>Personal Agent 쇼핑은 현실적 시장 방향</td></tr>
+    <tr><td>Google UCP</td><td>Commerce lifecycle, API/MCP/A2A, payment interoperability</td><td>독자 API만 만들지 말고 UCP-shaped 설계</td></tr>
+    <tr><td>commercetools AgenticLift</td><td>기존 stack을 유지한 Agent channel sidecar</td><td>“기존몰 위에 A-COP” 전략이 타당</td></tr>
+    <tr><td>Medusa</td><td>Product·Order·Payment·Fulfillment Commerce Modules</td><td>제품화 시 Commerce Engine Adapter 후보</td></tr>
+    <tr><td>eBay Buy/Post-Order</td><td>Browse 공개, Order 등 제한; Return·파일 업로드 문서</td><td>Marketplace Capability 등급과 권한 확인 필수</td></tr>
+    <tr><td>Amazon Creators API</td><td>Associates용 상품 Catalog·추천</td><td>자동구매 API로 해석 금지</td></tr>
+  </tbody></table></div>
+  <div class="callout"><strong>Port 원칙:</strong> Core는 <code>MarketplacePort</code>와 <code>ReturnAdapterPort</code>에만 의존하고, eBay·기타 공급처별 차이는 Adapter와 Capability Registry가 흡수한다.</div>
+  <h3>Adapter Capability Level</h3>
+  <div class="grid3">
+    <div class="card"><strong>0–1</strong><p>Mock 또는 Read-only Verification</p></div><div class="card"><strong>2–3</strong><p>Assisted Handoff 또는 허용된 제한 자동화</p></div><div class="card"><strong>4–5</strong><p>공식 Transactional / Post-order API</p></div>
+  </div>
+  <div class="callout danger"><strong>검증으로 제거한 전제:</strong> 모든 해외몰에서 URL만 받으면 자동 구매·자동 반품할 수 있다는 가정. 실제 Live 기능은 각 플랫폼의 승인·약관·API Capability가 허용하는 범위만 노출한다.</div>
+</section>
+
+<section id="roadmap" data-lecture-section="roadmap">
+  <h2>11. 구현 우선순위와 10주 로드맵</h2>
+  <p class="lead">기존 A-COP Core를 유지한 채 Commerce Reference Vertical을 구현한다. Commerce 코드를 Core에 박지 않고 Module/Adapter로 분리해 이후 다른 B2B 고객 도메인에 재사용 가능하게 만든다.</p>
+  <div class="timeline">
+    <div class="week gate-week"><b>W1–2</b>거래 Gate·Schema·Quote·Credit</div><div class="week"><b>W3–4</b>REST/MCP·Mock·Verification·Procurement</div><div class="week"><b>W5–6</b>Order·Payment·Logistics·Evidence·Dual Ledger</div><div class="week"><b>W7–8</b>Storefront·Console·Internal Live</div><div class="week gate-week"><b>W9–10</b>Bootcamp Pilot·KPI·B2B Package</div>
+  </div>
+  <h3>6명 수직 역할</h3>
+  <div class="grid3">
+    <div class="card purple"><strong>1. Runtime Lead</strong><p class="small">State·WAIT/RESUME·Team routing·통합</p></div>
+    <div class="card blue"><strong>2. Access/Action</strong><p class="small">REST/MCP/UCP·PG·Approval·Audit</p></div>
+    <div class="card green"><strong>3. Catalog/Procurement</strong><p class="small">Item·Snapshot·SKU·Quote·Adapter</p></div>
+    <div class="card orange"><strong>4. Order/Logistics</strong><p class="small">Order·Shipment·Customs·Reconcile</p></div>
+    <div class="card purple"><strong>5. Return/Evidence/VOC</strong><p class="small">사진·Return·Dual Ledger·Manager</p></div>
+    <div class="card blue"><strong>6. UX/Pilot/Evaluation</strong><p class="small">Store·Console·Cohort·Gold·KPI</p></div>
+  </div>
+  <details><summary>첫 Pull Request 순서</summary><div class="mono">PR-01 Domain schema + Alembic
+PR-02 Product Request / Snapshot / Quote API
+PR-03 MockMarketplaceAdapter + Verification State Machine
+PR-04 Personal Agent REST/MCP Tools
+PR-05 Order / Approval / Idempotency
+PR-06 Evidence + Dual Refund Ledger
+PR-07 Storefront + Exception Console
+PR-08 Pilot Credit + Cohort + KPI
+PR-09 Read-only real Marketplace Adapter
+PR-10 Internal Live Gate</div></details>
+</section>
+
+<section id="gates" data-lecture-section="gates">
+  <h2>12. Live Pilot 전에 막아야 하는 것</h2>
+  <div class="grid3">
+    <div class="card orange"><h3>거래·법률</h3><ul><li>판매자 vs 구매대행자</li><li>사업자·통신판매 신고</li><li>청약철회·환급 책임</li><li>품목·통관·관부가세</li></ul></div>
+    <div class="card blue"><h3>개인정보</h3><ul><li>사진·주소·연락처</li><li>해외 제공·위탁·보관</li><li>별도 동의·처리방침</li><li>보존·삭제·가명화</li></ul></div>
+    <div class="card purple"><h3>기술·금전</h3><ul><li>구매 API 권한</li><li>중복주문·중복환불</li><li>Quote 상한·재승인</li><li>Reconciliation·Reserve</li></ul></div>
+  </div>
+  <div class="callout danger"><strong>Block 조건:</strong> 거래모델·약관·통관·개인정보 Gate가 통과되지 않았거나 공식 구매 권한이 없으면 일반고객 Live 결제를 열지 않는다. Mock 또는 Assisted Procurement로 정직하게 Pivot한다.</div>
+</section>
+
+<section id="verify" data-lecture-section="verify">
+  <h2>13. 검증 에이전트 V-01 결과</h2>
+  <p class="lead">작성 패스와 분리된 요구사항 추적·공식 자료·모순·금전 안전·문서 구조 검수를 수행했다.</p>
+  <div class="grid3">
+    <div class="card green"><span class="badge pass">PASS</span><h3>대화 반영</h3><p>자체몰, Agent Shopping, 동적 조달, Pilot, 사진환불, Gold Data, B2B 6요소를 모두 반영.</p></div>
+    <div class="card orange"><span class="badge warn">WARN</span><h3>미결정</h3><p>거래모델, 허용품목, 실제 공급처, PG, 외부 API 권한은 아직 Gate.</p></div>
+    <div class="card blue"><span class="badge block">BLOCK</span><h3>Live 제한</h3><p>법률·통관·개인정보·중복금전 Action 검증 전 일반고객 결제 금지.</p></div>
+  </div>
+  <h3>요구사항 EXP-01~30</h3>
+  <div class="req-grid">
+    <div class="req"><code>EXP-01</code><span class="s badge pass">PASS</span><br>실거래 Reference Store</div>
+    <div class="req"><code>EXP-02</code><span class="s badge pass">PASS</span><br>Personal Agent API</div>
+    <div class="req"><code>EXP-03</code><span class="s badge pass">PASS</span><br>검색은 고객 Agent</div>
+    <div class="req"><code>EXP-04</code><span class="s badge pass">PASS</span><br>Temporary SKU</div>
+    <div class="req"><code>EXP-05</code><span class="s badge pass">PASS</span><br>Purchasability</div>
+    <div class="req"><code>EXP-06</code><span class="s badge pass">PASS</span><br>Quote·승인</div>
+    <div class="req"><code>EXP-07</code><span class="s badge warn">가설</span><br>투명 무마진 Pilot</div>
+    <div class="req"><code>EXP-08</code><span class="s badge pass">PASS</span><br>1인 1개</div>
+    <div class="req"><code>EXP-09</code><span class="s badge pass">PASS</span><br>운영 자동화</div>
+    <div class="req"><code>EXP-10</code><span class="s badge pass">PASS</span><br>Store Manager</div>
+    <div class="req"><code>EXP-11</code><span class="s badge pass">PASS</span><br>Exception-only</div>
+    <div class="req"><code>EXP-12</code><span class="s badge pass">PASS</span><br>팀원 6×5만원</div>
+    <div class="req"><code>EXP-13</code><span class="s badge pass">PASS</span><br>같은 기수 약 20명 × 1만원 · 상한 30만원 + 같은 부트캠프 추가 약 20명 × 1만원</div>
+    <div class="req"><code>EXP-14</code><span class="s badge pass">PASS</span><br>유급 테스터</div>
+    <div class="req"><code>EXP-15</code><span class="s badge pass">PASS</span><br>Cohort 분리</div>
+    <div class="req"><code>EXP-16</code><span class="s badge pass">PASS</span><br>사진 Evidence</div>
+    <div class="req"><code>EXP-17</code><span class="s badge block">GATE</span><br>외부 환불 제출</div>
+    <div class="req"><code>EXP-18</code><span class="s badge pass">PASS</span><br>WAIT/RESUME</div>
+    <div class="req"><code>EXP-19</code><span class="s badge pass">PASS</span><br>Dual Ledger</div>
+    <div class="req"><code>EXP-20</code><span class="s badge pass">PASS</span><br>Gold Case</div>
+    <div class="req"><code>EXP-21</code><span class="s badge pass">PASS</span><br>외부결정≠정답</div>
+    <div class="req"><code>EXP-22</code><span class="s badge pass">PASS</span><br>허위환불 금지</div>
+    <div class="req"><code>EXP-23</code><span class="s badge pass">PASS</span><br>B2B 계약 6요소</div>
+    <div class="req"><code>EXP-24</code><span class="s badge pass">PASS</span><br>고객별 조립</div>
+    <div class="req"><code>EXP-25</code><span class="s badge warn">STRETCH</span><br>Store Configurator</div>
+    <div class="req"><code>EXP-26</code><span class="s badge warn">가설</span><br>수익모델</div>
+    <div class="req"><code>EXP-27</code><span class="s badge pass">PASS</span><br>Demand Catalog</div>
+    <div class="req"><code>EXP-28</code><span class="s badge warn">가설</span><br>무재고 조달</div>
+    <div class="req"><code>EXP-29</code><span class="s badge pass">PASS</span><br>Protocol/Adapter</div>
+    <div class="req"><code>EXP-30</code><span class="s badge block">GATE</span><br>법률·통관·개인정보</div>
+  </div>
+  <div class="callout"><strong>최종 판정: PASS WITH LIVE GATES.</strong> 확장 대화는 모두 반영됐고, 공식 자료가 뒷받침하지 않는 “모든 해외몰 자동구매”, “공급처 승인 후에만 고객 환불”, “무인 수익 보장” 전제는 제거·교정했다.</div>
+</section>
+
+<section id="sources" data-lecture-section="sources">
+  <h2>14. 공식 출처</h2>
+  <ol class="source-list">
+    <li><a href="https://shopify.dev/docs/agents">Shopify — Build commerce agents with UCP</a></li>
+    <li><a href="https://developers.googleblog.com/under-the-hood-universal-commerce-protocol-ucp/">Google — Universal Commerce Protocol</a></li>
+    <li><a href="https://docs.commercetools.com/agentic-commerce/releases/2026-07-30-agenticlift-is-now-generally-available">commercetools — AgenticLift GA</a></li>
+    <li><a href="https://docs.medusajs.com/resources/commerce-modules">Medusa — Commerce Modules</a></li>
+    <li><a href="https://developer.ebay.com/api-docs/buy/static/buy-overview.html">eBay — Buy APIs Overview</a></li>
+    <li><a href="https://developer.ebay.com/devzone/post-order/index.html">eBay — Post-Order API</a></li>
+    <li><a href="https://developer.ebay.com/devzone/post-order/post-order_v2_return-returnid_file_upload__post.html">eBay — Upload Return File</a></li>
+    <li><a href="https://affiliate-program.amazon.com/creatorsapi/docs/en-us/introduction">Amazon — Creators API</a></li>
+    <li><a href="https://webservices.amazon.com/paapi5/documentation/with-sdk.html">Amazon — PA-API migration notice</a></li>
+    <li><a href="https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=11300000006">정부24 — 통신판매업 신고</a></li>
+    <li><a href="https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0018&lsiSeq=282793&urlMode=lsScJoRltInfoR">국가법령정보센터 — 전자상거래법 제18조</a></li>
+    <li><a href="https://www.customs.go.kr/kcs/ad/cntnts/cntntsView.do?cntntsId=10220&mi=10220">관세청 — 해외직구 여기로</a></li>
+    <li><a href="https://www.law.go.kr/lsInfoP.do?ancYnChk=0&lsId=011357">국가법령정보센터 — 개인정보 보호법</a></li>
+    <li><a href="https://www.pipc.go.kr/np/default/page.do?mCode=D060040010">개인정보보호위원회 — 개인정보 국외이전 제도</a></li>
+  </ol>
+</section>
+
+<div class="footer">A-COP Expansion Briefing · Agent-Native Autonomous Commerce · Verified 2026-08-15</div>
+</main>
+
+<aside aria-expanded="false" aria-label="파트 목차 열기" class="acop-part-rail" data-acop-rail role="button" tabindex="0">
+  <nav class="acop-rail-list">
+    <span class="acop-rail-item" data-rail-target="summary"><span class="acop-rail-label">1. 한눈에 보는 최종 결론</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="scope"><span class="acop-rail-label">2. 이번 확장안에 새로 추가되는 것</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="journey"><span class="acop-rail-label">3. 고객은 자기 Agent만으로 쇼핑한다</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="procurement"><span class="acop-rail-label">4. 외부 상품을 즉석 판매품목으로 바꾸는 자동화 공정</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="ops"><span class="acop-rail-label">5. 판매자 운영도 Agent가 처리한다</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="refund"><span class="acop-rail-label">6. 사진 증빙을 실제 반품 Case로 연결한다</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="evaluation"><span class="acop-rail-label">8. 실운영 자체가 Evaluation Factory가 된다</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="b2b"><span class="acop-rail-label">9. B2B로 파는 본체 — 고객 맞춤형 A-COP CS / Agentic Operations Platform</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="market"><span class="acop-rail-label">10. 기존 시장과의 교차검증</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="roadmap"><span class="acop-rail-label">11. 구현 우선순위와 10주 로드맵</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="gates"><span class="acop-rail-label">12. Live Pilot 전에 막아야 하는 것</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="verify"><span class="acop-rail-label">13. 검증 에이전트 V-01 결과</span><span class="acop-rail-dot"></span></span><span class="acop-rail-item" data-rail-target="sources"><span class="acop-rail-label">14. 공식 출처</span><span class="acop-rail-dot"></span></span>
+  </nav>
+</aside>
+<div aria-hidden="true" class="acop-part-toc-overlay" data-acop-toc-overlay>
+  <section aria-label="파트 목차" aria-modal="false" class="acop-part-toc-panel" role="dialog">
+    <header class="acop-part-toc-head">
+      <button aria-label="목차 닫기" class="acop-part-toc-close" data-acop-toc-close type="button">‹</button>
+      <strong data-acop-toc-current>현재 파트</strong>
+    </header>
+    <nav class="acop-part-toc-list" data-acop-toc-list></nav>
+  </section>
+</div>
+
+
+<script>
+(() => {
+  const rail = document.querySelector('[data-acop-rail]');
+  const overlay = document.querySelector('[data-acop-toc-overlay]');
+  if (!rail || !overlay) return;
+
+  const panel = overlay.querySelector('.acop-part-toc-panel');
+  const list = overlay.querySelector('[data-acop-toc-list]');
+  const current = overlay.querySelector('[data-acop-toc-current]');
+  const items = [...rail.querySelectorAll('[data-rail-target]')];
+  const sections = items
+    .map(item => document.getElementById(item.dataset.railTarget))
+    .filter(Boolean);
+
+  rail.style.setProperty('--acop-rail-count', String(Math.max(items.length, 1)));
+
+  list.innerHTML = '';
+  items.forEach(item => {
+    const label = item.querySelector('.acop-rail-label')?.textContent?.trim() || item.dataset.railTarget;
+    const a = document.createElement('a');
+    a.href = '#' + item.dataset.railTarget;
+    a.dataset.overlayTarget = item.dataset.railTarget;
+    a.textContent = label;
+    list.appendChild(a);
+  });
+
+  const overlayLinks = [...list.querySelectorAll('a')];
+  let pinned = false;
+  let timer = null;
+
+  const move = key => {
+    document.getElementById(key)?.scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start'
+    });
+  };
+
+  const setOpen = value => {
+    overlay.classList.toggle('is-open', value);
+    overlay.setAttribute('aria-hidden', String(!value));
+    rail.setAttribute('aria-expanded', String(value));
+    document.body.classList.toggle('acop-toc-open', value && pinned);
+    if (!value) pinned = false;
+  };
+
+  rail.addEventListener('click', () => {
+    pinned = !overlay.classList.contains('is-open');
+    setOpen(pinned);
+  });
+
+  rail.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      pinned = !overlay.classList.contains('is-open');
+      setOpen(!overlay.classList.contains('is-open'));
+    }
+  });
+
+  if (matchMedia('(hover:hover) and (pointer:fine)').matches) {
+    rail.addEventListener('mouseenter', () => {
+      clearTimeout(timer);
+      setOpen(true);
+    });
+    rail.addEventListener('mouseleave', () => {
+      if (!pinned) timer = setTimeout(() => setOpen(false), 180);
+    });
+    panel.addEventListener('mouseenter', () => clearTimeout(timer));
+    panel.addEventListener('mouseleave', () => {
+      if (!pinned) timer = setTimeout(() => setOpen(false), 180);
+    });
+  }
+
+  overlay.querySelectorAll('[data-acop-toc-close]').forEach(btn =>
+    btn.addEventListener('click', () => setOpen(false))
+  );
+
+  overlayLinks.forEach(a => a.addEventListener('click', e => {
+    e.preventDefault();
+    move(a.dataset.overlayTarget);
+    setOpen(false);
+  }));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') setOpen(false);
+  });
+
+  document.addEventListener('pointerdown', e => {
+    if (!overlay.classList.contains('is-open')) return;
+    if (panel.contains(e.target) || rail.contains(e.target)) return;
+    setOpen(false);
+  });
+
+  function updateRail() {
+    const mark = innerHeight * 0.34;
+    let activeIndex = 0;
+
+    sections.forEach((section, index) => {
+      if (section.getBoundingClientRect().top <= mark) activeIndex = index;
+    });
+
+    const key = sections[activeIndex]?.id;
+    items.forEach(item =>
+      item.classList.toggle('is-active', item.dataset.railTarget === key)
+    );
+    overlayLinks.forEach(link =>
+      link.classList.toggle('is-active', link.dataset.overlayTarget === key)
+    );
+
+    current.textContent = overlayLinks[activeIndex]?.textContent || '현재 파트';
+
+    const activeLink = overlayLinks[activeIndex];
+    if (overlay.classList.contains('is-open') && activeLink) {
+      activeLink.scrollIntoView({block:'nearest'});
+    }
+  }
+
+  addEventListener('scroll', updateRail, {passive:true});
+  addEventListener('resize', updateRail);
+  updateRail();
+})();
+</script>
+
+</body>
+</html>

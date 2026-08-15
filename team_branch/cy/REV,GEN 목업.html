@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A-COP Commerce - 응답 생성·검토 파이프라인 인터랙티브 목업</title>
+<style>
+  :root {
+    --bg:#f4f5f9; --surface:#fff; --ink:#1f2430; --muted:#64748b; --line:#e1e4ea;
+    --sky:#4338ca; --sky-deep:#312e81; --sky-soft:#eef0fb;
+    --coral:#0f8a7a; --coral-deep:#0a5c51; --coral-soft:#e3f5f2;
+    --green:#16a34a; --green-soft:#e7f6ec;
+    --red:#e11d48; --red-soft:#fde8ec;
+    --violet:#6d28d9; --violet-soft:#f1ebfc;
+    --sans:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",Arial,sans-serif;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.65; word-break:keep-all; }
+  button { font:inherit; cursor:pointer; }
+  .shell { max-width:1300px; margin:0 auto; padding:0 20px 50px; }
+
+  header.hero { background:linear-gradient(160deg,#4338ca 0%,#312e81 100%); color:#fff; padding:36px 0 30px; margin-bottom:20px; }
+  .hero-inner { max-width:1300px; margin:0 auto; padding:0 20px; }
+  .eyebrow { color:#d9d7f7; font:700 11px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase; }
+  h1 { margin:10px 0 8px; font-size:clamp(21px,3.4vw,28px); letter-spacing:-.03em; }
+  .hero p { margin:0; max-width:740px; color:#e6e4fa; font-size:13.3px; }
+  .hero-badge { display:inline-block; margin-top:12px; padding:6px 12px; border-radius:20px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.35); font:700 11px/1.3 var(--mono); }
+
+  .scenario-toggle { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-bottom:18px; }
+  .sc-btn { padding:12px 13px; border-radius:12px; border:2px solid var(--line); background:var(--surface); text-align:left; }
+  .sc-btn b { display:block; font-size:12.8px; }
+  .sc-btn span { display:block; margin-top:3px; font-size:10.8px; color:var(--muted); line-height:1.4; }
+  .sc-btn[aria-pressed="true"] { border-color:var(--sky); background:var(--sky-soft); }
+  .rev-outcome { display:inline-block; margin-top:6px; padding:2px 7px; border-radius:6px; font:700 9.5px/1.4 var(--mono); }
+  .rev-outcome.pass { background:var(--green-soft); color:#15803d; }
+  .rev-outcome.retry { background:var(--sky-soft); color:var(--sky-deep); }
+  .rev-outcome.pii { background:var(--red-soft); color:var(--red); }
+  .rev-outcome.fail3 { background:#334155; color:#fff; }
+
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; align-items:start; }
+
+  .progress { display:flex; gap:5px; margin-bottom:16px; flex-wrap:wrap; }
+  .progress-chip { flex:1; min-width:70px; padding:7px 8px; border-radius:9px; border:1px solid var(--line); background:var(--surface); font-size:10px; color:var(--muted); text-align:center; }
+  .progress-chip.done { background:var(--green-soft); border-color:var(--green); color:#15803d; }
+  .progress-chip.current { background:var(--sky); border-color:var(--sky); color:#fff; font-weight:700; }
+  .progress-chip.pending-approval { background:var(--red-soft); border-color:var(--red); color:var(--red); font-weight:700; }
+  .progress-chip.rev-step { border-color:var(--coral); }
+
+  .stage { background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden; min-height:440px; display:flex; flex-direction:column; }
+  .stage.rev-active { border:2px solid var(--coral); box-shadow:0 0 0 4px var(--coral-soft); }
+  .stage-head { padding:17px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; }
+  .stage-tag { display:inline-block; padding:5px 11px; border-radius:8px; font:700 11px/1.3 var(--mono); color:#fff; white-space:nowrap; }
+  .stage-tag.t0 { background:var(--violet); }
+  .stage-tag.t1 { background:var(--sky); }
+  .stage-tag.t2 { background:var(--coral); }
+  .stage-tag.t3 { background:var(--green); }
+  .stage-tag.t4 { background:var(--red); }
+  .stage-tag.t5 { background:#334155; }
+  .stage-head h2 { margin:0; font-size:16.5px; letter-spacing:-.02em; }
+  .rev-badge { margin-left:auto; padding:4px 9px; border-radius:7px; background:var(--coral-soft); color:var(--coral-deep); font:700 10px/1.3 var(--mono); }
+  .stage-body { padding:22px; flex:1; }
+  .stage-desc { color:var(--muted); font-size:13px; margin:0 0 16px; }
+
+  .data-block { font-family:var(--mono); font-size:11.8px; background:#1a1832; color:#e8ecf5; padding:14px 16px; border-radius:10px; line-height:1.8; }
+  .data-block .k { color:#5eead4; }
+
+  .bubble { max-width:92%; padding:13px 15px; border-radius:13px; font-size:13px; }
+  .bubble.gen { background:var(--sky-soft); border:1px solid var(--sky); border-bottom-left-radius:3px; }
+  .bubble.final { background:var(--green-soft); border:1px solid var(--green); border-bottom-left-radius:3px; }
+  .bubble-label { display:block; margin-bottom:6px; font:700 10px/1 var(--mono); letter-spacing:.05em; color:var(--sky-deep); }
+  .bubble.final .bubble-label { color:#15803d; }
+
+  .reject-box { padding:14px 16px; border-radius:10px; background:var(--red-soft); border:1px solid var(--red); font-size:12.5px; color:#9f1239; }
+  .reject-box.pass { background:var(--green-soft); border-color:var(--green); color:#15803d; }
+  .reject-box b { display:block; margin-bottom:6px; font:700 11px/1 var(--mono); color:var(--red); }
+  .reject-box.pass b { color:var(--green); }
+  .reject-box ul { margin:6px 0 0; padding-left:18px; }
+  .reject-box li { margin-bottom:4px; }
+
+  .without-rev { margin-top:14px; padding:14px 16px; border-radius:10px; background:#2a1216; border:2px dashed var(--red); }
+  .without-rev .wr-label { display:flex; align-items:center; gap:6px; font:700 11px/1 var(--mono); color:#fb7185; margin-bottom:8px; }
+  .without-rev p { margin:0; color:#fecdd3; font-size:12.8px; font-style:italic; }
+
+  .approval-screen { border:2px dashed var(--red); border-radius:12px; padding:18px; background:#fffaf9; }
+  .approval-screen .tag { display:inline-block; padding:3px 8px; border-radius:6px; background:var(--red); color:#fff; font:700 10px/1.3 var(--mono); margin-bottom:10px; }
+  .approval-screen .op-btn { display:inline-block; margin-top:12px; padding:9px 16px; border-radius:8px; background:var(--red); color:#fff; font-size:12.5px; font-weight:700; }
+
+  .sent-badge { display:inline-flex; align-items:center; gap:8px; padding:14px 18px; border-radius:12px; background:var(--green-soft); border:1px solid var(--green); color:#15803d; font-weight:700; font-size:13px; }
+
+  .skip-note { margin-top:14px; padding:12px 14px; border-radius:10px; background:var(--sky-soft); color:var(--sky-deep); font-size:12px; border-left:3px solid var(--sky); }
+  .skip-note.warn { background:var(--red-soft); color:var(--red); border-left-color:var(--red); }
+
+  .history-track { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+  .history-dot { padding:4px 8px; border-radius:6px; font:700 10px/1.3 var(--mono); }
+  .history-dot.fail { background:var(--red-soft); color:var(--red); }
+  .history-dot.pass { background:var(--green-soft); color:var(--green); }
+
+  .controls { display:flex; gap:10px; padding:15px 22px; border-top:1px solid var(--line); background:#fafcfd; }
+  .btn { padding:11px 20px; border-radius:10px; border:none; font-weight:700; font-size:13px; }
+  .btn.primary { background:var(--sky); color:#fff; }
+  .btn.primary:disabled { background:#b9d3e6; cursor:not-allowed; }
+  .btn.ghost { background:transparent; border:1px solid var(--line); color:var(--muted); }
+
+  .side { position:sticky; top:16px; display:flex; flex-direction:column; gap:14px; }
+  .side-card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .side-title { font:700 11px/1 var(--mono); letter-spacing:.06em; color:var(--sky-deep); margin-bottom:10px; }
+  .compare-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:9px 0; border-top:1px solid var(--line); font-size:11px; }
+  .compare-row:first-of-type { border-top:0; }
+  .compare-row .lab { grid-column:1/-1; color:var(--muted); font-size:10px; margin-bottom:2px; }
+  .compare-col { padding:7px 8px; border-radius:7px; background:#f6f9fb; }
+  .compare-col.hl-a { background:var(--violet-soft); }
+  .compare-col.hl-b { background:var(--coral-soft); }
+  .compare-head { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:4px; }
+  .compare-head span { font:700 10px/1.3 var(--mono); text-align:center; padding:5px; border-radius:6px; }
+  .compare-head .ha { background:var(--violet); color:#fff; }
+  .compare-head .rr { background:var(--coral); color:#fff; }
+
+  .why-note { font-size:12px; color:var(--muted); }
+
+  .mini-table { width:100%; border-collapse:collapse; font-size:10.8px; }
+  .mini-table th, .mini-table td { padding:6px 5px; border-bottom:1px solid var(--line); text-align:left; }
+  .mini-table th { color:var(--muted); font-weight:700; }
+  .mini-table tr.active-row { background:var(--sky-soft); }
+
+  @media (max-width:860px) {
+    .layout { grid-template-columns:1fr; }
+    .side { position:static; }
+    .scenario-toggle { grid-template-columns:1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">INTERACTIVE MOCKUP · v2 - 2026.08</div>
+    <h1>응답 생성·검토 파이프라인, 4가지 케이스로 확인하기</h1>
+    <p>일반 문의부터 개인정보 노출, 반복 실패까지 — 응답 검토(REV)가 없었다면 어떤 문장이 그대로 나갔을지 각 단계에서 직접 비교해보세요.</p>
+    <span class="hero-badge">🛡 REV가 실제로 막아내는 지점을 빨간 박스로 표시했습니다</span>
+  </div>
+</header>
+
+<div class="shell">
+
+  <div class="scenario-toggle" id="scenarioToggle"></div>
+
+  <div class="layout">
+    <div>
+      <div class="progress" id="progress"></div>
+      <div class="stage" id="stageCard">
+        <div class="stage-head">
+          <span class="stage-tag" id="stageTag"></span>
+          <h2 id="stageTitle"></h2>
+          <span class="rev-badge" id="revBadge" style="display:none">REV 작동 중</span>
+        </div>
+        <div class="stage-body" id="stageBody"></div>
+        <div class="controls">
+          <button class="btn primary" id="nextBtn">다음 단계 →</button>
+          <button class="btn ghost" id="resetBtn">처음부터</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="side-card">
+        <div class="side-title">4개 케이스 한눈에</div>
+        <table class="mini-table" id="summaryTable"></table>
+      </div>
+      <div class="side-card">
+        <div class="side-title">HUMAN APPROVAL vs 응답 검토</div>
+        <div class="compare-head"><span class="ha">기존 (행동 승인)</span><span class="rr">신규 (문장 검증)</span></div>
+        <div class="compare-row">
+          <div class="lab">발동 조건</div>
+          <div class="compare-col" id="cmp-cond-a">risk_level 금전·안전·제재만</div>
+          <div class="compare-col" id="cmp-cond-b">모든 Case, 항상</div>
+        </div>
+        <div class="compare-row">
+          <div class="lab">검사 대상</div>
+          <div class="compare-col" id="cmp-obj-a">action_type, 금액 등 결정값</div>
+          <div class="compare-col" id="cmp-obj-b">실제 응답 문장</div>
+        </div>
+        <div class="compare-row">
+          <div class="lab">확인 주체</div>
+          <div class="compare-col" id="cmp-who-a">사람(운영자)</div>
+          <div class="compare-col" id="cmp-who-b">AI 먼저, 필요시 사람</div>
+        </div>
+      </div>
+      <div class="side-card">
+        <div class="side-title">지금 이 단계는?</div>
+        <p class="why-note" id="sideWhy">시나리오를 선택하고 시작해보세요.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const SCENARIOS = {
+  general: {
+    label: "① 일반 문의", caption: "배송상태 안내 · risk 일반", outcome:"pass", outcomeLabel:"1차 통과",
+    steps: [
+      { tag:"t1", tagLabel:"START", title:"LOG 팀 판단 완료", rev:false,
+        body:`<p class="stage-desc">배송 상태 조회. 금전·안전 이슈가 없어 risk_level은 "일반"입니다.</p>
+        <div class="data-block"><span class="k">action_type</span>: 배송상태_안내<br><span class="k">risk_level</span>: 일반</div>`,
+        why:"응답팀 이전 단계예요. LOG 팀은 데이터만 넘깁니다." },
+      { tag:"t0", tagLabel:"0.톤결정", title:"톤 프로파일: 표준", rev:false,
+        body:`<div class="data-block"><span class="k">감성</span>: 중립 · <span class="k">선택</span>: 표준</div>`,
+        why:"규칙 매칭이라 항상 설명 가능해요." },
+      { tag:"t1", tagLabel:"1.DRAFT", title:"초안 생성 (GEN)", rev:false,
+        body:`<div class="bubble gen"><span class="bubble-label">GEN 초안</span>"안녕하세요, 고객님. 상품은 현재 배송 중이며 1~2일 내 도착 예정입니다."</div>`,
+        why:"단순 조회라 위험 요소가 적은 케이스예요." },
+      { tag:"t2", tagLabel:"2.REVIEW", title:"REV 검사 → 1차 통과", rev:true,
+        body:`<div class="reject-box pass"><b>✓ PASS</b>과잉약속 없음 · 근거인용 해당없음 · 개인정보 없음 · 톤 적합</div>
+        <div class="without-rev"><div class="wr-label">🚫 REV가 없었다면?</div><p>사실 이 케이스는 원래도 문제가 없어서 차이가 없어 보일 수 있지만, <b>REV가 아예 없다면 "문제가 없다"는 것조차 아무도 확인 안 한 채</b> 그냥 나가는 거예요. 검증을 안 거친 것과 검증해서 통과한 것은 결과가 같아도 신뢰도가 다릅니다.</p></div>`,
+        why:"1차 통과도 '확인 안 함'이 아니라 '확인해서 이상없음'이라는 게 REV의 가치예요." },
+      { tag:"t3", tagLabel:"3.FINALIZE", title:"TeamResult 반환 → 즉시 발송", rev:false,
+        body:`<div class="bubble final"><span class="bubble-label">FINAL (retry_count:0)</span>"안녕하세요, 고객님. 상품은 현재 배송 중이며 1~2일 내 도착 예정입니다."</div>
+        <div class="skip-note"><b>risk_level 일반</b>이라 Human Approval 없이 응답검토만으로 발송됩니다.</div>`,
+        why:"Human Approval은 건너뛰어도 응답검토는 이미 거쳤어요." }
+    ]
+  },
+  money: {
+    label: "② 금전 처리", caption: "사이즈 반품환불 · risk 금전", outcome:"retry", outcomeLabel:"1회 재시도 후 통과",
+    steps: [
+      { tag:"t1", tagLabel:"START", title:"ORD 팀 판단 완료", rev:false,
+        body:`<div class="data-block"><span class="k">action_type</span>: 반품_회수_후_환불<br><span class="k">refund_amount</span>: 32000<br><span class="k">policy_ref</span>: 제2조<br><span class="k">risk_level</span>: 금전</div>`,
+        why:"risk_level '금전'을 기억해두세요. 나중에 Human Approval 발동 여부를 가릅니다." },
+      { tag:"t0", tagLabel:"0.톤결정", title:"톤 프로파일: 공감우선", rev:false,
+        body:`<div class="data-block"><span class="k">응대맥락</span>: 이전 미해결 Case 있음 · <span class="k">선택</span>: 공감우선</div>`,
+        why:"일반 케이스와 같은 규칙 로직이 항상 적용돼요." },
+      { tag:"t1", tagLabel:"1.DRAFT", title:"1차 초안 생성 (GEN)", rev:false,
+        body:`<div class="bubble gen"><span class="bubble-label">GEN 1차 초안</span>"걱정 마세요, 무조건 전액 환불해드릴게요! 반품정책 제5조에 따라 처리됩니다."</div>`,
+        why:"다음 단계에서 REV가 이 오류를 잡아내는 걸 보여드릴게요." },
+      { tag:"t2", tagLabel:"2.REVIEW", title:"REV 검사 → 반려 (2건 동시)", rev:true,
+        body:`<div class="reject-box"><b>✕ REJECTED · retry 1/3</b><ul>
+          <li><b>과잉약속</b>: "무조건 전액"은 실제 32,000원(배송비 제외)과 다름</li>
+          <li><b>근거인용 오류</b>: 제5조가 아니라 실제는 제2조</li>
+        </ul></div>
+        <div class="without-rev"><div class="wr-label">🚫 REV가 없었다면?</div><p>"무조건 전액 환불" 문구가 그대로 고객에게 발송됐을 것입니다. 실제 환불액(32,000원, 배송비 제외)과 달라 이후 분쟁·항의로 이어질 가능성이 컸습니다. 게다가 존재하지 않는 제5조를 근거로 들어 신뢰도 문제도 생겼을 것입니다.</p></div>`,
+        why:"개인정보 문제가 아니라서 즉시 에스컬레이션이 아니라 재시도로 갑니다." },
+      { tag:"t1", tagLabel:"1.DRAFT", title:"2차 초안 생성 (재시도 1/3)", rev:false,
+        body:`<div class="bubble gen"><span class="bubble-label">GEN 2차 초안</span>"반품 신청 확인했습니다. 반품정책 제2조에 따라 32,000원이 환불되며, 반품 배송비 3,000원은 고객님 부담입니다."</div>`,
+        why:"구체적 반려 사유를 받았기 때문에 정확히 틀린 부분만 고쳤어요." },
+      { tag:"t2", tagLabel:"2.REVIEW", title:"REV 4항목 전체 재검사 → 통과", rev:true,
+        body:`<div class="reject-box pass"><b>✓ PASS</b>과잉약속 없음 · 근거인용 일치(제2조) · 개인정보 없음 · 톤 적합(공감우선)</div>
+        <div class="history-track"><span class="history-dot fail">1차 실패</span><span class="history-dot pass">2차 통과</span></div>`,
+        why:"이전에 안 걸렸던 항목까지 포함해 4개 전부 다시 검사했어요." },
+      { tag:"t3", tagLabel:"3.FINALIZE", title:"응답검토 통과, 그러나 미발송", rev:false,
+        body:`<div class="bubble final"><span class="bubble-label">응답검토 통과 (retry_count:1)</span>"고객님, 여러 번 문의 주셔서 불편 드려 죄송합니다. 반품정책 제2조에 따라 32,000원이 환불되며, 반품 배송비 3,000원은 고객님 부담입니다."</div>
+        <div class="skip-note warn"><b>risk_level 금전</b>이라 응답검토를 통과해도 Human Approval을 추가로 거쳐야 합니다.</div>`,
+        why:"여기가 일반 시나리오와 갈라지는 지점이에요." },
+      { tag:"t4", tagLabel:"APPROVAL", title:"운영자 승인 대기", rev:false,
+        body:`<div class="approval-screen"><span class="tag">WAITING APPROVAL</span>
+        <p style="margin:0; font-size:13px">환불 32,000원 · 배송비 고객부담 3,000원<br>근거: 제2조 · 응답검토 통과(재시도 1회)</p>
+        <div class="op-btn">운영자: [승인] 클릭</div></div>`,
+        why:"응답 자체의 안전성은 이미 검증됐고, 여기선 '이 금액을 실행해도 되는가'만 봅니다." },
+      { tag:"t3", tagLabel:"SENT", title:"승인 완료, 발송", rev:false,
+        body:`<div class="sent-badge">✓ 응답검토 + Human Approval 둘 다 통과 후 발송</div>`,
+        why:"게이트 2개(응답검토+Human Approval)를 모두 거쳤어요." }
+    ]
+  },
+  pii: {
+    label: "③ 개인정보 노출", caption: "배송지연 문의 · risk 일반", outcome:"pii", outcomeLabel:"즉시 에스컬레이션",
+    steps: [
+      { tag:"t1", tagLabel:"START", title:"LOG 팀 판단 완료", rev:false,
+        body:`<div class="data-block"><span class="k">action_type</span>: 배송지연_안내<br><span class="k">risk_level</span>: 일반</div>`,
+        why:"risk_level이 '일반'이라 Human Approval은 원래 발동 안 되는 케이스예요. 그래서 응답검토가 더더욱 중요해집니다." },
+      { tag:"t0", tagLabel:"0.톤결정", title:"톤 프로파일: 공감우선", rev:false,
+        body:`<div class="data-block"><span class="k">감성</span>: 부정 · <span class="k">선택</span>: 공감우선</div>`, why:"" },
+      { tag:"t1", tagLabel:"1.DRAFT", title:"초안 생성 (GEN)", rev:false,
+        body:`<div class="bubble gen"><span class="bubble-label">GEN 초안</span>"불편 드려 죄송합니다. 참고로 <u>김OO 고객님</u>도 같은 사유로 어제 처리해드렸는데, 고객님 건도 동일하게 진행해드리겠습니다."</div>`,
+        why:"컨텍스트 조합 과정에서 다른 고객 사례가 실수로 섞여 들어간 상황을 재현했어요." },
+      { tag:"t2", tagLabel:"2.REVIEW", title:"REV 검사 → 개인정보 노출 감지", rev:true,
+        body:`<div class="reject-box"><b>✕ REJECTED · 즉시 에스컬레이션</b><ul><li><b>개인정보 노출</b>: 다른 고객("김OO")의 처리 이력이 문장에 포함됨</li></ul></div>
+        <div class="without-rev"><div class="wr-label">🚫 REV가 없었다면?</div><p>다른 고객의 이름과 처리 이력이 그대로 노출된 채 발송됐을 것입니다. 이건 단순 오탈자가 아니라 <b>개인정보보호법 위반 소지가 있는 사고</b>입니다. 게다가 이 케이스는 risk_level이 "일반"이라 Human Approval도 안 거치는 케이스라, REV가 없었다면 아무도 못 잡고 그대로 나갔을 것입니다.</p></div>`,
+        why:"개인정보는 재시도하지 않고 즉시 사람에게 넘깁니다. '운 좋게 안 나올 때까지 돌리는' 방식 자체가 위험하기 때문이에요." },
+      { tag:"t5", tagLabel:"ESCALATE", title:"상담원에게 즉시 위임", rev:false,
+        body:`<div class="approval-screen" style="border-color:#334155; background:#f7f7f8;"><span class="tag" style="background:#334155;">IMMEDIATE ESCALATION</span>
+        <p style="margin:0; font-size:13px">사유: 개인정보 노출 감지<br>재시도 없이 즉시 사람에게 전달됨<br>원본 초안은 참고용으로만 제공, 발송되지 않음</p></div>`,
+        why:"Human Approval 대상이 아닌 케이스인데도 즉시 사람에게 넘어갔어요. 이게 응답검토가 Human Approval과 완전히 독립적으로 작동한다는 가장 확실한 증거예요." },
+      { tag:"t3", tagLabel:"SENT", title:"상담원이 직접 수정 후 발송", rev:false,
+        body:`<div class="sent-badge">✓ 사람이 직접 수정한 안전한 문장으로 발송</div>`, why:"" }
+    ]
+  },
+  fail3: {
+    label: "④ 반복 실패", caption: "판매자 확인 요청 · risk 제재", outcome:"fail3", outcomeLabel:"3회 모두 실패",
+    steps: [
+      { tag:"t1", tagLabel:"START", title:"SEL 팀 판단 완료", rev:false,
+        body:`<div class="data-block"><span class="k">action_type</span>: 판매자_확인요청<br><span class="k">evidence</span>: 근거 불명확(리뷰 3건, 상세시점 누락)<br><span class="k">risk_level</span>: 제재</div>`,
+        why:"이번엔 원본 근거 데이터 자체가 애매한 경우를 보여드릴게요." },
+      { tag:"t0", tagLabel:"0.톤결정", title:"톤 프로파일: 표준", rev:false, body:``, why:"" },
+      { tag:"t2", tagLabel:"2.REVIEW", title:"1차 REVIEW → 반려", rev:true,
+        body:`<div class="reject-box"><b>✕ REJECTED · retry 1/3</b><li>근거인용 오류: 리뷰 시점이 정책 기준과 안 맞음</li></div>`, why:"근거 데이터 자체가 애매해서 GEN이 계속 헷갈릴 수 있어요." },
+      { tag:"t2", tagLabel:"2.REVIEW", title:"2차 REVIEW → 다시 반려", rev:true,
+        body:`<div class="reject-box"><b>✕ REJECTED · retry 2/3</b><li>근거인용 오류 반복: 여전히 시점 불일치 해결 안 됨</li></div>
+        <div class="history-track"><span class="history-dot fail">1차 실패</span><span class="history-dot fail">2차 실패</span></div>`,
+        why:"같은 이유로 또 실패했어요. 이건 GEN의 문제가 아니라 원본 근거 데이터가 부실하다는 신호예요." },
+      { tag:"t2", tagLabel:"2.REVIEW", title:"3차 REVIEW → 최종 반려, 한도 초과", rev:true,
+        body:`<div class="reject-box"><b>✕ REJECTED · retry 3/3 (한도 초과)</b><li>근거인용 오류 3회 반복</li></div>
+        <div class="without-rev"><div class="wr-label">🚫 REV가 없었다면?</div><p>불명확한 근거를 인용한 응답이 그대로 나갔을 것입니다. 판매자 제재와 관련된 케이스라 잘못된 근거로 판매자에게 확인 요청이 나가면 <b>신뢰도 문제와 법적 리스크</b>로 이어질 수 있었습니다.</p></div>
+        <div class="history-track"><span class="history-dot fail">1차</span><span class="history-dot fail">2차</span><span class="history-dot fail">3차 한도초과</span></div>`,
+        why:"3회 모두 실패하면 재시도를 멈추고 사람에게 넘깁니다. 이 로그(반복 실패 사유)는 나중에 SEL 팀 근거 데이터 품질을 개선하는 근거가 돼요." },
+      { tag:"t5", tagLabel:"ESCALATE", title:"운영자에게 위임 (이력 전체 첨부)", rev:false,
+        body:`<div class="approval-screen" style="border-color:#334155; background:#f7f7f8;"><span class="tag" style="background:#334155;">ESCALATED · 3/3 FAILED</span>
+        <p style="margin:0; font-size:13px">마지막 초안 + 3회 반려 이력 전체가 운영자에게 전달됩니다.<br>평소엔 최종본만 보이고, "이력 보기"로 3턴 전체를 펼쳐볼 수 있습니다.</p></div>`,
+        why:"단순히 '실패했다'가 아니라 '왜 3번 다 같은 이유로 실패했는지' 데이터가 남는다는 게 핵심이에요." },
+      { tag:"t3", tagLabel:"SENT", title:"운영자가 직접 근거 보완 후 처리", rev:false,
+        body:`<div class="sent-badge">✓ 사람이 근거를 직접 보완해 처리 완료</div>`, why:"" }
+    ]
+  }
+};
+
+let currentScenario = "general";
+let stepIndex = 0;
+
+function renderScenarioToggle() {
+  const el = document.getElementById("scenarioToggle");
+  el.innerHTML = "";
+  Object.entries(SCENARIOS).forEach(([key, sc]) => {
+    const btn = document.createElement("button");
+    btn.className = "sc-btn";
+    btn.setAttribute("aria-pressed", key === currentScenario);
+    btn.innerHTML = `<b>${sc.label}</b><span>${sc.caption}</span><span class="rev-outcome ${sc.outcome}">${sc.outcomeLabel}</span>`;
+    btn.onclick = () => { currentScenario = key; stepIndex = 0; render(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderProgress() {
+  const sc = SCENARIOS[currentScenario];
+  const el = document.getElementById("progress");
+  el.innerHTML = "";
+  sc.steps.forEach((s, i) => {
+    const chip = document.createElement("div");
+    let cls = "progress-chip";
+    if (s.rev) cls += " rev-step";
+    if (i < stepIndex) cls += " done";
+    else if (i === stepIndex) cls += (s.tag === "t4" || s.tag === "t5" ? " pending-approval" : " current");
+    chip.className = cls;
+    chip.textContent = s.tagLabel;
+    el.appendChild(chip);
+  });
+}
+
+function renderSummaryTable() {
+  const el = document.getElementById("summaryTable");
+  let html = "<tr><th>케이스</th><th>REV 결과</th></tr>";
+  Object.entries(SCENARIOS).forEach(([key, sc]) => {
+    const active = key === currentScenario ? "active-row" : "";
+    html += `<tr class="${active}"><td>${sc.label}</td><td>${sc.outcomeLabel}</td></tr>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderStage() {
+  const sc = SCENARIOS[currentScenario];
+  const step = sc.steps[stepIndex];
+  document.getElementById("stageTag").className = "stage-tag " + step.tag;
+  document.getElementById("stageTag").textContent = step.tagLabel;
+  document.getElementById("stageTitle").textContent = step.title;
+  document.getElementById("stageBody").innerHTML = step.body;
+  document.getElementById("sideWhy").innerHTML = step.why || "&nbsp;";
+  document.getElementById("revBadge").style.display = step.rev ? "inline-block" : "none";
+  document.getElementById("stageCard").className = "stage" + (step.rev ? " rev-active" : "");
+
+  const isLast = stepIndex === sc.steps.length - 1;
+  document.getElementById("nextBtn").disabled = isLast;
+  document.getElementById("nextBtn").textContent = isLast ? "시나리오 종료" : "다음 단계 →";
+
+  const isApproval = step.tag === "t4";
+  const isReview = step.rev;
+  ["cmp-cond-a","cmp-obj-a","cmp-who-a"].forEach(id => {
+    document.getElementById(id).className = "compare-col" + (isApproval ? " hl-a" : "");
+  });
+  ["cmp-cond-b","cmp-obj-b","cmp-who-b"].forEach(id => {
+    document.getElementById(id).className = "compare-col" + (isReview ? " hl-b" : "");
+  });
+}
+
+function render() {
+  renderScenarioToggle();
+  renderProgress();
+  renderSummaryTable();
+  renderStage();
+}
+
+document.getElementById("nextBtn").onclick = () => {
+  const sc = SCENARIOS[currentScenario];
+  if (stepIndex < sc.steps.length - 1) { stepIndex++; render(); }
+};
+document.getElementById("resetBtn").onclick = () => { stepIndex = 0; render(); };
+
+render();
+</script>
+</body>
+</html>

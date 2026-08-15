@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>추가 논의 정리 — Addendum 01</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F3F1;--card:#FFFFFF;--ink:#1B2430;--ink-soft:#4E5A68;--line:#D8DCDE;
+  --violet:#5B4B8A;--violet-bg:#EEEBF5;
+  --green:#2F6E4F;--green-bg:#E8F1EC;
+  --amber:#B97B10;--amber-bg:#FAF2E2;
+  --red:#A8452F;--red-bg:#F8ECE8;
+  --blue:#2D5F8A;--blue-bg:#E8F0F7;
+  --dark:#20242E;--mono:'IBM Plex Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'IBM Plex Sans KR',sans-serif;background:var(--paper);color:var(--ink);
+  line-height:1.7;font-size:15.5px;padding-bottom:80px}
+.wrap{max-width:860px;margin:0 auto;padding:0 20px}
+
+.hero{background:var(--dark);color:#EEF0F3;padding:40px 0 34px}
+.h-label{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:#8B93A3;text-transform:uppercase;margin-bottom:12px}
+h1{font-size:clamp(22px,5vw,30px);font-weight:700;line-height:1.4;letter-spacing:-.01em}
+.hero p.sub{margin-top:12px;color:#B4BBC7;font-size:14.5px;max-width:660px}
+.legend{margin-top:18px;display:flex;flex-wrap:wrap;gap:8px}
+.legend span{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:4px 10px;border-radius:5px;border:1px solid #3A4150}
+.lg-a{color:#8FCBA8}.lg-c{color:#E4C685}.lg-n{color:#9BB4D6}.lg-d{color:#D99A88}
+
+section{margin-top:46px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--violet);text-transform:uppercase;margin-bottom:8px}
+h2{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:14px}
+p.lead{color:var(--ink-soft);margin-bottom:18px;max-width:720px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px}
+strong{font-weight:600}
+
+/* status badge */
+.item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+.item-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.badge{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;padding:3px 9px;border-radius:4px;white-space:nowrap}
+.b-adopt{background:var(--green-bg);color:var(--green)}
+.b-cond{background:var(--amber-bg);color:var(--amber)}
+.b-note{background:var(--blue-bg);color:var(--blue)}
+.b-demote{background:var(--red-bg);color:var(--red)}
+.item h3{font-size:16px;font-weight:700}
+.item p{font-size:13.5px;color:var(--ink-soft);margin-top:6px}
+.item p b{color:var(--ink);font-weight:600}
+.inner{border-left:3px solid var(--line);padding:10px 14px;margin-top:10px;background:#FAFAF9;border-radius:0 8px 8px 0}
+.inner.warn{border-left-color:var(--amber);background:var(--amber-bg)}
+.inner.ok{border-left-color:var(--green);background:var(--green-bg)}
+.inner p{margin-top:0;font-size:13px}
+.inner p + p{margin-top:6px}
+.disclaimer{border:1.5px dashed var(--red);background:var(--red-bg);border-radius:8px;padding:12px 16px;margin-top:10px;
+  font-size:13.5px;color:var(--ink)}
+.disclaimer .fixed{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--red);display:block;margin-top:4px}
+
+/* filter criteria */
+.crit{display:grid;gap:10px}
+@media(min-width:640px){.crit{grid-template-columns:1fr 1fr 1fr}}
+.crit .card{padding:14px 16px}
+.crit .n{font-family:var(--mono);font-size:11px;color:var(--violet);display:block;margin-bottom:4px}
+.crit b{font-size:14px;font-weight:700;display:block;margin-bottom:3px}
+.crit p{font-size:12.5px;color:var(--ink-soft)}
+
+/* flow mini */
+.mflow{display:grid;gap:0;margin-top:10px}
+.mstep{display:grid;grid-template-columns:28px 1fr;gap:12px;position:relative;padding-bottom:14px}
+.mstep:last-child{padding-bottom:0}
+.mdot{width:28px;height:28px;border-radius:50%;background:var(--card);border:1.5px solid var(--violet);color:var(--violet);
+  font-family:var(--mono);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;z-index:1}
+.mstep::before{content:'';position:absolute;left:13.5px;top:28px;bottom:0;width:1.5px;background:var(--line)}
+.mstep:last-child::before{display:none}
+.mbody{font-size:13px;color:var(--ink-soft);padding-top:3px}
+.mbody b{color:var(--ink);font-weight:600}
+
+/* data table */
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);
+  text-align:left;padding:10px 12px;background:#FAFAF9;border-bottom:1px solid var(--line)}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-soft)}
+td:first-child{font-weight:600;color:var(--ink)}
+tr:last-child td{border-bottom:none}
+.tbl-scroll{overflow-x:auto;border-radius:10px}
+
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:11px;color:#98A0AA;letter-spacing:.08em}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="h-label">Addendum 01 · to: role_aware_cs_idea_brief · 2026-08</div>
+    <h1>추가 논의 정리 — 새로 붙은 것, 걸러진 것, 그 판단의 근거</h1>
+    <p class="sub">기존 브리핑(역할 인식 멀티페르소나 CS)은 그대로 두고, 이후 논의에서 추가·판별된 항목만 증분으로 기록한다. 각 항목에 채택 상태를 명시해 회의에서 같은 논의가 반복되지 않게 한다.</p>
+    <div class="legend">
+      <span class="lg-a">ADOPTED · 채택</span>
+      <span class="lg-c">CONDITIONAL · 조건부 채택</span>
+      <span class="lg-n">FOOTNOTE · 주석 보존</span>
+      <span class="lg-d">DEMOTED · 강등</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section>
+  <div class="eyebrow">00 · Agent Test</div>
+  <h2>판별 필터 — "이게 에이전트급인가?"</h2>
+  <p class="lead">아래 모든 항목에 적용한 잣대. 셋 중 하나 이상을 충족해야 에이전트 기능이고, 아니면 규칙·배치·대시보드로 보낸다. "AI를 어디에 안 쓰는지도 설계했다"는 것 자체가 발표 차별화 포인트.</p>
+  <div class="crit">
+    <div class="card"><span class="n">FILTER-1</span><b>비정형 입력 해석</b><p>자연어, 사진, 영수증처럼 규칙으로 파싱할 수 없는 입력을 이해해야 하는가</p></div>
+    <div class="card"><span class="n">FILTER-2</span><b>규칙으로 못 적는 판단</b><p>예외·재량·맥락 판단이 필요해 if-else로 다 적을 수 없는가</p></div>
+    <div class="card"><span class="n">FILTER-3</span><b>상황별 도구 조합</b><p>여러 tool을 상황에 따라 골라 부르고 결과를 종합해야 하는가</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">01 · Adopted</div>
+  <h2>채택 항목</h2>
+
+  <div class="item">
+    <div class="item-head"><span class="badge b-adopt">ADOPTED</span><h3>쿠폰 경제성 What-if + 기대효과 시뮬레이션</h3></div>
+    <p><b>구조는 반으로 갈라 설계한다.</b> 손익 계산(수수료율·원가·할인율 → 손익분기·재투자 비율)은 <b>결정론적 계산 tool</b> — LLM에게 산수를 시키지 않는다. 에이전트의 자리는 <b>대화형 what-if 인터페이스</b>: "이 상품에 3천 원 쿠폰 붙이면 남는 게 있어?" → config에서 원가·수수료 조회 → 계산 tool 호출 → 결과 해석("마진 12%, 플랫폼 쿠폰 중복 시 8%, 5천 원부터 역마진"). FILTER-3 충족.</p>
+    <div class="mflow">
+      <div class="mstep"><div class="mdot">1</div><div class="mbody"><b>입력</b> — 판매자: 온보딩 config에 원가 필드(선택 입력, 본인 조회 전용 명시) / 플랫폼: 수수료율·쿠폰 예산</div></div>
+      <div class="mstep"><div class="mdot">2</div><div class="mbody"><b>계산</b> — 할인액별 손익분기, 재투자 비용 비율을 계산 엔진이 산출. 플랫폼 대시보드에는 "광고 동의 쿠폰 ○원 발행 시 수수료 수익 대비 재투자율 ○%" 형태로 표시</div></div>
+      <div class="mstep"><div class="mdot">3</div><div class="mbody"><b>기대효과 시뮬레이션</b> — 판매량 증가를 예측하지 않고 <b>가정 명시형</b>으로: 슬라이더로 가정(+10%/+20%/+30%)을 움직이면 손익이 따라 움직임. 슬라이더 기본 프리셋(보수/중간/낙관)은 공개 데이터에서 추정한 참고 계수로 캘리브레이션 (아래 03 참고)</div></div>
+    </div>
+    <div class="disclaimer">시스템 화면 고정 문구 (필수 표기):<span class="fixed">"본 수치는 가정 기반 예상치이며, 실제 결과를 보장하지 않습니다."</span>참고 계수 출처(해외 리테일 데이터 기반, 국내 이커머스와 상이할 수 있음)도 함께 표기. 실데이터 연동 시 자사 거래 데이터로 계수 재추정 — 로드맵 한 줄로 명시.</div>
+  </div>
+
+  <div class="item">
+    <div class="item-head"><span class="badge b-adopt">ADOPTED</span><h3>최저가 보상제 처리 에이전트</h3></div>
+    <p>"타사가 더 싸다는 증빙을 가져오면 차액 보상" 프로그램의 접수·판정. <b>기존 부품의 재조합이라 새 인프라가 거의 없다</b>: 증빙 사진 판독(영수증·캡처에서 상품명·가격·판매처·날짜 추출) = VLM 모듈(EXT-2)의 두 번째 고객 / 동일 상품 여부 판단(옵션·용량·구성 대조) + 보상 규정 대조(쿠폰가·중고·해외직구 제외 등) = L2 판정 파이프라인과 동일 구조 / 차액 지급 = 승인 기반 트랜잭션(HITL) / 반복 청구·조작 이미지 = 리스크 스코어링(M-4)의 어뷰징 감지. FILTER-1·2·3 모두 충족 — 프로모션 축에서 살아남은 유일한 에이전트 기능.</p>
+  </div>
+
+  <div class="item">
+    <div class="item-head"><span class="badge b-adopt">ADOPTED</span><h3>미충족 수요 로깅 → 판매자 대시보드</h3></div>
+    <p><b>포착은 에이전트, 집계는 배치.</b> L0 상담 중 "혹시 ○○ 같은 건 없나요?" → 카탈로그 검색으로 실재 여부 확인 → 없으면 카테고리·원하는 속성·가격대 기대치를 구조화해 기록(FILTER-1, 추가 비용 ≈ 0). 유사 수요 묶기·건수 집계·대시보드 반영은 규칙 파이프라인.</p>
+    <div class="inner ok">
+      <p><b>연결 1:</b> 판매자 모드 VOC 요약의 하위 항목("내 카테고리에서 최근 이런 상품을 찾는 문의 12건") — 새 기능 슬롯을 먹지 않음.</p>
+      <p><b>연결 2:</b> 온보딩 시장 벤치마크에 "이 카테고리의 미충족 수요 시그널" 포함 — "뭘 팔지"까지 답하는 온보딩.</p>
+      <p><b>연결 3 (루프 완성):</b> 해당 상품이 등록되면 문의했던 구매자에게 입고 알림(동의는 문의 시점에 수취) — 구매자의 말이 판매자의 입점을 부르고 다시 구매자에게 돌아오는 시연 마지막 장면 후보.</p>
+      <p><b>관계 주석:</b> 팀원 기획안 트랙 C-②(미충족 수요 발견)와 신호 원천이 같음. 그쪽은 플랫폼 기획전 방향, 이쪽은 판매자 대시보드 방향 — 같은 파이프라인의 출구 2개로 상호 보강.</p>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="item-head"><span class="badge b-adopt">ADOPTED</span><h3>맥락 승계 상담원 연결 (+ 시연 방법 확정)</h3></div>
+    <p>에스컬레이션 시점에 케이스 요약(고객이 말한 것 / 시도된 조치 / 감정 상태 / 남은 쟁점 / 권장 조치)을 운영자에게 자동 브리핑. 고객이 같은 말을 두 번 하지 않게 하는 기능 — 대기업은 CRM·CTI 통합으로 일부 해결하지만 중소몰은 못 하는 영역을 LLM 요약 하나로 재현.</p>
+    <div class="inner">
+      <p><b>시연 방법:</b> 별도 화면이 아니라 <b>어차피 만들 HITL 운영자 승인 콘솔</b>의 승인 대기 카드에 얹힌다. 발표는 2분할 화면 — 왼쪽 고객 챗, 오른쪽 운영자 콘솔. 에스컬레이션 순간 브리핑 카드가 실시간으로 뜨는 것을 보여주고, 옆에 "브리핑이 없었다면 읽어야 했을 원문 대화 30줄"을 대비로 노출. 멘트: "고객은 같은 말을 두 번 하지 않고, 운영자는 30초 만에 이어받습니다."</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">02 · Conditional</div>
+  <h2>조건부 채택</h2>
+  <div class="item">
+    <div class="item-head"><span class="badge b-cond">CONDITIONAL</span><h3>처리 상태 능동 알림 — 조건 걸어 채택</h3></div>
+    <p><b>전면 알림(모든 상태 전이마다)은 역효과 검토됨:</b> ① 알림 피로 ② 내부 단계 노출이 2차 문의 유발("승인 대기가 왜 이틀?") ③ 처리 지연의 실시간 노출은 운영 압박. 판단 이력으로 보존.</p>
+    <div class="inner warn">
+      <p><b>채택 형태:</b> 고객에게 의미 있는 마디에서만 발송 — 접수됨 / 환불 확정 / 입금 완료 / 지연 발생 시 1회. 알림 수준은 고객이 설정 가능. 이것은 에이전트가 아니라 <b>이벤트 트리거 배치</b>임을 명시(판별 필터의 실례).</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">03 · Calibration Data</div>
+  <h2>시뮬레이션 참고 계수의 출처 (조사 완료)</h2>
+  <p class="lead">국내 쇼핑몰의 쿠폰·할인 반응 데이터는 공개된 것이 없음(기업 내부 자산). 해외 공개 데이터에서 카테고리 수준의 프로모션 반응 계수를 추정해 시뮬레이터 프리셋(보수/중간/낙관)으로 사용한다. 이 계수 추정 작업 자체가 주제 요건 "ML 모델 선정·테스트"를 정량 데이터로 한 번 더 충족하는 산출물.</p>
+  <div class="tbl-scroll">
+  <table>
+    <tr><th>데이터셋</th><th>내용</th><th>우리 용도</th></tr>
+    <tr><td>dunnhumby<br>The Complete Journey</td><td>2,500가구 2년치 구매 트랜잭션 + 캠페인·쿠폰 상환 + 쿠폰/로열티 할인액 컬럼 분리 + 프로모션 노출(전단·진열) 테이블. 무료 공개, R 패키지 배포</td><td><b>1순위.</b> 쿠폰 수령→구매 증가율 분포 추정, 카테고리별 프리셋 산출</td></tr>
+    <tr><td>Kaggle Predicting<br>Coupon Redemption</td><td>18개 캠페인의 쿠폰 배포·상환·구매 이력 (2012~13)</td><td>쿠폰 금액대별 상환율 계수</td></tr>
+    <tr><td>Rossmann Store Sales</td><td>매장 일별 매출 + 프로모션 여부 플래그</td><td>프로모션 리프트 추정 보조</td></tr>
+    <tr><td>M5 (Walmart)</td><td>주 단위 가격 변동 기록</td><td>가격 탄력성 추정 연습용 보조</td></tr>
+  </table>
+  </div>
+  <div class="card" style="margin-top:12px"><p style="font-size:13.5px;color:var(--ink-soft)"><strong>한계 명시(문서·화면 공통):</strong> 전부 해외·오프라인 식료품 중심 데이터로 국내 이커머스와 상이할 수 있음 → "예측"이 아닌 "참고 계수 기반 시나리오" 포지션 유지. 실제 도입 시 자사 데이터로 재추정.</p></div>
+</section>
+
+<section>
+  <div class="eyebrow">04 · Footnotes &amp; Demoted</div>
+  <h2>주석 보존 · 강등 항목</h2>
+
+  <div class="item">
+    <div class="item-head"><span class="badge b-demote">DEMOTED</span><h3>프로모션 운영 자동화 → 대시보드 항목으로 강등</h3></div>
+    <p>판매 저조 상품 발굴, 유통기한 임박 할인율 산출, 계절 행사 후보 — 검토 결과 <b>SQL 집계 + 규칙이면 충분</b>(판별 필터 전부 미충족). 에이전트로 포장하면 "왜 AI가 필요하죠?"에 무너짐. 운영자 대시보드의 분석 리포트 항목으로 배치. 단, "가격 때문에 망설임" 신호(문의·리뷰의 가격 언급 반복)는 피드백 분석 팀이 어차피 추출하므로 그 산출물이 대시보드로 흘러가는 연결만 유지. 쿠폰 경제성 계산이 붙으면서 <b>근거 있는 항목으로 회수됨</b>(01 참고).</p>
+  </div>
+
+  <div class="item">
+    <div class="item-head"><span class="badge b-note">FOOTNOTE</span><h3>구매 이력 기반 리콜 알림</h3></div>
+    <p>구매 이력 × Safety Korea 리콜 API 대조 → 알림 + 환불/교환 Case 자동 개시. <b>실제 상품 데이터가 있어야 성립</b>하므로 mock 몰 단계에서는 구현하지 않음. "실상품 데이터 확보 시 Safety Korea 공공 API로 확장 가능" — 주석으로만 보존.</p>
+  </div>
+
+  <div class="item">
+    <div class="item-head"><span class="badge b-note">FOOTNOTE</span><h3>검토 대기 (미논의 확정)</h3></div>
+    <p>① <b>리뷰·스펙 종합 구매 상담</b>(아마존 Rufus형: "이 텐트 4인 가족에 충분해요?" — 리뷰+스펙+과거 Q&A 종합 RAG. EXT-1 구매 완결의 상담 품질을 채우는 내용물 후보) ② <b>구매 후 사용 지원</b>(상품 매뉴얼 코퍼스 기반 1차 트러블슈팅 — 데모 상품 몇 개로 범위 제한 필요). 둘 다 팀 논의 후 채택 여부 결정.</p>
+  </div>
+</section>
+
+<footer>ADDENDUM 01 · AGENT-TEST FILTER APPLIED · STATUS-TAGGED FOR TEAM REVIEW · 2026.08</footer>
+
+</div>
+</body>
+</html>

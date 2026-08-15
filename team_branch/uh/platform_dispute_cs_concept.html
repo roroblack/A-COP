@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3층 에스컬레이션 플랫폼 CS — 컨셉 정리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F3F1;
+  --card:#FFFFFF;
+  --ink:#1B2430;
+  --ink-soft:#4E5A68;
+  --line:#D8DCDE;
+  --violet:#5B4B8A;
+  --violet-bg:#EEEBF5;
+  --green:#2F6E4F;
+  --green-bg:#E8F1EC;
+  --amber:#B97B10;
+  --amber-bg:#FAF2E2;
+  --dark:#20242E;
+  --mono:'IBM Plex Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'IBM Plex Sans KR',sans-serif;
+  background:var(--paper);color:var(--ink);
+  line-height:1.7;font-size:15.5px;padding-bottom:80px;
+}
+.wrap{max-width:880px;margin:0 auto;padding:0 20px}
+
+/* hero */
+.hero{background:var(--dark);color:#EEF0F3;padding:44px 0 40px}
+.h-label{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:#8B93A3;text-transform:uppercase;margin-bottom:14px}
+h1{font-size:clamp(24px,5vw,33px);font-weight:700;line-height:1.35;letter-spacing:-.01em}
+h1 .hl{color:#B9A6E8}
+.hero p.sub{margin-top:14px;color:#B4BBC7;font-size:15px;max-width:660px}
+
+/* ladder — signature */
+.ladder{margin-top:30px;display:grid;gap:0}
+.rung{
+  border:1px solid #3A4150;border-radius:8px;background:#282D39;
+  padding:16px 18px;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;
+  position:relative;
+}
+.rung + .rung{margin-top:26px}
+.rung + .rung::before{
+  content:'▲ ESCALATE';position:absolute;top:-21px;left:26px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:#8FA37A;
+}
+.rung-num{font-family:var(--mono);font-size:13px;font-weight:600;color:#B9A6E8;
+  border:1px solid #4A4266;border-radius:6px;padding:4px 9px;white-space:nowrap}
+.rung h3{font-size:15.5px;font-weight:700;color:#F0F2F5;margin-bottom:3px}
+.rung p{font-size:13px;color:#A9B1BE;line-height:1.6}
+.rung .trigger{display:inline-block;margin-top:7px;font-family:var(--mono);font-size:10.5px;
+  color:#E4C685;letter-spacing:.06em}
+
+section{margin-top:52px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--violet);
+  text-transform:uppercase;margin-bottom:8px}
+h2{font-size:21px;font-weight:700;letter-spacing:-.01em;margin-bottom:16px}
+p.lead{color:var(--ink-soft);margin-bottom:20px;max-width:720px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+strong{font-weight:600}
+
+/* tenant config */
+.tenant{display:grid;gap:12px}
+@media(min-width:640px){.tenant{grid-template-columns:1.1fr .9fr}}
+.code-card{background:#20242E;border-radius:10px;padding:18px 20px;overflow-x:auto}
+.code-card pre{font-family:var(--mono);font-size:12px;line-height:1.75;color:#C9D1DC}
+.code-card .k{color:#B9A6E8}.code-card .v{color:#8FCB9F}.code-card .c{color:#6B7385}
+
+/* teams */
+.teams{display:grid;gap:12px}
+.team{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 18px;
+  display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:baseline}
+.team-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--violet);
+  background:var(--violet-bg);border-radius:4px;padding:3px 8px;white-space:nowrap}
+.team b{font-weight:700;display:block;font-size:14.5px;margin-bottom:2px}
+.team p{font-size:13.5px;color:var(--ink-soft)}
+.team.new .team-tag{color:var(--amber);background:var(--amber-bg)}
+
+/* comparison table */
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;font-size:13px}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-soft);text-align:left;padding:10px 12px;background:#FAFAF9;border-bottom:1px solid var(--line)}
+td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-soft)}
+td:first-child{font-weight:600;color:var(--ink);white-space:nowrap}
+td.ours{background:var(--violet-bg);color:var(--ink)}
+tr:last-child td{border-bottom:none}
+.tbl-scroll{overflow-x:auto;border-radius:10px}
+
+/* upgrade list */
+.up{display:grid;gap:12px}
+@media(min-width:640px){.up{grid-template-columns:1fr 1fr}}
+.up .card{padding:16px 18px}
+.up h3{font-size:14.5px;font-weight:700;margin-bottom:5px;display:flex;gap:8px;align-items:baseline}
+.up h3 .n{font-family:var(--mono);font-size:11px;color:var(--green)}
+.up p{font-size:13.5px;color:var(--ink-soft)}
+.up .card.hero-up{grid-column:1/-1;border:1.5px solid var(--green);background:var(--green-bg)}
+
+/* scenario */
+.flow{display:grid}
+.fstep{display:grid;grid-template-columns:34px 1fr;gap:14px;position:relative;padding-bottom:18px}
+.fstep:last-child{padding-bottom:0}
+.fdot{width:34px;height:34px;border-radius:50%;background:var(--card);border:1.5px solid var(--violet);
+  color:var(--violet);font-family:var(--mono);font-size:12px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;z-index:1}
+.fstep::before{content:'';position:absolute;left:16.5px;top:34px;bottom:0;width:1.5px;background:var(--line)}
+.fstep:last-child::before{display:none}
+.fbody{padding-top:4px}
+.fbody b{font-weight:600}
+.fbody span{display:block;font-size:13.5px;color:var(--ink-soft);margin-top:2px}
+
+/* data */
+.data-list{display:grid;gap:10px}
+.data-item{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:baseline;
+  background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+.badge{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.badge.free{background:var(--green-bg);color:var(--green)}
+.badge.mock{background:var(--amber-bg);color:var(--amber)}
+.data-item p{font-size:13.5px;color:var(--ink-soft)}
+.data-item b{font-size:14px;color:var(--ink);font-weight:600;display:block}
+
+/* risks */
+.risk{display:grid;gap:10px}
+.risk .card{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:14px 18px;align-items:baseline}
+.rmark{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:.1em;white-space:nowrap}
+.risk p{font-size:13.5px;color:var(--ink-soft)}
+.risk b{color:var(--ink);font-weight:600}
+
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:11px;color:#98A0AA;letter-spacing:.08em}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="h-label">Concept Brief · 2026-08 · Draft for Team Review</div>
+    <h1>오픈마켓 분쟁조정 멀티에이전트 CS<br><span class="hl">"해결 단계로 층을 쌓는 에스컬레이션 사다리"</span></h1>
+    <p class="sub">종합 몰(플랫폼) 아래 입점 판매자들의 CS를 3층 구조로 처리한다. 업무 종류가 아니라 <b>해결 단계</b>로 시스템을 조직하는 것이 아키텍처 시그니처. 판매자는 config 테넌트로 정의되어 플러그인처럼 추가된다.</p>
+    <div class="ladder">
+      <div class="rung">
+        <span class="rung-num">L1</span>
+        <div><h3>판매자 레벨 응대</h3>
+        <p>테넌트 config로 자동 생성되는 스토어별 1차 응대 봇. 단순 문의 해결 + 분쟁 성립 여부 판정까지만 담당(얇게 유지).</p>
+        <span class="trigger">↑ 판매자 무응답(SLA 초과) / 소명 부적절 / 구매자 불복 시 자동 전이</span></div>
+      </div>
+      <div class="rung">
+        <span class="rung-num">L2</span>
+        <div><h3>플랫폼 레벨 중재</h3>
+        <p>증거 수집 → 법정 기준(전자상거래법·분쟁해결기준) RAG 판정 → 유사 결정례 제시 → 환불/페널티 트랜잭션. 운영자 승인(HITL) 필수.</p>
+        <span class="trigger">↑ 중재 실패 / 고액 분쟁 / 판정 불복 시 자동 전이</span></div>
+      </div>
+      <div class="rung">
+        <span class="rung-num">L3</span>
+        <div><h3>외부 절차 연계</h3>
+        <p>케이스 파일을 소비자원 피해구제 신청 서식으로 자동 패키징, 절차 안내. 시스템의 한계를 시스템이 알고 출구를 책임진다.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section>
+  <div class="eyebrow">01 · Why this shape</div>
+  <h2>왜 이 구조인가</h2>
+  <div class="card">
+    <p><strong>에스컬레이션 자체가 에이전틱함의 증거.</strong> 상태(소명 유무, 판정 결과, 불복 여부)와 시간(SLA 타이머)에 따라 그래프가 전이하는 구조라, LangGraph의 조건부 엣지가 장식이 아닌 핵심 메커니즘이 된다. "왜 단일 LLM이 아닌가"에 대한 답이 아키텍처 그 자체.</p>
+    <p style="margin-top:12px"><strong>판단 근거가 전부 공개 법정 문서.</strong> 전자상거래법 청약철회 규정, 전자상거래 표준약관, 소비자분쟁해결기준 — 판정이 약관 해석이 아니라 조항 인용으로 검증된다. 플랫폼 약관들도 판매자 조건보다 관계법령을 우선 규범으로 명시하고 있어 현실 정합성이 있다.</p>
+    <p style="margin-top:12px"><strong>기존 논의가 전부 흡수됨.</strong> 피드백 분석 팀 → 판매자 리스크 스코어링(마케팅/운영 인사이트 방향), 소비자 지원 방향 → L3 층, 분쟁조정 아이템(Top10 #9) → L2 층, 도메인 교체 프레임워크 → 테넌트 config로 진화. 141개 기존 프로젝트에 이 형태는 없음.</p>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">02 · Seller as Tenant</div>
+  <h2>아래 몰을 채우는 방법 — 판매자 = 테넌트 config</h2>
+  <p class="lead">입점 스토어 하나가 config 파일 하나. 등록하면 그 스토어의 L1 응대 봇이 자동 생성된다. "판매자 온보딩 = config 추가"를 라이브로 보여주는 것이 확장성 데모의 핵심.</p>
+  <div class="tenant">
+    <div class="code-card"><pre><span class="c"># tenant: store_012.yaml</span>
+<span class="k">store</span>: <span class="v">"한라봉농원 직영몰"</span>
+<span class="k">category</span>: <span class="v">신선식품</span>
+<span class="k">sale_type</span>: <span class="v">marketplace</span>  <span class="c"># 직매입|위탁|오픈마켓</span>
+<span class="k">policy</span>:
+  <span class="k">ship_deadline_days</span>: <span class="v">2</span>
+  <span class="k">refund</span>: <span class="v">단순변심 7일, 왕복배송비 6,000</span>
+  <span class="k">auto_refund_limit</span>: <span class="v">30,000원 이하 즉시</span>
+<span class="k">sla</span>:
+  <span class="k">reply_hours</span>: <span class="v">24</span>   <span class="c"># 초과 시 L2 자동 전이</span>
+<span class="k">tone</span>: <span class="v">친근체</span></pre></div>
+    <div class="card">
+      <p><strong>데이터 겹</strong> — mock 스토어 5~10개(카테고리·정책 다양화) + 주문·배송·결제 mock DB. AI Hub 쇼핑몰 리뷰를 스토어별 배정해 분쟁률·이슈 집계 재료로.</p>
+      <p style="margin-top:10px"><strong>행동 겹</strong> — 판매자 페르소나 LLM 시뮬레이터(협조형·지연형·비협조형·공격형). 에스컬레이션 트리거 시나리오를 자유롭게 재현.</p>
+      <p style="margin-top:10px"><strong>화면 겹</strong> — 판매자 소명 입력 콘솔(간단 UI). 시연 때 팀원이 판매자 역할로 직접 개입하는 인터랙티브 데모 가능.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">03 · Agent Teams</div>
+  <h2>에이전트 팀 구성</h2>
+  <div class="teams">
+    <div class="team"><span class="team-tag">ROUTE</span><div><b>Supervisor / 판매주체 판별</b><p>케이스 접수 → 감성·이슈·의도 분류(소형 모델) → <b>판매 유형(직매입/위탁/오픈마켓) 판별</b>이 첫 라우팅. 유형에 따라 책임 주체와 정책 그래프가 달라짐 — 쿠팡 구조에서 가져온 현실 반영.</p></div></div>
+    <div class="team"><span class="team-tag">L1</span><div><b>테넌트 응대 봇 (스토어별 자동 생성)</b><p>스토어 정책 config 기반 1차 응대. 자동 승인 한도 내 처리 + 분쟁 성립 판정. 의도적으로 얇게.</p></div></div>
+    <div class="team"><span class="team-tag">L2</span><div><b>증거 수집 에이전트</b><p>판정에 필요한 증빙(주문번호·사진·배송조회·대화 이력)을 판단해 능동적으로 요구, 구조화된 케이스 파일 생성.</p></div></div>
+    <div class="team"><span class="team-tag">L2</span><div><b>중재·판정 에이전트</b><p>법정 기준 RAG 조회 → 조항 인용 판정 초안 + 유사 피해구제·분쟁조정 결정례 제시 → 운영자 승인 후 환불/페널티 트랜잭션.</p></div></div>
+    <div class="team new"><span class="team-tag">NEW</span><div><b>판매자 이의제기 심사 팀</b><p>선환불 케이스에서 판매자↔플랫폼 분쟁(부당 환불 주장) 심사. 반품 검수 결과 + 소명 대조. 구매자↔판매자 외의 <b>두 번째 분쟁 전선</b> — 쿠팡 셀프환불 구조에서 도출한 고도화 팀.</p></div></div>
+    <div class="team new"><span class="team-tag">NEW</span><div><b>리스크 스코어링 팀</b><p>케이스 위험도(금액·증빙 수준·고객 환불 이력·판매자 분쟁률) 산정 → 처리 경로 결정의 입력값. 블랙컨슈머 반복 패턴 감지 포함.</p></div></div>
+    <div class="team"><span class="team-tag">INSIGHT</span><div><b>피드백 분석 팀</b><p>스토어별 리뷰·분쟁 데이터로 이슈 유형/분쟁률 집계, "특정 스토어 위생 이슈 급증" 시그널을 운영 대시보드로. 선제 개입의 근거.</p></div></div>
+    <div class="team"><span class="team-tag">L3</span><div><b>외부 절차 연계 에이전트</b><p>케이스 파일 → 소비자원 피해구제 신청 서식 자동 패키징 + 절차 안내.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">04 · vs Naver · Coupang</div>
+  <h2>현행 플랫폼 대비 포지션</h2>
+  <p class="lead">네이버는 "소명 먼저"(공정하지만 느림), 쿠팡은 "환불 먼저"(빠르지만 악용 리스크). 우리는 케이스 단위로 두 정책을 동적 선택한다.</p>
+  <div class="tbl-scroll">
+  <table>
+    <tr><th></th><th>네이버 (스마트스토어)</th><th>쿠팡</th><th>본 시스템</th></tr>
+    <tr><td>접수</td><td>폼 기반 신고</td><td>폼/버튼 기반</td><td class="ours">대화형 접수 + 증거 자동 구조화</td></tr>
+    <tr><td>환불 시점</td><td>소명·판정 후</td><td>선환불(집화 스캔 자동환불, 일부 회수 없는 셀프환불) 후 판매자 이의제기</td><td class="ours">리스크 스코어로 경로 선택: 저위험=즉시 환불, 고위험=소명 절차</td></tr>
+    <tr><td>판정</td><td>사람 CS 재량</td><td>사람 CS + 규정 체크</td><td class="ours">법정 조항 인용 판정 초안 + 유사 결정례 제시 + 운영자 승인(HITL)</td></tr>
+    <tr><td>에스컬레이션</td><td>소명 기한 관리(수동성)</td><td>24h 답변 SLA + 페널티</td><td class="ours">SLA 타이머 기반 그래프 자동 전이 (상태 기계로 명시화)</td></tr>
+    <tr><td>외부 출구</td><td>기관 안내 수준</td><td>기관 안내 수준</td><td class="ours">소비자원 신청 서류 자동 패키징까지</td></tr>
+    <tr><td>판매자 지원</td><td>—</td><td>—</td><td class="ours">소명 작성 지원 에이전트 (양측을 돕는 플랫폼)</td></tr>
+    <tr><td>선제 감지</td><td>—</td><td>반품률 지표 관리</td><td class="ours">리뷰·분쟁 분석 기반 스토어 리스크 스코어 → 분쟁 전 개입 시그널</td></tr>
+  </table>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">05 · Upgrades</div>
+  <h2>고도화 포인트</h2>
+  <div class="up">
+    <div class="card hero-up"><h3><span class="n">UP-0</span>리스크 기반 하이브리드 환불 (핵심 차별화)</h3><p>네이버식 소명 우선과 쿠팡식 선환불을 케이스 단위로 동적 선택. 금액·증빙·이력 기반 리스크 스코어가 경로를 결정 — 어느 플랫폼도 하지 않는 지점이며, "분석 결과가 시스템 동작을 바꾼다"는 주제 요건의 가장 강한 증명.</p></div>
+    <div class="card"><h3><span class="n">UP-1</span>유사 결정례 RAG</h3><p>소비자원 피해구제 사례·분쟁조정 결정례를 검색해 "비슷한 사례의 결정"을 양측에 제시 → 합의 유도.</p></div>
+    <div class="card"><h3><span class="n">UP-2</span>판매자 이의제기 심사</h3><p>선환불의 부작용(부당 환불·블랙컨슈머)을 다루는 두 번째 분쟁 전선. 반복 환불 패턴 감지 포함.</p></div>
+    <div class="card"><h3><span class="n">UP-3</span>판매자 소명 지원</h3><p>분쟁은 판매자가 소명을 못 써서 커지기도 함. 소명 초안 작성을 돕는 에이전트를 판매자 콘솔에 제공.</p></div>
+    <div class="card"><h3><span class="n">UP-4</span>선제 개입 시그널</h3><p>스토어별 이슈 급증 감지 → 운영 대시보드 알림. 마케팅/운영 인사이트 확장이 여기 흡수됨.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">06 · Key Scenario</div>
+  <h2>대표 시나리오 — 한 케이스가 세 층을 타고 오른다</h2>
+  <div class="card">
+    <div class="flow">
+      <div class="fstep"><div class="fdot">1</div><div class="fbody"><b>접수</b><span>"2주째 미배송인데 판매자가 답이 없어요" → 감성(분노)·이슈(미배송)·판매유형(오픈마켓) 판별, 케이스 생성.</span></div></div>
+      <div class="fstep"><div class="fdot">2</div><div class="fbody"><b>L1 → 판매자 소명 요청</b><span>테넌트 봇이 배송조회 + 판매자에게 소명 요청. SLA 24h 타이머 가동.</span></div></div>
+      <div class="fstep"><div class="fdot">3</div><div class="fbody"><b>자동 에스컬레이션</b><span>판매자 무응답(비협조형 페르소나) → 타이머 초과 → L2 자동 전이.</span></div></div>
+      <div class="fstep"><div class="fdot">4</div><div class="fbody"><b>L2 중재</b><span>증거 수집 완료 → 청약철회·계약불이행 조항 인용 판정 초안 + 유사 결정례 제시 → 리스크 스코어 저위험 → 운영자 승인 → 환불 트랜잭션 + 판매자 페널티.</span></div></div>
+      <div class="fstep"><div class="fdot">5</div><div class="fbody"><b>판매자 불복 (분기)</b><span>이의제기 접수 → 심사 팀이 소명·검수 결과 대조 → 기각/인용 판정.</span></div></div>
+      <div class="fstep"><div class="fdot">6</div><div class="fbody"><b>L3 출구 (분기)</b><span>중재 실패 시 케이스 파일을 소비자원 피해구제 신청 서식으로 패키징 + 절차 안내.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">07 · Data Sources</div>
+  <h2>데이터 소스</h2>
+  <div class="data-list">
+    <div class="data-item"><span class="badge free">법정 문서</span><p><b>전자상거래법(청약철회) · 전자상거래 표준약관 · 소비자분쟁해결기준</b>L2 판정의 근거 코퍼스. 전부 공개, 조항 단위 인용 가능.</p></div>
+    <div class="data-item"><span class="badge free">공공데이터</span><p><b>한국소비자원 품목별 피해구제 사례(Q&A) · 분쟁조정 결정례</b>유사 사례 RAG + 합성 문의의 근거. 전자상거래 품목이 최다라 궁합 최상.</p></div>
+    <div class="data-item"><span class="badge free">AI Hub</span><p><b>쇼핑몰 리뷰(속성기반 감성분석) · 상담형 대화 데이터</b>분류 모델 학습 + 상담 문체 참고. 리뷰는 mock 스토어별 배정해 분쟁률 집계 재료로.</p></div>
+    <div class="data-item"><span class="badge mock">직접 생성</span><p><b>테넌트 config 5~10개 · 주문/배송/결제 mock DB · 판매자 페르소나 시뮬레이터 · 합성 분쟁 골든셋</b>피해구제 사례의 실제 이슈 분포를 근거로 합성 — 골든셋(문의·정답 판정·모범 응대)이 자동 구축됨.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">08 · Guardrails &amp; Scope</div>
+  <h2>설계 원칙 · 범위 통제</h2>
+  <div class="risk">
+    <div class="card"><span class="rmark">HITL</span><p><b>돈과 페널티는 AI 단독 확정 금지.</b> L2 판정·환불·페널티·이의제기 인용은 조항 인용 + 운영자 승인 필수. 설계 성숙도 어필 지점.</p></div>
+    <div class="card"><span class="rmark">SCOPE</span><p><b>L1은 얇게.</b> 판매자 응대 층에 공들이면 프로젝트가 둘이 됨. 무게는 L2 중재 + 에스컬레이션 로직에.</p></div>
+    <div class="card"><span class="rmark">SCOPE</span><p><b>config 동적 그래프 빌드는 첫 주에.</b> "테넌트 하나를 config로 추가하는 데모"를 최우선 마일스톤으로. 리팩토링으로 나중에 넣기 어려움.</p></div>
+    <div class="card"><span class="rmark">EVAL</span><p><b>평가는 판정 정확도 중심.</b> 골든셋 대비 이슈 분류 정확도, 판정(환불 가/불가·귀책) 일치율, 인용 조항 정확성, 에스컬레이션 트리거 정확도. 법정 기준이라 정답 검증이 깔끔함.</p></div>
+    <div class="card"><span class="rmark">OPEN</span><p><b>남은 논의:</b> 본안 확정(vs 여행 OTA 안) · 시연 클라이맥스 선택(테넌트 추가 vs 하이브리드 환불 경로 분기) · L1 자동 승인 한도 설계 · 도메인 교체 데모 대상(중고거래/이사/여행 플랫폼).</p></div>
+  </div>
+</section>
+
+<footer>PLATFORM DISPUTE-RESOLUTION CS · 3-TIER ESCALATION · SELLER-AS-TENANT · 2026</footer>
+
+</div>
+</body>
+</html>

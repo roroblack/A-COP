@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A-COP Mandate + Outcome 브리핑</title>
+<style>
+:root{
+  --bg:#f4f7fb;--card:#fff;--ink:#102033;--muted:#627086;--line:#dbe3ee;
+  --navy:#14284b;--blue:#2563eb;--cyan:#0891b2;--green:#138a61;--amber:#c77800;--red:#c63d4c;
+  --soft-blue:#eef4ff;--soft-green:#edf9f4;--soft-amber:#fff7e8;--soft-red:#fff0f2;
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Noto Sans KR",Arial,sans-serif;line-height:1.62}
+header{background:linear-gradient(135deg,#102542 0%,#173c6b 55%,#0c7285 100%);color:#fff;padding:48px 28px 42px}
+.wrap{max-width:1180px;margin:auto}.eyebrow{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.78}
+h1{font-size:38px;line-height:1.18;margin:8px 0 12px} header p{max-width:860px;margin:0;color:#dbe8f7;font-size:17px}
+main{max-width:1180px;margin:0 auto;padding:24px}
+section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:25px;margin:0 0 18px;box-shadow:0 8px 26px rgba(31,55,85,.055)}
+h2{margin:0 0 8px;font-size:25px;letter-spacing:-.02em} h3{margin:18px 0 9px;font-size:18px}
+.lead{color:var(--muted);margin:0 0 18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff}
+.card strong.big{font-size:18px;display:block;margin-bottom:7px}.num{font-size:34px;font-weight:900;color:var(--blue);line-height:1}
+.badge{display:inline-block;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:800;margin:0 5px 5px 0;background:#e9eef6;color:#43546b}
+.badge.new{background:#e6f8f1;color:#087250}.badge.keep{background:#eef4ff;color:#2049a8}.badge.opt{background:#fff3dc;color:#995e00}
+.callout{border-left:4px solid var(--blue);background:var(--soft-blue);border-radius:10px;padding:14px 16px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:14px} th,td{padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#f6f8fb;color:#35465d;font-size:13px}.table-scroll{overflow:auto}
+.flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:16px 0}.node{padding:10px 13px;border:1px solid #b9c7da;border-radius:11px;background:#fff;font-weight:800;font-size:13px}
+.node.new{border-color:#7bd2b3;background:var(--soft-green);color:#086849}.arrow{font-weight:900;color:#7d8999}
+.compare{display:grid;grid-template-columns:1fr 80px 1fr;align-items:stretch;gap:10px}.lane{border:1px solid var(--line);border-radius:15px;padding:17px}
+.center-label{display:flex;align-items:center;justify-content:center;font-size:28px;color:#6b7a8e;font-weight:900}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#0f1d2e;color:#dfeafb;border-radius:13px;padding:16px;white-space:pre-wrap;overflow:auto;font-size:13px;line-height:1.6}
+.diagram{background:#f9fbfd;border:1px solid var(--line);border-radius:16px;padding:16px;overflow:auto}
+svg{max-width:100%;height:auto;display:block;margin:auto}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kpi .card{background:#fbfcfe}
+.timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.phase{border-top:5px solid #6a85ad;background:#fbfcfe}.phase.p1{border-color:#2563eb}.phase.p2{border-color:#0891b2}.phase.p3{border-color:#138a61}.phase.p4{border-color:#c77800}
+.risk-high{color:var(--red);font-weight:800}.risk-mid{color:var(--amber);font-weight:800}.risk-low{color:var(--green);font-weight:800}
+.source{font-size:13px;color:#4f5e72}.source a{color:#1d5fd0;text-decoration:none;word-break:break-all}
+footer{max-width:1180px;margin:0 auto;padding:4px 24px 48px;color:#718096;font-size:13px}
+@media(max-width:850px){h1{font-size:30px}.grid3,.grid2,.kpi,.timeline{grid-template-columns:1fr}.compare{grid-template-columns:1fr}.center-label{transform:rotate(90deg);height:46px}}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap">
+<div class="eyebrow">A-COP / Architecture Extension Brief</div>
+<h1>Mandate + Outcome<br>기존 구조를 건드리지 않는 Agent 시대 확장</h1>
+<p>새 Agent나 새 Platform Component를 더 만드는 계획이 아니다. 기존 A-COP의 실행 구조는 그대로 두고, “사용자가 무엇을 위임했는가”와 “무엇이 되어야 성공인가”를 Customer Case의 공식 의미로 추가한다.</p>
+</div>
+</header>
+
+<main>
+<section>
+<h2>1. 한눈에 보는 결론</h2>
+<p class="lead">가장 먼저 이것만 보면 된다.</p>
+<div class="grid3">
+<div class="card"><span class="badge keep">KEEP</span><strong class="big">기존 A-COP 그대로</strong>Case · Controller · Team · Shared State · Context · Tool · MCP · A2A · Approval · Audit 구조는 변경하지 않는다.</div>
+<div class="card"><span class="badge new">NEW 01</span><strong class="big">Mandate</strong><b>Agent가 고객 대신 어디까지 해도 되는가?</b><br>목표·허용 행동·금지 행동·금액 제한·재승인 경계를 Case에 명시한다.</div>
+<div class="card"><span class="badge new">NEW 02</span><strong class="big">Outcome</strong><b>무엇이 되어야 Case가 진짜 끝나는가?</b><br>Tool 호출 성공이 아니라 검증 가능한 고객 목표 달성을 종료 조건으로 둔다.</div>
+</div>
+<div class="callout" style="margin-top:15px">Commitment와 Resolution Proof는 MVP 신규 컴포넌트로 만들지 않는다. 기존 <code>case_events / action_result / evidence / audit</code>로 흡수하고 실제 필요성이 생길 때만 승격한다.</div>
+</section>
+
+<section>
+<h2>2. 왜 필요한가 — 기존 A-COP의 정확한 빈칸</h2>
+<div class="compare">
+<div class="lane">
+<span class="badge keep">기존</span>
+<h3>HOW는 이미 충분히 설계됨</h3>
+<div class="flow">
+<span class="node">Gateway</span><span class="arrow">→</span><span class="node">Case</span><span class="arrow">→</span><span class="node">Controller</span><span class="arrow">→</span><span class="node">Team</span><span class="arrow">→</span><span class="node">Tool</span>
+</div>
+<p>누가 들어오고, 어떤 팀이 처리하고, 어떤 Tool을 실행하며, 어떻게 승인·감사하는지는 기존 구조가 담당한다.</p>
+</div>
+<div class="center-label">+</div>
+<div class="lane">
+<span class="badge new">신규 의미</span>
+<h3>WHAT / SUCCESS만 추가</h3>
+<div class="flow">
+<span class="node new">Mandate</span><span class="arrow">→</span><span class="node new">Outcome</span>
+</div>
+<p><b>AUTHORIZED INTENT</b>와 <b>SUCCESS CONDITION</b>을 명시해 기존 실행 구조가 무엇을 위해, 어디까지 움직일지를 정의한다.</p>
+</div>
+</div>
+</section>
+
+<section>
+<h2>3. 업계 흐름과의 정합성</h2>
+<p class="lead">웹 리서치 기준으로 Mandate는 임의로 만든 장식 개념이 아니라 실제 Agentic Commerce가 해결 중인 문제와 맞닿아 있다.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>외부 흐름</th><th>핵심</th><th>A-COP에서 가져갈 해석</th></tr></thead>
+<tbody>
+<tr><td><b>Google AP2</b></td><td>typed mandate를 통해 사용자의 의도를 증명하는 계층을 다룸</td><td>Scope와 사용자 위임 의도를 분리한다.</td></tr>
+<tr><td><b>Google UCP</b></td><td>Commerce lifecycle을 typed capability로 표준화하고 REST/MCP/A2A 등과 결합 가능</td><td>Commerce 때문에 A-COP transport/core를 재설계할 필요 없음.</td></tr>
+<tr><td><b>A2A v1.0</b></td><td>Agent Card, identity, skill/capability, auth를 통한 독립 Agent 협업</td><td>Remote Team은 기존 Registry/A2A 경로 유지.</td></tr>
+<tr><td><b>MCP</b></td><td>LLM app과 Tool/Resource 연결 및 authorization</td><td>Mandate는 transport가 아니라 Case semantics.</td></tr>
+<tr><td><b>Visa / Mastercard</b></td><td>agent identity, permissioning, verifiable intent를 별도 trust 문제로 다룸</td><td>“누구인가”와 “무엇을 위임받았는가”를 나눠 관리.</td></tr>
+</tbody></table></div>
+</section>
+
+<section>
+<h2>4. 가장 중요한 경계 — Scope ≠ Mandate ≠ Approval</h2>
+<div class="diagram">
+<svg viewBox="0 0 1050 310" xmlns="http://www.w3.org/2000/svg" aria-label="Scope Mandate Approval relation">
+<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#73839a"/></marker></defs>
+<rect x="30" y="75" rx="16" width="250" height="150" fill="#eef4ff" stroke="#91abe0"/>
+<text x="155" y="110" text-anchor="middle" font-size="20" font-weight="800" fill="#173a7a">OAuth / Tool Scope</text>
+<text x="155" y="145" text-anchor="middle" font-size="14" fill="#425b7a">시스템이 허용한 기능</text>
+<text x="155" y="174" text-anchor="middle" font-size="15" font-weight="700" fill="#173a7a">refund.request 가능</text>
+<rect x="400" y="45" rx="16" width="250" height="210" fill="#edf9f4" stroke="#6cc5a3" stroke-width="2"/>
+<text x="525" y="85" text-anchor="middle" font-size="20" font-weight="800" fill="#087250">Customer Mandate</text>
+<text x="525" y="122" text-anchor="middle" font-size="14" fill="#35685a">사용자가 이번 Case에 위임</text>
+<text x="525" y="155" text-anchor="middle" font-size="15" font-weight="700" fill="#087250">5만원 이하 자동 환불</text>
+<text x="525" y="182" text-anchor="middle" font-size="14" fill="#35685a">포인트 환불 금지</text>
+<text x="525" y="209" text-anchor="middle" font-size="14" fill="#35685a">그 이상은 재확인</text>
+<rect x="770" y="75" rx="16" width="250" height="150" fill="#fff7e8" stroke="#dfb35d"/>
+<text x="895" y="110" text-anchor="middle" font-size="20" font-weight="800" fill="#8a5700">Approval</text>
+<text x="895" y="145" text-anchor="middle" font-size="14" fill="#715a31">위험 행동 실행 직전 확인</text>
+<text x="895" y="174" text-anchor="middle" font-size="15" font-weight="700" fill="#8a5700">사용자 / 운영자 승인</text>
+<line x1="280" y1="150" x2="395" y2="150" stroke="#73839a" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="650" y1="150" x2="765" y2="150" stroke="#73839a" stroke-width="2" marker-end="url(#arr)"/>
+</svg>
+</div>
+<p><b>핵심:</b> Scope는 “호출 가능”, Mandate는 “이번 목표에서 위임됨”, Approval은 “이 실행을 지금 승인함”이다. 셋을 하나로 합치면 권한 모델이 흐려진다.</p>
+</section>
+
+<section>
+<h2>5. Mandate — 최소 구현</h2>
+<div class="grid2">
+<div class="card">
+<h3>포함할 것</h3>
+<span class="badge new">goal</span><span class="badge new">allowed_actions</span><span class="badge new">forbidden_actions</span><span class="badge new">constraints</span><span class="badge new">approval_rules</span><span class="badge new">status</span><span class="badge new">version</span>
+<p>복잡한 법률 계약 객체가 아니라, Agent 실행 경계를 판정하기 위한 구조화된 Case 데이터다.</p>
+</div>
+<div class="card">
+<h3>상태</h3>
+<div class="mono">DRAFT
+  ↓
+ACTIVE
+ ├→ REVISED → ACTIVE
+ ├→ SUSPENDED → ACTIVE
+ ├→ REVOKED
+ └→ EXPIRED</div>
+</div>
+</div>
+<h3>Action 실행 전 판정</h3>
+<div class="flow">
+<span class="node">Action Proposal</span><span class="arrow">→</span><span class="node">Scope</span><span class="arrow">→</span><span class="node new">Mandate Guard</span><span class="arrow">→</span><span class="node">Approval</span><span class="arrow">→</span><span class="node">Idempotency</span><span class="arrow">→</span><span class="node">Tool</span>
+</div>
+</section>
+
+<section>
+<h2>6. Outcome — “Tool 성공”과 “고객 목표 달성”을 분리</h2>
+<div class="diagram">
+<svg viewBox="0 0 1080 270" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#718096"/></marker></defs>
+<g font-family="Arial,Noto Sans KR,sans-serif">
+<rect x="30" y="80" width="180" height="90" rx="14" fill="#fff" stroke="#b8c5d5"/><text x="120" y="115" text-anchor="middle" font-size="16" font-weight="800">refund.request()</text><text x="120" y="144" text-anchor="middle" font-size="13" fill="#64748b">API 200 OK</text>
+<line x1="210" y1="125" x2="270" y2="125" stroke="#718096" stroke-width="2" marker-end="url(#a2)"/>
+<rect x="275" y="80" width="180" height="90" rx="14" fill="#eef4ff" stroke="#91abe0"/><text x="365" y="115" text-anchor="middle" font-size="16" font-weight="800">PG 승인</text><text x="365" y="144" text-anchor="middle" font-size="13" fill="#64748b">external event</text>
+<line x1="455" y1="125" x2="515" y2="125" stroke="#718096" stroke-width="2" marker-end="url(#a2)"/>
+<rect x="520" y="80" width="180" height="90" rx="14" fill="#eef4ff" stroke="#91abe0"/><text x="610" y="115" text-anchor="middle" font-size="16" font-weight="800">실제 환불 상태</text><text x="610" y="144" text-anchor="middle" font-size="13" fill="#64748b">refunded = 39,000</text>
+<line x1="700" y1="125" x2="760" y2="125" stroke="#718096" stroke-width="2" marker-end="url(#a2)"/>
+<rect x="765" y="65" width="280" height="120" rx="16" fill="#edf9f4" stroke="#5eba98" stroke-width="2"/><text x="905" y="105" text-anchor="middle" font-size="19" font-weight="800" fill="#087250">Outcome SATISFIED</text><text x="905" y="137" text-anchor="middle" font-size="14" fill="#35685a">이제 Case 정상 종료 가능</text>
+</g>
+</svg>
+</div>
+<div class="grid3">
+<div class="card"><strong>STATE</strong><br>내부 DB 상태로 검증<br><span class="badge">order=cancelled</span></div>
+<div class="card"><strong>ACTION_RESULT</strong><br>Tool 결과로 검증<br><span class="badge">refund accepted</span></div>
+<div class="card"><strong>EXTERNAL_EVENT / USER</strong><br>외부 이벤트 또는 사용자 확인<br><span class="badge">delivered</span><span class="badge">user confirmed</span></div>
+</div>
+</section>
+
+<section>
+<h2>7. 기존 아키텍처에서 실제 변경되는 곳</h2>
+<p class="lead">새 계층을 만드는 것이 아니라 기존 Case Runtime에 작은 policy 두 개를 추가한다.</p>
+<div class="diagram">
+<svg viewBox="0 0 1080 430" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#718096"/></marker></defs>
+<g font-family="Arial,Noto Sans KR,sans-serif" font-size="13">
+<rect x="35" y="25" width="1010" height="70" rx="15" fill="#eef4ff" stroke="#8eaae1"/>
+<text x="540" y="56" text-anchor="middle" font-size="18" font-weight="800">기존 A-COP Core — 변경 없음</text>
+<text x="540" y="80" text-anchor="middle" fill="#52667e">Gateway · Case · Context Broker · Controller · Registry · Team · Shared State · Tool · MCP · A2A</text>
+
+<rect x="80" y="150" width="240" height="90" rx="14" fill="#edf9f4" stroke="#61bf9a" stroke-width="2"/>
+<text x="200" y="184" text-anchor="middle" font-size="17" font-weight="800" fill="#087250">Mandate Guard</text>
+<text x="200" y="211" text-anchor="middle" fill="#3d665a">Case Runtime 내부 Policy</text>
+
+<rect x="420" y="150" width="240" height="90" rx="14" fill="#fff" stroke="#b8c5d5"/>
+<text x="540" y="184" text-anchor="middle" font-size="17" font-weight="800">기존 Tool / Action</text>
+<text x="540" y="211" text-anchor="middle" fill="#64748b">Approval · Idempotency · Audit</text>
+
+<rect x="760" y="150" width="240" height="90" rx="14" fill="#edf9f4" stroke="#61bf9a" stroke-width="2"/>
+<text x="880" y="184" text-anchor="middle" font-size="17" font-weight="800" fill="#087250">Outcome Evaluator</text>
+<text x="880" y="211" text-anchor="middle" fill="#3d665a">Case Runtime 내부 Policy</text>
+
+<line x1="320" y1="195" x2="415" y2="195" stroke="#718096" stroke-width="2" marker-end="url(#a3)"/>
+<line x1="660" y1="195" x2="755" y2="195" stroke="#718096" stroke-width="2" marker-end="url(#a3)"/>
+
+<rect x="260" y="315" width="560" height="75" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+<text x="540" y="346" text-anchor="middle" font-size="16" font-weight="800">Customer Case 의미 확장</text>
+<text x="540" y="371" text-anchor="middle" fill="#52667e">기존 fields + mandate + outcome</text>
+<line x1="540" y1="240" x2="540" y2="310" stroke="#718096" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#a3)"/>
+</g>
+</svg>
+</div>
+</section>
+
+<section>
+<h2>8. 데이터·코드 영향 범위</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>영역</th><th>변경</th><th>규모</th></tr></thead>
+<tbody>
+<tr><td>DB</td><td><code>customer_mandates</code>, <code>case_outcomes</code> 2개 테이블</td><td><span class="risk-low">작음</span></td></tr>
+<tr><td>Domain</td><td>Mandate / Outcome model</td><td><span class="risk-low">작음</span></td></tr>
+<tr><td>Case Runtime</td><td>Mandate Guard / Outcome Evaluator policy</td><td><span class="risk-mid">중간</span></td></tr>
+<tr><td>Tool Layer</td><td>실행 전 Guard hook</td><td><span class="risk-low">작음</span></td></tr>
+<tr><td>Case Close</td><td>Outcome gate</td><td><span class="risk-low">작음</span></td></tr>
+<tr><td>MCP</td><td>mandate get/update/revoke Tool</td><td><span class="risk-low">작음</span></td></tr>
+<tr><td>A2A</td><td>Remote Task용 mandate subset projection</td><td><span class="risk-mid">중간</span></td></tr>
+<tr><td>UI/Trace</td><td>위임 범위 + Outcome 진행률</td><td><span class="risk-mid">중간</span></td></tr>
+</tbody></table></div>
+</section>
+
+<section>
+<h2>9. 실전 시나리오 — Agent-native Commerce</h2>
+<div class="callout">“지난주 산 키보드가 다른 모델로 왔어. 추가 비용 1만원 이하면 알아서 교환하고, 그 이상이면 나한테 물어봐.”</div>
+<div class="flow">
+<span class="node">Personal AI</span><span class="arrow">→</span><span class="node">MCP</span><span class="arrow">→</span><span class="node">A-COP Case</span><span class="arrow">→</span><span class="node new">Mandate</span><span class="arrow">→</span><span class="node">Commerce Team</span><span class="arrow">→</span><span class="node">Exchange Tool</span><span class="arrow">→</span><span class="node new">Outcome</span>
+</div>
+<div class="grid2">
+<div class="card"><h3>Mandate</h3><div class="mono">goal: correct_product_received
+max_extra_payment: 10,000 KRW
+allow:
+ - return.request
+ - exchange.request
+ - shipment.track</div></div>
+<div class="card"><h3>Outcome</h3><div class="mono">target: correct_product_received
+required:
+ - return_accepted
+ - replacement_order_created
+ - replacement_delivered</div></div>
+</div>
+</section>
+
+<section>
+<h2>10. 평가 — 추가한 의미가 실제로 가치가 있는지 증명</h2>
+<div class="kpi">
+<div class="card"><div class="num">0</div><b>Mandate violation</b><br><span class="lead">위임 범위 위반 Action 목표</span></div>
+<div class="card"><div class="num">↓</div><b>Premature closure</b><br><span class="lead">목표 미완료 종료 감소</span></div>
+<div class="card"><div class="num">↑</div><b>Outcome completion</b><br><span class="lead">실제 목표 달성률 증가</span></div>
+<div class="card"><div class="num">↑</div><b>Approval precision</b><br><span class="lead">필요한 순간에만 확인 요청</span></div>
+</div>
+<h3>비교 실험</h3>
+<table>
+<thead><tr><th>Baseline</th><th>실험군</th><th>관찰</th></tr></thead>
+<tbody>
+<tr><td>기존 A-COP</td><td>A-COP + Mandate/Outcome</td><td>위임 위반, 과잉 승인, 조기 종료, 최종 성공률</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>11. 구현 로드맵 — 무겁지 않게</h2>
+<div class="timeline">
+<div class="card phase"><b>P0 · 설계</b><p>Schema · Rule operator · API contract</p></div>
+<div class="card phase p1"><b>P1 · Mandate</b><p>DB · Guard · Audit · Endpoint</p></div>
+<div class="card phase p2"><b>P2 · Outcome</b><p>Evaluator · Event 연결 · Close gate</p></div>
+<div class="card phase p3"><b>P3 · Interop</b><p>MCP tools · A2A subset</p></div>
+<div class="card phase p4"><b>P4 · 평가</b><p>Trace · UI · E2E · Baseline</p></div>
+</div>
+<p><b>원칙:</b> 기존 Core가 안정화되어 있다는 전제에서 신규 범위는 별도 거대 서브시스템이 아니라 2~3주 내 병렬 흡수 가능한 증분으로 제한한다.</p>
+</section>
+
+<section>
+<h2>12. 하지 않을 것</h2>
+<div class="grid3">
+<div class="card"><span class="badge opt">NO</span><strong class="big">새 서비스 남발 금지</strong>Mandate Service, Outcome Service, Commitment Ledger Microservice를 만들지 않는다.</div>
+<div class="card"><span class="badge opt">NO</span><strong class="big">프로토콜 재구현 금지</strong>AP2/UCP/MCP/A2A 자체를 만드는 프로젝트로 확장하지 않는다.</div>
+<div class="card"><span class="badge opt">NO</span><strong class="big">증명 시스템 과잉 금지</strong>블록체인·전자서명·법적 원장 등은 실제 요구가 생길 때만 검토한다.</div>
+</div>
+</section>
+
+<section>
+<h2>13. 최종 판단</h2>
+<div class="callout" style="font-size:17px">
+A-COP을 CS 전용으로 좁히지 않는다. 기존 구조는 범용 Agent Runtime으로 유지하고, Mandate와 Outcome만 <b>범용 Case semantics</b>로 추가한다. 이 두 개는 쇼핑·여행·SaaS·보험 등 “Agent가 사람 대신 현실의 상태를 바꾸는” 모든 도메인에 재사용할 수 있다.
+</div>
+</section>
+
+<section>
+<h2>14. 웹 리서치 출처</h2>
+<p class="lead">2026-08-15 기준. 기술 방향 검증에는 공식/1차 자료를 우선 사용했다.</p>
+<div class="source">
+<ol>
+<li>Google Developers Blog — <b>Developer's Guide to AI Agent Protocols</b>, 2026-03-18<br><a href="https://developers.googleblog.com/developers-guide-to-ai-agent-protocols/">developers.googleblog.com/developers-guide-to-ai-agent-protocols/</a></li>
+<li>Google Developers Blog — <b>Under the Hood: Universal Commerce Protocol (UCP)</b>, 2026-01-11<br><a href="https://developers.googleblog.com/under-the-hood-universal-commerce-protocol-ucp/">developers.googleblog.com/under-the-hood-universal-commerce-protocol-ucp/</a></li>
+<li>A2A Protocol — <b>Specification / Core Concepts / v1.0</b><br><a href="https://a2a-protocol.org/latest/specification/">a2a-protocol.org/latest/specification/</a></li>
+<li>Model Context Protocol — <b>Specification / Authorization</b><br><a href="https://modelcontextprotocol.io/specification/2025-11-25">modelcontextprotocol.io/specification/2025-11-25</a></li>
+<li>MCP Blog — <b>The 2026-07-28 Specification</b><br><a href="https://blog.modelcontextprotocol.io/posts/2026-07-28/">blog.modelcontextprotocol.io/posts/2026-07-28/</a></li>
+<li>Visa Developer — <b>Trusted Agent Protocol</b><br><a href="https://developer.visa.com/capabilities/trusted-agent-protocol/overview">developer.visa.com/capabilities/trusted-agent-protocol/overview</a></li>
+<li>Mastercard — <b>How Verifiable Intent builds trust in agentic AI commerce</b>, 2026-03-05<br><a href="https://www.mastercard.com/global/en/news-and-trends/stories/2026/verifiable-intent.html">mastercard.com/.../verifiable-intent.html</a></li>
+<li>Mastercard — <b>Agent Pay for Machines</b>, 2026-06-10<br><a href="https://www.mastercard.com/global/en/news-and-trends/press/2026/june/mastercard-launches-agent-pay-for-machines.html">mastercard.com/.../agent-pay-for-machines.html</a></li>
+</ol>
+</div>
+</section>
+</main>
+<footer>문서 버전 1.0 · 작성 기준일 2026-08-15 · A-COP Mandate + Outcome Extension</footer>
+</body>
+</html>

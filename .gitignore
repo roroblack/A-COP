@@ -1,0 +1,20 @@
+# 독립 저장소 — 자체 git 이력을 가진다. 여기서 추적하지 않는다.
+final_project_sample/
+
+# 파이썬
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# 환경/비밀
+.env
+.env.local
+*.key
+*.pem
+
+# OS/에디터
+Thumbs.db
+.DS_Store
+*.swp

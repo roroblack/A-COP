@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A-COP Commerce - 마켓플레이스 멀티에이전트 고객운영 플랫폼</title>
+  <style>
+    :root {
+      --bg: #f4f7f8;
+      --surface: #ffffff;
+      --ink: #15263a;
+      --muted: #5d6c7b;
+      --line: #d8e1e5;
+      --navy: #102a43;
+      --navy-soft: #e8f0f7;
+      --teal: #157a7a;
+      --teal-soft: #e4f5f2;
+      --amber: #b76613;
+      --amber-soft: #fff3e4;
+      --red: #a43d48;
+      --red-soft: #fcebed;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 15.5px;
+      line-height: 1.72;
+      word-break: keep-all;
+    }
+    a { color: #0b6373; text-underline-offset: 3px; }
+    .wrap { width: min(1040px, calc(100% - 40px)); margin: 0 auto; }
+
+    .hero {
+      background: radial-gradient(circle at 76% 12%, #1a5a66 0, #102a43 42%, #0c2134 100%);
+      color: #f8fbfd;
+      padding: 58px 0 48px;
+    }
+    .eyebrow {
+      color: #8ed9d2;
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 14px 0 12px;
+      font-size: clamp(28px, 5vw, 42px);
+      letter-spacing: -.045em;
+      line-height: 1.27;
+    }
+    .hero .accent { color: #ffca78; }
+    .hero .summary { max-width: 760px; margin: 0; color: #d7e4ea; }
+    .project-board {
+      display: grid;
+      grid-template-columns: 132px 1fr 90px;
+      max-width: 820px;
+      margin-top: 29px;
+      overflow: hidden;
+      border: 1px solid #416174;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+    .project-board div { padding: 9px 12px; border-bottom: 1px solid #416174; }
+    .project-board div:nth-last-child(-n+3) { border-bottom: 0; }
+    .project-board .label { color: #ffca78; font-family: var(--mono); }
+    .project-board .value { border-left: 1px solid #416174; border-right: 1px solid #416174; }
+    .project-board .status { color: #91ddbe; text-align: center; font: 600 11px/1.5 var(--mono); }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(244,247,248,.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    nav .wrap { display: flex; gap: 16px; overflow-x: auto; padding: 10px 0; }
+    nav a { flex: 0 0 auto; color: var(--muted); font-size: 12px; font-weight: 700; text-decoration: none; }
+    nav a:hover { color: var(--teal); }
+
+    section { margin: 56px 0; }
+    .section-no {
+      margin-bottom: 8px;
+      color: var(--teal);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: .14em;
+    }
+    h2 { margin: 0 0 14px; font-size: 25px; letter-spacing: -.035em; line-height: 1.35; }
+    h3 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+    .lead { max-width: 820px; margin: 0 0 22px; color: var(--muted); }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 5px 18px rgba(17, 38, 58, .035);
+    }
+    .card p:first-child { margin-top: 0; }
+    .card p:last-child { margin-bottom: 0; }
+    .callout { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+    .callout strong { color: #0d5557; }
+    .warning { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+    .warning strong { color: #864a0d; }
+    .danger { border-left: 4px solid var(--red); background: var(--red-soft); }
+    .danger strong { color: #87303b; }
+
+    .grid { display: grid; gap: 14px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .mini-label { color: var(--teal); font: 700 10.5px/1 var(--mono); letter-spacing: .11em; }
+    .grid .card p { margin: 9px 0 0; color: var(--muted); font-size: 13.5px; }
+
+    .role-map { display: grid; grid-template-columns: 1fr 80px 1fr 80px 1fr; align-items: stretch; gap: 0; }
+    .role { padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+    .role.platform { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .role.platform p { color: #d7e4ea; }
+    .role-code { font: 700 10px/1 var(--mono); letter-spacing: .12em; color: var(--teal); }
+    .platform .role-code { color: #8ed9d2; }
+    .role p { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+    .role-arrow { display: grid; place-items: center; color: var(--teal); font: 700 22px/1 var(--mono); }
+
+    .channel-choice { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .channel { min-height: 180px; padding: 19px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .channel.recommended { border: 2px solid var(--teal); background: #f8fffe; }
+    .channel .tag { display: inline-block; margin-bottom: 12px; padding: 3px 7px; border-radius: 5px; background: var(--teal-soft); color: var(--teal); font: 700 10px/1.4 var(--mono); letter-spacing: .07em; }
+    .channel p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+
+    .schema {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+      padding: 15px;
+      margin-top: 14px;
+      border-radius: 11px;
+      background: #0e273d;
+      color: #edf5f8;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .schema span { display: block; padding: 8px 9px; border: 1px solid #3d5b70; border-radius: 7px; }
+    .schema b { color: #8ed9d2; font-weight: 600; }
+
+    .flow { display: grid; grid-template-columns: repeat(7, 1fr); align-items: start; gap: 7px; }
+    .flow-node { min-height: 150px; padding: 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .flow-node.core { background: var(--navy-soft); border-color: #a6bfd3; }
+    .flow-node.action { background: var(--teal-soft); border-color: #9acdc6; }
+    .flow-node p { margin: 8px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+    .flow-arrow { align-self: center; padding-top: 42px; color: var(--teal); text-align: center; font-size: 21px; }
+    .flow-node .step { color: var(--teal); font: 700 10px/1 var(--mono); letter-spacing: .1em; }
+
+    .taxonomy { width: 100%; border-collapse: collapse; overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); font-size: 13.5px; }
+    .taxonomy th, .taxonomy td { padding: 13px 15px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+    .taxonomy tr:last-child td { border-bottom: 0; }
+    .taxonomy th { background: #f7fafb; color: var(--muted); font: 700 10.5px/1.4 var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+    .taxonomy td:first-child { width: 20%; font-weight: 700; }
+    .chip { display: inline-block; margin: 2px 3px 2px 0; padding: 2px 7px; border-radius: 10px; background: var(--navy-soft); color: #30516d; font-size: 11.5px; white-space: nowrap; }
+
+    .team { display: grid; grid-template-columns: 95px 1fr 150px; gap: 17px; align-items: center; padding: 17px 19px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+    .team + .team { margin-top: 11px; }
+    .team-code { color: var(--teal); font: 700 11px/1.45 var(--mono); letter-spacing: .09em; }
+    .team p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+    .team-evidence { padding-left: 15px; border-left: 1px dashed var(--line); color: #466173; font-size: 12px; }
+    .team-evidence b { display: block; color: var(--ink); font: 700 10px/1.3 var(--mono); letter-spacing: .08em; }
+
+    .scenario { display: grid; grid-template-columns: 42px 1fr; gap: 16px; position: relative; padding-bottom: 22px; }
+    .scenario:last-child { padding-bottom: 0; }
+    .scenario::before { content: ""; position: absolute; top: 42px; bottom: 0; left: 20px; width: 2px; background: var(--line); }
+    .scenario:last-child::before { display: none; }
+    .scenario-number { position: relative; z-index: 1; display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: var(--surface); border: 2px solid var(--teal); color: var(--teal); font: 700 13px/1 var(--mono); }
+    .scenario-body { padding-top: 5px; }
+    .scenario-body p { margin: 5px 0 0; color: var(--muted); font-size: 13.5px; }
+    .scenario-branch { margin-top: 11px; padding: 12px 14px; border-radius: 8px; border-left: 3px solid var(--amber); background: var(--amber-soft); color: #754613; font-size: 12.7px; }
+
+    .guardrails { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .guardrail { padding: 17px 19px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .guardrail .mark { color: var(--amber); font: 700 10px/1 var(--mono); letter-spacing: .1em; }
+    .guardrail p { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+
+    .data-stack { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; }
+    .data-row { display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .data-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .data-row:first-child { padding-top: 0; }
+    .source-badge { display: inline-block; padding: 3px 7px; border-radius: 5px; background: var(--teal-soft); color: var(--teal); font: 700 10px/1.35 var(--mono); letter-spacing: .04em; text-align: center; }
+    .source-badge.mock { background: var(--amber-soft); color: var(--amber); }
+    .data-row b { font-size: 13.5px; }
+    .data-row p { margin: 3px 0 0; color: var(--muted); font-size: 12.7px; }
+
+    .implementation { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .phase { padding: 17px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+    .phase .phase-no { color: var(--teal); font: 700 11px/1 var(--mono); letter-spacing: .1em; }
+    .phase h3 { margin-top: 8px; font-size: 15px; }
+    .phase p { margin: 7px 0 0; color: var(--muted); font-size: 12.5px; }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric { padding: 16px; border-radius: 11px; background: #f9fbfc; border: 1px solid var(--line); }
+    .metric b { display: block; color: var(--teal); font: 700 11px/1.3 var(--mono); letter-spacing: .07em; }
+    .metric span { display: block; margin-top: 7px; font-size: 13px; font-weight: 700; }
+    .metric p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+
+    .output-card { min-height: 190px; padding: 21px; border-radius: 13px; border: 1px solid var(--line); background: var(--surface); }
+    .output-card.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .output-card .mini-label { display: block; margin-bottom: 9px; }
+    .output-card.primary .mini-label { color: #8ed9d2; }
+    .output-card p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .output-card.primary p { color: #d7e4ea; }
+    .signal-list { display: grid; gap: 8px; margin-top: 14px; }
+    .signal { padding: 10px 12px; border-radius: 8px; background: #f4f8fa; color: #426073; font-size: 12.7px; }
+    .signal b { color: var(--ink); }
+    .policy-list { margin: 12px 0 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+    .policy-list li + li { margin-top: 5px; }
+    .stack { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 14px; }
+    .stack-item { min-height: 104px; padding: 13px; border-radius: 10px; background: #f8fbfc; border: 1px solid var(--line); }
+    .stack-item b { display: block; color: var(--teal); font: 700 10.5px/1.3 var(--mono); letter-spacing: .07em; }
+    .stack-item span { display: block; margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .state-line { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-top: 14px; }
+    .state-line code { padding: 4px 7px; border-radius: 6px; background: var(--navy-soft); color: #284965; font: 700 10.5px/1.3 var(--mono); }
+    .state-line i { color: var(--teal); font-style: normal; }
+
+    footer { margin-top: 80px; padding: 30px 0 44px; color: #7b8a96; font: 11px/1.6 var(--mono); letter-spacing: .05em; }
+
+    @media (max-width: 820px) {
+      .role-map { grid-template-columns: 1fr; gap: 9px; }
+      .role-arrow { transform: rotate(90deg); height: 26px; }
+      .channel-choice, .grid.three, .implementation, .metrics, .stack { grid-template-columns: 1fr 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .flow-arrow { transform: rotate(90deg); padding: 0; height: 20px; }
+      .flow-node { min-height: auto; }
+    }
+    @media (max-width: 600px) {
+      body { font-size: 15px; }
+      .wrap { width: min(100% - 28px, 1040px); }
+      .hero { padding: 42px 0 36px; }
+      .project-board { grid-template-columns: 82px 1fr 58px; font-size: 11px; }
+      .project-board div { padding: 8px 7px; }
+      .grid.two, .grid.three, .channel-choice, .guardrails, .data-stack, .implementation, .metrics, .stack { grid-template-columns: 1fr; }
+      .schema { grid-template-columns: 1fr 1fr; font-size: 10.5px; }
+      .team { grid-template-columns: 1fr; gap: 8px; }
+      .team-evidence { padding: 10px 0 0; border-left: 0; border-top: 1px dashed var(--line); }
+      .taxonomy { display: block; overflow-x: auto; white-space: normal; }
+      .taxonomy th, .taxonomy td { min-width: 140px; padding: 11px; }
+    }
+    @media print {
+      body { background: #fff; font-size: 11pt; }
+      nav { display: none; }
+      .hero { padding: 28px 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      section { margin: 30px 0; break-inside: avoid; }
+      .card, .team, .phase, .metric, .channel, .flow-node { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="eyebrow">PROJECT BRIEF - 2026.08</div>
+      <h1>A-COP Commerce<br><span class="accent">"한 건의 요청을, 근거를 갖춘 처리로 바꾸는 플랫폼"</span></h1>
+      <p class="summary">구매자 요청을 주문, 상품, 배송, 정책 데이터와 연결해 Case로 관리하고, 고객 피드백을 분석해 반복 문제를 조기 탐지하는 마켓플레이스형 멀티에이전트 고객운영 플랫폼입니다. 단순 답변 생성이 아니라 개인화된 안내, 상태 확인, 외부 확인 요청, 승인 기반 실행, 감사 로그까지 다룹니다.</p>
+      <div class="project-board" aria-label="프로젝트 핵심 요약">
+        <div class="label">PROJECT TOPIC</div><div class="value">다중 에이전트 서빙 기반 고객 피드백 분석 및 맞춤형 응대 자동화</div><div class="status">MATCH</div>
+        <div class="label">TWO OUTPUTS</div><div class="value">개별 Case의 안전한 처리 + 누적 피드백의 문제 탐지·운영 인사이트</div><div class="status">CORE</div>
+        <div class="label">MVP INPUT</div><div class="value">통합 요청 폼 - 챗봇은 이후 교체 가능한 입력 채널</div><div class="status">SCOPE</div>
+      </div>
+    </div>
+  </header>
+
+  <nav aria-label="문서 목차">
+    <div class="wrap">
+      <a href="#domain">도메인</a>
+      <a href="#intake">요청 접수</a>
+      <a href="#case">Case 처리</a>
+      <a href="#teams">에이전트 팀</a>
+      <a href="#insight">피드백 분석</a>
+      <a href="#scenario">대표 시나리오</a>
+      <a href="#data">데이터</a>
+      <a href="#serving">서빙 설계</a>
+      <a href="#roadmap">구현 범위</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <section id="domain">
+      <div class="section-no">01 - DOMAIN DEFINITION</div>
+      <h2>이 프로젝트는 "쇼핑몰 챗봇"이 아니라 마켓플레이스 운영 자동화다</h2>
+      <p class="lead">플랫폼 기업은 거래를 중개하고, 구매자는 상품을 구매하며, 판매자는 상품과 정책을 제공하고, 택배사는 배송을 수행합니다. 고객 요청의 책임 주체가 하나가 아닐 수 있으므로 단일 챗봇보다 Case 중심 협업 구조가 필요합니다.</p>
+      <div class="role-map">
+        <article class="role">
+          <div class="role-code">BUYER - 소비자 고객</div>
+          <h3>구매자</h3>
+          <p>상품 문의, 리뷰, 배송 문의, 교환, 반품, 환불, 판매자 신고를 플랫폼에 요청합니다.</p>
+        </article>
+        <div class="role-arrow">→</div>
+        <article class="role platform">
+          <div class="role-code">PLATFORM - A-COP</div>
+          <h3>이커머스 플랫폼</h3>
+          <p>주문과 정책의 공식 접점입니다. 요청을 Case로 만들고, 근거를 확인하고, 승인된 조치를 실행합니다.</p>
+        </article>
+        <div class="role-arrow">↔</div>
+        <article class="role">
+          <div class="role-code">PARTNERS - B2B</div>
+          <h3>판매자와 배송사</h3>
+          <p>상품 정보, 재고, 판매자 정책 또는 배송 추적 정보를 제공합니다. 필요한 경우 확인 요청을 받고 응답합니다.</p>
+        </article>
+      </div>
+      <div class="card callout" style="margin-top:14px">
+        <strong>역할을 분명히 구분한다.</strong> 구매자는 소비자 고객, 판매자는 플랫폼의 입점 파트너, 배송사는 외부 운영 파트너입니다. 플랫폼은 구매자에게 1차 응대 책임을 지고, 판매자·배송사에는 확인 또는 클레임을 요청합니다. 따라서 "누가 답해야 하는가"가 아니라 "누가 확인하고, 누가 최종 실행 권한을 갖는가"를 분리해야 합니다.
+      </div>
+    </section>
+
+    <section id="intake">
+      <div class="section-no">02 - REQUEST INTAKE</div>
+      <h2>챗봇과 폼은 둘 다 필수가 아니라, 교체 가능한 입력 채널이다</h2>
+      <p class="lead">두 입력 방식이 떠오른 이유는 타당합니다. 그러나 MVP에서 중요한 것은 어떤 화면으로 받느냐보다, 서로 다른 입력을 동일한 Case 구조로 바꾸는 것입니다.</p>
+      <div class="channel-choice">
+        <article class="channel recommended">
+          <span class="tag">MVP RECOMMENDED</span>
+          <h3>통합 요청 폼</h3>
+          <p>반품·환불·배송신고처럼 주문번호, 사유, 첨부 증거가 필요한 공식 요청에 적합합니다. 데이터 누락이 적고 테스트가 쉽습니다.</p>
+        </article>
+        <article class="channel">
+          <span class="tag">OPTION</span>
+          <h3>대화형 챗봇</h3>
+          <p>고객의 자연어 설명을 받기에 좋습니다. 다만 주문 식별, 필수 사유, 사진 등 누락 정보를 재질문하는 흐름이 필요합니다.</p>
+        </article>
+        <article class="channel">
+          <span class="tag">LATER COMBINATION</span>
+          <h3>챗봇에서 폼으로 전환</h3>
+          <p>챗봇은 안내와 사전 분류를 담당하고, 환불·반품 같은 공식 처리는 입력값이 채워진 폼으로 넘깁니다.</p>
+        </article>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>통합 요청 폼의 최소 입력</h3>
+        <div class="schema" aria-label="Case 입력 스키마">
+          <span><b>request_type</b><br>상품 문의 / 배송 / 반품 / 환불 / 신고 / 리뷰</span>
+          <span><b>order_id</b><br>주문 연결 - 없으면 상품 ID 또는 추가 확인</span>
+          <span><b>order_item / quantity</b><br>반품·환불 대상 상품과 수량 선택</span>
+          <span><b>message</b><br>고객 설명과 요청 내용</span>
+          <span><b>evidence</b><br>파손 사진, 배송 화면 등 첨부자료</span>
+          <span><b>channel</b><br>폼 / 챗봇 / 리뷰에서 생성된 VOC</span>
+          <span><b>customer_id</b><br>권한 확인을 위한 구매자 식별자</span>
+          <span><b>service_context</b><br>선호 언어·채널 등 최소 개인화 신호</span>
+          <span><b>consent / notice</b><br>개인정보 처리 고지와 동의 기록</span>
+        </div>
+      </div>
+      <div class="card warning" style="margin-top:14px">
+        <strong>리뷰는 공식 처리 요청과 다르다.</strong> 리뷰는 기본적으로 공개 평가이므로 모든 리뷰를 상담 Case로 만들지 않습니다. 저평점, 파손, 가품, 안전, 사기 의심처럼 정해진 위험 규칙에 해당하는 리뷰만 VOC Case로 전환합니다.
+      </div>
+    </section>
+
+    <section id="case">
+      <div class="section-no">03 - CASE ORCHESTRATION</div>
+      <h2>요청은 한 번 접수되지만, 처리는 여러 팀이 이어받는다</h2>
+      <p class="lead">A-COP의 핵심은 메시지를 곧바로 답변으로 끝내지 않는 것입니다. 접수된 요청을 공식 상태와 근거를 가진 Case로 만들고, 팀 결과와 외부 확인을 같은 상태에 기록합니다.</p>
+      <div class="flow" aria-label="Case 처리 흐름">
+        <article class="flow-node"><div class="step">01 - INTAKE</div><h3>요청 접수</h3><p>폼 또는 챗봇에서 주문·상품·내용·첨부자료를 받습니다.</p></article>
+        <div class="flow-arrow">→</div>
+        <article class="flow-node core"><div class="step">02 - CLASSIFY</div><h3>Case 분류</h3><p>의도, 책임 주체, 주문 연결 여부, 위험도와 필요한 팀을 판별합니다.</p></article>
+        <div class="flow-arrow">→</div>
+        <article class="flow-node core"><div class="step">03 - EVIDENCE</div><h3>근거 수집</h3><p>주문, 결제, 상품, 배송, 정책, 이전 이력을 Context Pack으로 조합합니다.</p></article>
+        <div class="flow-arrow">→</div>
+        <article class="flow-node action"><div class="step">04 - TEAM ACTION</div><h3>처리 제안</h3><p>안내, 외부 확인 요청, 환불 제안, 운영자 검토 요청을 생성합니다.</p></article>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>분류는 최소 일곱 가지 축으로 수행한다</h3>
+        <div style="overflow:auto; margin-top:14px">
+          <table class="taxonomy">
+            <thead><tr><th>분류 축</th><th>값 예시</th><th>라우팅 또는 처리에 미치는 영향</th></tr></thead>
+            <tbody>
+              <tr><td>요청 의도</td><td><span class="chip">상품 문의</span><span class="chip">반품</span><span class="chip">환불</span><span class="chip">배송</span><span class="chip">신고</span></td><td>담당 팀과 필요한 RAG 코퍼스를 선택합니다.</td></tr>
+              <tr><td>책임 관련 주체</td><td><span class="chip">판매자</span><span class="chip">플랫폼</span><span class="chip">배송사</span><span class="chip">복합</span></td><td>외부 확인 요청 대상과 후속 조치 범위를 정합니다.</td></tr>
+              <tr><td>주문 연결 수준</td><td><span class="chip">주문 확인</span><span class="chip">상품만 확인</span><span class="chip">추가정보 필요</span></td><td>바로 처리할지, 주문번호·사진을 재요청할지 결정합니다.</td></tr>
+              <tr><td>위험도</td><td><span class="chip">일반</span><span class="chip">금전 처리</span><span class="chip">안전</span><span class="chip">사기 의심</span></td><td>사람 승인, 즉시 에스컬레이션, 민감정보 접근 여부를 결정합니다.</td></tr>
+              <tr><td>감성·긴급도</td><td><span class="chip">중립</span><span class="chip">부정</span><span class="chip">강한 불만</span><span class="chip">긴급</span></td><td>처리 우선순위와 사람 개입 필요 여부를 정합니다.</td></tr>
+              <tr><td>응대 맥락</td><td><span class="chip">신규</span><span class="chip">재구매</span><span class="chip">선호 채널</span><span class="chip">이전 Case</span></td><td>같은 정책 안에서 안내 순서·언어·톤을 조정합니다.</td></tr>
+              <tr><td>처리 상태</td><td><span class="chip">running</span><span class="chip">waiting_external</span><span class="chip">waiting_approval</span><span class="chip">resolved</span></td><td>외부 파트너 응답과 사람 검토를 잃지 않고 재개할 수 있습니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>Case는 상태 전이와 감사 로그를 함께 가진다</h3>
+        <div class="state-line" aria-label="Case 상태 전이">
+          <code>new</code><i>→</i><code>classified</code><i>→</i><code>gathering_evidence</code><i>→</i><code>proposed</code><i>→</i><code>waiting_approval</code><i>→</i><code>resolved</code>
+        </div>
+        <p style="margin:12px 0 0; color:var(--muted); font-size:13px">정보가 부족하면 <code>needs_more_info</code>, 배송사·판매자 확인이 필요하면 <code>waiting_external</code>으로 이동했다가 같은 Case를 재개합니다. 모든 전이에는 시각, 담당 주체, 근거, 다음 행동을 이벤트로 남깁니다.</p>
+      </div>
+    </section>
+
+    <section id="teams">
+      <div class="section-no">04 - AGENT TEAM DESIGN</div>
+      <h2>MVP는 Supervisor와 3개 전문 팀으로 제한한다</h2>
+      <p class="lead">모든 기능을 자동화하려 하지 않습니다. 다중 에이전트가 필요한 복합 처리와, AI가 단독으로 결정하면 안 되는 승인 경계를 명확히 보여주는 데 집중합니다.</p>
+      <article class="team">
+        <div class="team-code">SUP<br>CASE ROUTER</div>
+        <div><h3>Supervisor / Case Router</h3><p>요청을 Case로 만들고 분류 결과에 따라 담당 팀을 배정합니다. 한 건이 복합 이슈라면 순서와 재개 조건을 관리합니다.</p></div>
+        <div class="team-evidence"><b>INPUT</b>요청 내용<br>분류 결과<br>현재 Case 상태</div>
+      </article>
+      <article class="team">
+        <div class="team-code">ORD<br>ORDER OPS</div>
+        <div><h3>주문·반품·환불 팀</h3><p>주문, 결제, 반품 기간, 판매자 정책을 확인해 가능한 처리안을 제시합니다. 환불 실행은 직접 하지 않고 승인 가능한 Action Proposal로 반환합니다.</p></div>
+        <div class="team-evidence"><b>EVIDENCE</b>주문 상태<br>결제 내역<br>반품·환불 정책</div>
+      </article>
+      <article class="team">
+        <div class="team-code">LOG<br>LOGISTICS OPS</div>
+        <div><h3>배송·물류 팀</h3><p>송장과 배송 상태를 조회하고, 지연·분실·파손에는 배송사 확인 또는 클레임 요청을 만듭니다. 응답이 오기 전에는 Case를 외부 응답 대기 상태로 둡니다.</p></div>
+        <div class="team-evidence"><b>EVIDENCE</b>송장 번호<br>배송 추적 이력<br>파손 첨부자료</div>
+      </article>
+      <article class="team">
+        <div class="team-code">SEL<br>SELLER QUALITY</div>
+        <div><h3>판매자·상품 품질 및 VOC 팀</h3><p>상품 정보, 저평점 리뷰, 반복 불만, 리콜·안전 정보를 모아 판매자 확인 요청 또는 운영자 검토안을 만듭니다. 개별 Case뿐 아니라 판매자·상품·원인별 반복 이슈를 집계해 운영 인사이트로 반환합니다. 판매자 제재는 항상 사람 승인 대상입니다.</p></div>
+        <div class="team-evidence"><b>EVIDENCE</b>상품 카탈로그<br>리뷰/VOC 집계<br>안전·리콜 정보</div>
+      </article>
+      <div class="card danger" style="margin-top:14px">
+        <strong>AI의 역할은 "판결"이 아니라 "근거 있는 제안"이다.</strong> AI는 판매자 사기나 배송사 책임을 확정하지 않습니다. 증거와 정책 조항을 붙여 "추가 확인 필요", "환불 가능성", "제재 검토 필요"를 제안하고, 환불 지급·보상·경고·판매중지는 승인 정책을 거쳐 실행합니다.
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-no">05 - FEEDBACK ANALYTICS AND PERSONALIZATION</div>
+      <h2>개별 요청을 처리하는 동시에, 누적 피드백에서 다음 문제를 먼저 찾는다</h2>
+      <p class="lead">주제의 “고객 피드백 분석”은 Case 처리의 부가 기능이 아닙니다. A-COP은 고객에게는 현재 건의 해결을, 운영자에게는 반복 문제와 우선 대응 대상을 제공하는 두 가지 산출물을 만듭니다.</p>
+      <div class="grid two">
+        <article class="output-card primary">
+          <span class="mini-label">REACTIVE OUTPUT - CASE RESPONSE</span>
+          <h3>이번 요청에 대한 근거 기반 응대</h3>
+          <p>주문·정책·배송 상태를 확인하고, 고객 상황에 맞는 안내와 처리안을 만듭니다. 금전·제재 등 고위험 조치는 사람 승인을 거칩니다.</p>
+        </article>
+        <article class="output-card">
+          <span class="mini-label">PROACTIVE OUTPUT - FEEDBACK INSIGHT</span>
+          <h3>다음 문제를 막기 위한 운영 인사이트</h3>
+          <p>리뷰와 VOC를 판매자·상품·원인·감성·기간 기준으로 집계합니다. 반복 불만, 급격한 부정 감성 증가, 안전 키워드를 운영자 검토 대상으로 올립니다.</p>
+        </article>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>피드백 분석 파이프라인</h3>
+        <div class="flow" aria-label="피드백 분석 흐름">
+          <article class="flow-node"><div class="step">01 - COLLECT</div><h3>수집</h3><p>리뷰, 폼 문의, 해결된 Case의 익명화된 텍스트와 결과를 모읍니다.</p></article>
+          <div class="flow-arrow">→</div>
+          <article class="flow-node core"><div class="step">02 - ANALYZE</div><h3>분석</h3><p>원인·감성·긴급도·책임 주체를 분류하고 유사 의견을 묶습니다.</p></article>
+          <div class="flow-arrow">→</div>
+          <article class="flow-node core"><div class="step">03 - DETECT</div><h3>탐지</h3><p>상품·판매자·배송사별 반복 불만과 기간 대비 급증을 찾습니다.</p></article>
+          <div class="flow-arrow">→</div>
+          <article class="flow-node action"><div class="step">04 - REVIEW</div><h3>운영 검토</h3><p>경보 근거를 보여주고, 검수·판매자 확인·안전 점검을 제안합니다.</p></article>
+        </div>
+      </div>
+      <div class="grid two" style="margin-top:14px">
+        <article class="card">
+          <div class="mini-label">ALERT EXAMPLE</div>
+          <h3 style="margin-top:8px">반복 불만 조기 경보</h3>
+          <p>최근 7일 동안 특정 판매자의 특정 상품에서 “파손”, “포장 불량”으로 분류된 부정 피드백이 기준선보다 증가하면, Seller Quality 팀에 근거 묶음과 함께 검토안을 생성합니다. 이는 자동 제재가 아니라 <strong>사람이 확인할 운영 신호</strong>입니다.</p>
+        </article>
+        <article class="card">
+          <div class="mini-label">PERSONALIZED RESPONSE</div>
+          <h3 style="margin-top:8px">정책은 같게, 안내는 상황에 맞게</h3>
+          <p>재구매 여부, 선호 언어·채널, 이전 문의의 미해결 여부처럼 최소화된 신호를 사용해 안내 순서·톤·에스컬레이션 우선순위를 조정합니다. 고객별로 환불 권리나 금액을 임의로 다르게 판단하지 않습니다.</p>
+          <div class="signal-list">
+            <div class="signal"><b>예시:</b> 강한 부정 감성 + 최근 미해결 Case → 운영자 우선 검토</div>
+            <div class="signal"><b>예시:</b> 선호 채널이 앱 알림 → 같은 처리 상태를 앱 알림 문구로 제공</div>
+          </div>
+        </article>
+      </div>
+      <div class="card warning" style="margin-top:14px">
+        <strong>개인화의 경계:</strong> 민감정보나 불필요한 상세 행동 이력은 사용하지 않으며, 개인화 신호는 응대 경험과 우선순위에만 사용합니다. 법·정책상 권리, 환불 가능 여부, 제재 판단은 모든 고객에게 동일한 규칙과 승인 절차를 적용합니다.
+      </div>
+    </section>
+
+    <section id="scenario">
+      <div class="section-no">06 - KEY SCENARIOS</div>
+      <h2>대표 시나리오 - "상품이 파손됐고 배송도 너무 늦었어요. 반품하고 싶어요."</h2>
+      <p class="lead">한 요청에 주문, 배송, 판매자 품질 이슈가 함께 있는 경우로, 멀티에이전트 구조가 왜 필요한지 가장 잘 보여줍니다.</p>
+      <div class="card">
+        <div class="scenario">
+          <div class="scenario-number">1</div>
+          <div class="scenario-body"><h3>구매자가 통합 요청 폼을 제출한다</h3><p>주문번호, 반품 사유, 파손 사진, "배송이 늦었다"는 설명을 받습니다. 이 단계에서는 단지 접수일 뿐, 환불이나 책임을 확정하지 않습니다.</p></div>
+        </div>
+        <div class="scenario">
+          <div class="scenario-number">2</div>
+          <div class="scenario-body"><h3>Supervisor가 복합 Case로 분류한다</h3><p>주요 의도는 반품/환불, 관련 책임 주체는 배송사와 판매자, 위험도는 금전 처리로 분류합니다. Order Ops와 Logistics Ops를 차례로 배정합니다.</p></div>
+        </div>
+        <div class="scenario">
+          <div class="scenario-number">3</div>
+          <div class="scenario-body"><h3>주문·반품 팀이 정책과 거래 사실을 확인한다</h3><p>수령일, 반품 가능 기간, 결제금액, 판매자 반품 정책을 근거로 환불 가능 범위와 반품비 부담 주체를 제안합니다. 한 주문에 여러 상품·수량이 있으면 <strong>order item과 수량</strong> 단위로 부분 반품 가능 여부를 판단합니다.</p></div>
+        </div>
+        <div class="scenario">
+          <div class="scenario-number">4</div>
+          <div class="scenario-body"><h3>물류 팀이 배송 증거를 확인하고 배송사에 요청한다</h3><p>송장 이력에서 지연 여부를 확인하고, 파손 사진을 포함한 배송 클레임 요청을 생성합니다. 배송사 응답을 기다리는 동안 Case는 <code>waiting_external</code> 상태가 됩니다.</p></div>
+        </div>
+        <div class="scenario">
+          <div class="scenario-number">5</div>
+          <div class="scenario-body"><h3>필요할 때 판매자 품질 팀이 반복성을 점검한다</h3><p>같은 판매자·상품에서 파손과 저평점이 반복되는지 확인합니다. 반복된다면 판매자 주의 또는 상품 검수의 운영자 검토안을 추가합니다.</p>
+            <div class="scenario-branch"><b>승인 분기:</b> 시스템은 “반품 대상 1개 회수 후 환불 제안”, “경미한 파손에 대한 부분 환불 제안” 또는 “반품 회수 후 전액 환불 제안”을 만들 수 있습니다. 세트·묶음 상품은 판매 정책을 확인하며, 실제 금전 처리와 판매자 제재는 운영자가 승인한 뒤에만 Mock 실행됩니다.</div>
+          </div>
+        </div>
+        <div class="scenario">
+          <div class="scenario-number">6</div>
+          <div class="scenario-body"><h3>최종 응답과 VOC가 함께 남는다</h3><p>구매자에게 처리 상태와 근거를 안내하고, 이 사건의 익명화된 유형·원인·결과는 VOC 집계에 반영됩니다. 이후 반복 불만 탐지의 근거가 됩니다.</p></div>
+        </div>
+      </div>
+      <div class="grid two" style="margin-top:14px">
+        <article class="card">
+          <div class="mini-label">SCENARIO B - FEEDBACK ANALYTICS</div>
+          <h3 style="margin-top:8px">리뷰 누적 → 품질 이슈 검토</h3>
+          <p>동일 판매자의 상품에서 “포장 불량” 부정 리뷰가 일정 기간 급증합니다. 분석기는 유사 리뷰 묶음, 증가 추이, 연결 주문 수를 근거로 제시하고 Seller Quality 팀은 판매자 확인·검수 강화 여부를 <strong>운영자 검토안</strong>으로 만듭니다.</p>
+        </article>
+        <article class="card">
+          <div class="mini-label">SCENARIO C - PERSONALIZED RESPONSE</div>
+          <h3 style="margin-top:8px">미해결 이력이 있는 고객의 배송 지연</h3>
+          <p>배송 지연 자체의 보상·처리 기준은 모든 고객에게 동일합니다. 다만 최근 미해결 Case와 강한 부정 감성이 함께 확인되면, 시스템은 빠른 사람 연결과 현재 단계·다음 예정 시점을 먼저 안내하도록 응대 순서를 조정합니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="data">
+      <div class="section-no">07 - DATA AND POLICY RAG</div>
+      <h2>거래 구조, 한국어 피드백, 정책 근거를 구분해 조합한다</h2>
+      <p class="lead">공개 데이터로 데모 흐름을 검증하되, 출처·언어·라이선스의 한계를 숨기지 않습니다. 실제 기업 연동 단계에서는 해당 기업이 권한을 부여한 주문·상품·배송·문의 데이터만 사용합니다.</p>
+      <div class="data-stack">
+        <div class="card">
+          <h3>데모에 바로 쓰는 데이터</h3>
+          <div class="data-row"><span class="source-badge">REAL / ANON</span><div><b>Olist Brazilian E-Commerce</b><p>주문, 상품, 결제, 배송, 판매자를 연결하는 거래 골격으로 사용합니다. 리뷰는 포르투갈어이고 텍스트 공란이 있어, 한국어 응대 품질을 직접 증명하는 데이터로는 사용하지 않습니다.</p></div></div>
+          <div class="data-row"><span class="source-badge">KOREAN VOC</span><div><b>허용된 한국어 리뷰·VOC 또는 통제된 골드셋</b><p>라이선스와 접근 조건을 확인한 한국어 데이터만 사용합니다. 확보가 어려운 Case는 사실과 다름을 명시한 통제된 합성 VOC로 만들고, Olist 주문 ID에 매핑해 한국어 시연을 구성합니다.</p></div></div>
+          <div class="data-row"><span class="source-badge">OFFICIAL</span><div><b>정책 RAG 코퍼스</b><p>소비자분쟁해결기준, 전자상거래 소비자보호 관련 법령, 표준약관, 소비자24 상담사례를 출처·시행일·검토일과 함께 저장합니다.</p></div></div>
+          <div class="data-row"><span class="source-badge">PUBLIC API</span><div><b>Safety Korea 제품 안전인증·리콜 정보</b><p>KC 인증과 국내외 리콜 정보를 조회해 위험 상품 또는 안전 이슈 Case를 에스컬레이션합니다.</p></div></div>
+          <div class="data-row"><span class="source-badge mock">CONTROLLED MOCK</span><div><b>가상 주문·판매자·배송사 API</b><p>환불 실행, 배송사 확인 요청, 판매자 경고는 통제된 Mock Action으로 구현해 상태 변경과 승인 흐름을 안전하게 검증합니다.</p></div></div>
+        </div>
+        <div class="card">
+          <h3>데이터를 쓰는 위치</h3>
+          <div class="data-row"><span class="source-badge">RAG</span><div><b>정책·상품 근거 검색</b><p>공식 정책, 상품 사양, 판매자 정책, 리콜 정보를 팀별 코퍼스로 분리하고, 답변에는 근거 문서와 검토일을 남깁니다.</p></div></div>
+          <div class="data-row"><span class="source-badge">DB</span><div><b>공식 상태 조회</b><p>주문, 결제, 배송, 반품, 승인 상태는 벡터 검색이 아니라 트랜잭션 DB에서 정확하게 조회합니다.</p></div></div>
+          <div class="data-row"><span class="source-badge">MODEL</span><div><b>분류·감성·반복 VOC 분석</b><p>요청 의도, 감성, 책임 주체, 위험도를 분류하고 반복 불만 패턴을 집계합니다.</p></div></div>
+          <div class="data-row"><span class="source-badge">AUDIT</span><div><b>실행 전후 기록</b><p>어떤 근거로 누가 어떤 조치를 제안·승인·실행했는지 Case 이벤트와 감사 로그에 남깁니다.</p></div></div>
+        </div>
+      </div>
+      <div class="card warning" style="margin-top:14px">
+        <strong>실제 기업 도입 시의 데이터 원칙:</strong> 경쟁사 페이지의 리뷰를 대량 수집하는 것이 아니라, 해당 기업이 권한을 부여한 주문·상품·문의 데이터와 공식 API를 연결합니다. 고객명·주소·연락처 같은 개인정보는 RAG 코퍼스에 넣지 않고, 권한 통제된 운영 DB에 최소 범위로 보관합니다. 고객 메시지·리뷰는 신뢰할 수 없는 입력으로 취급해 모델 지시가 아닌 분석 대상 텍스트로만 처리합니다.
+      </div>
+    </section>
+
+    <section id="serving">
+      <div class="section-no">08 - AGENT SERVING DESIGN</div>
+      <h2>상태를 잃지 않고 멈추고 재개하는 에이전트 서빙 구조</h2>
+      <p class="lead">“서빙 기반”은 여러 에이전트를 그려 놓는 것에 그치지 않습니다. 요청을 API로 받고, 외부 확인·사람 승인을 거치는 동안 Case 상태를 영속화하며, 처리 과정과 비용을 관측할 수 있어야 합니다.</p>
+      <div class="stack" aria-label="권장 서빙 구조">
+        <div class="stack-item"><b>ENTRY API</b><span>폼·챗봇 요청을 받는 FastAPI 계층. 인증, 입력 검증, Case 생성 담당.</span></div>
+        <div class="stack-item"><b>ORCHESTRATOR</b><span>LangGraph 기반 Supervisor 그래프. 팀 라우팅, interrupt, 재개 조건을 관리.</span></div>
+        <div class="stack-item"><b>STATE STORE</b><span>PostgreSQL과 Checkpointer에 Case·이벤트·승인 상태를 영속화.</span></div>
+        <div class="stack-item"><b>ASYNC WORKER</b><span>배송사 확인, 알림, 분석 집계처럼 오래 걸리는 작업을 이벤트·큐로 분리.</span></div>
+        <div class="stack-item"><b>OBSERVABILITY</b><span>트레이싱으로 모델·도구 호출, 지연, 토큰, 오류, 승인 경로를 기록.</span></div>
+      </div>
+      <div class="grid two" style="margin-top:14px">
+        <article class="card">
+          <div class="mini-label">WHY MULTI-AGENT</div>
+          <h3 style="margin-top:8px">한 모델이 모든 일을 하는 방식과 다른 이유</h3>
+          <ul class="policy-list">
+            <li>주문·정책, 물류, 판매자 품질은 조회 데이터와 판단 기준이 다릅니다.</li>
+            <li>배송사 확인처럼 외부 대기를 별도 흐름으로 두어야 합니다.</li>
+            <li>팀마다 허용 도구와 승인 경계가 달라 최소 권한을 적용할 수 있습니다.</li>
+          </ul>
+          <p>단, MVP는 Supervisor와 3개 팀으로 제한해 멀티에이전트가 목적이 되는 것을 피합니다.</p>
+        </article>
+        <article class="card">
+          <div class="mini-label">AGENT OUTPUT CONTRACT</div>
+          <h3 style="margin-top:8px">모든 팀은 답변이 아니라 Action Proposal을 반환한다</h3>
+          <div class="schema" style="grid-template-columns:1fr 1fr; font-size:11px">
+            <span><b>action_type</b><br>안내 / 반품 회수 / 환불 제안 / 외부 확인 / 에스컬레이션</span>
+            <span><b>risk_level</b><br>일반 / 금전 / 안전 / 제재</span>
+            <span><b>evidence + policy_refs</b><br>거래 사실과 정책 근거</span>
+            <span><b>requires_approval + next_state</b><br>승인 여부와 다음 상태</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="section-no">09 - MVP AND EXTENSIBILITY</div>
+      <h2>처음에는 한 기업의 운영 흐름을 재현하고, 이후 기업별로 이식한다</h2>
+      <p class="lead">이식 가능성은 "모든 쇼핑몰에 즉시 연결된다"는 뜻이 아닙니다. Case 엔진은 공통으로 두고, 기업별 데이터 연결, 정책, 승인 기준만 설정 가능한 구조를 만든다는 뜻입니다.</p>
+      <div class="implementation">
+        <article class="phase"><div class="phase-no">PHASE 1</div><h3>Case·골드셋 MVP</h3><p>통합 요청 폼, 주문 Mock DB, 3개 팀 라우팅, 상태 화면과 라벨링된 한국어 Case 150건을 구성합니다.</p></article>
+        <article class="phase"><div class="phase-no">PHASE 2</div><h3>근거·승인 처리</h3><p>정책 RAG, 배송 추적 Mock, Action Proposal, 사람 승인과 감사 로그를 연결합니다.</p></article>
+        <article class="phase"><div class="phase-no">PHASE 3</div><h3>피드백 분석·개인화</h3><p>반복 불만 대시보드, 감성·긴급도 우선순위, 최소 신호 기반 응대 순서 조정을 구현합니다.</p></article>
+        <article class="phase"><div class="phase-no">PHASE 4</div><h3>기업 이식 구조</h3><p>주문, 카탈로그, 물류, 결제 Action을 Port/Adapter로 분리하고 기업별 정책 config를 적용합니다.</p></article>
+      </div>
+      <div class="grid two" style="margin-top:14px">
+        <div class="card"><div class="mini-label">COMMON ENGINE</div><h3 style="margin-top:8px">모든 기업에 공통인 부분</h3><p>Case Lifecycle, 분류, Agent Team 계약, Context Pack, 승인, 감사 로그, 평가 포맷</p></div>
+        <div class="card"><div class="mini-label">TENANT CONFIGURATION</div><h3 style="margin-top:8px">기업별로 바뀌는 부분</h3><p>주문/상품/물류 API, 반품·환불 정책, SLA, 승인 금액, 판매자 제재 규칙, RAG 문서</p></div>
+      </div>
+    </section>
+
+    <section id="evaluation">
+      <div class="section-no">10 - EVALUATION AND BOUNDARIES</div>
+      <h2>"답변을 잘했다"보다 "안전하게 처리했고, 문제를 발견했는가"를 평가한다</h2>
+      <p class="lead">문장 품질뿐 아니라 정확한 팀 배정, 근거 포함, 승인 경계 준수, Case 상태 전이와 반복 불만 탐지를 함께 측정합니다. 멀티에이전트 구조의 효용은 반드시 비교 실험으로 확인합니다.</p>
+      <div class="metrics">
+        <article class="metric"><b>ROUTING</b><span>분류·팀 배정 정확도</span><p>의도·책임 주체·위험도 F1. 목표: 골드셋 기준 0.85 이상.</p></article>
+        <article class="metric"><b>EVIDENCE</b><span>근거 적합성</span><p>거래 사실과 정책 근거를 올바르게 참조하는 비율과 LLM 루브릭 평가.</p></article>
+        <article class="metric"><b>SAFETY</b><span>승인 경계 준수</span><p>환불·제재 등 고위험 조치의 승인 위반율. 목표: 0%.</p></article>
+        <article class="metric"><b>OPERATIONS</b><span>Case·경보 완결성</span><p>외부 대기·재개·해결·감사 로그 및 반복 불만 경보가 누락 없이 이어지는 비율.</p></article>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>평가 프로토콜</h3>
+        <div class="grid three" style="margin-top:14px">
+          <div><div class="mini-label">GOLD SET</div><p style="margin:7px 0 0; color:var(--muted); font-size:13px">한국어 Case 150건에 의도, 책임 주체, 위험도, 기대 Action, 승인 여부를 라벨링합니다.</p></div>
+          <div><div class="mini-label">BASELINE</div><p style="margin:7px 0 0; color:var(--muted); font-size:13px">단일 LLM + 도구 호출과 Supervisor + 3개 팀을 같은 골드셋에서 비교합니다.</p></div>
+          <div><div class="mini-label">ABLATION</div><p style="margin:7px 0 0; color:var(--muted); font-size:13px">RAG 제거, 승인 게이트 제거 시 근거 품질과 안전 위반이 어떻게 달라지는지 확인합니다.</p></div>
+        </div>
+      </div>
+      <div class="guardrails" style="margin-top:14px">
+        <article class="guardrail"><div class="mark">IN SCOPE</div><h3 style="margin-top:7px">구현으로 증명할 것</h3><p>요청 접수부터 복합 Case 분류, 팀 협업, 정책 근거, 승인 후 Mock 실행, 피드백 분석과 개인화된 안내까지의 완결된 운영 흐름</p></article>
+        <article class="guardrail"><div class="mark">OUT OF SCOPE</div><h3 style="margin-top:7px">MVP에서 하지 않을 것</h3><p>실제 카드 환불, 실제 판매자 제재, 택배사 계약 시스템 연동, 파손 사진 자동 판독, 경쟁사 대규모 크롤링</p></article>
+      </div>
+      <div class="card danger" style="margin-top:14px">
+        <strong>추가 가드레일:</strong> 고객 텍스트와 리뷰는 신뢰할 수 없는 입력으로 분리하고, 도구 조회는 구조화된 권한 범위에서만 수행합니다. Case별 최대 단계·도구 호출·토큰 예산을 두며, 반복 호출 또는 무진전 상태는 Supervisor가 사람에게 에스컬레이션합니다. LLM에는 필요한 개인정보만 마스킹해 전달합니다.
+      </div>
+    </section>
+
+    <section>
+      <div class="section-no">11 - ONE SENTENCE</div>
+      <div class="card callout">
+        <h2 style="font-size:22px">최종 프로젝트 정의</h2>
+        <p><strong>기업별 주문·상품·배송·정책 시스템과 연동하여 구매자 문의, 반품·환불, 배송 이슈, 판매자 VOC를 Case 단위로 안전하게 처리하고, 누적 피드백에서 반복 문제를 조기 탐지하며, 고객 맥락에 맞는 안내를 제공하는 멀티에이전트 이커머스 Customer Operations Platform.</strong></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    A-COP COMMERCE - MARKETPLACE CUSTOMER OPERATIONS - CASE / EVIDENCE / APPROVAL / AUDIT - 2026.08
+  </footer>
+</body>
+</html>

@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>A-COP: AI 연동형 모듈형 에이전틱 고객운영 플랫폼 브리핑</title>
+<style>
+  :root {
+    --bg: #f7f8fb;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --line: #d1d5db;
+    --accent: #0f766e;
+    --accent2: #1d4ed8;
+    --accent3: #7c3aed;
+    --soft: #ecfeff;
+    --soft2: #eef2ff;
+    --soft3: #f5f3ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  header {
+    background: linear-gradient(135deg, #0f766e, #1d4ed8);
+    color: white;
+    padding: 40px 32px 32px;
+  }
+  header h1 { margin: 0 0 10px; font-size: 34px; }
+  header p { margin: 6px 0; opacity: .96; }
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .section {
+    background: var(--card);
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 24px;
+    margin: 0 0 20px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, .05);
+  }
+  h2 {
+    margin: 0 0 14px;
+    font-size: 24px;
+    color: #111827;
+  }
+  h3 {
+    margin: 18px 0 10px;
+    font-size: 18px;
+    color: #111827;
+  }
+  .lead {
+    font-size: 16px;
+    color: var(--muted);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .card {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 16px;
+    background: white;
+  }
+  .pill {
+    display: inline-block;
+    background: #e0f2fe;
+    color: #075985;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    margin: 0 6px 6px 0;
+  }
+  ul { margin: 8px 0 0 18px; }
+  li { margin-bottom: 6px; }
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid #d1d5db;
+    padding: 10px 12px;
+    vertical-align: top;
+  }
+  th {
+    background: #f3f4f6;
+    text-align: left;
+  }
+  .diagram svg text { text-rendering: geometricPrecision; }
+  .diagram {
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 12px;
+    background: linear-gradient(180deg, #ffffff, #fbfbfd);
+    overflow-x: auto;
+  }
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    padding: 14px;
+    border-radius: 12px;
+    white-space: pre-wrap;
+  }
+  .kpi {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .kpi .box {
+    border: 1px solid #dbeafe;
+    background: #f8fbff;
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .kpi .n {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+  .small { font-size: 14px; color: var(--muted); }
+  .diagram-label { font-size: 14px; font-weight: 800; letter-spacing: .02em; color: #0f172a; }
+  .diagram-caption { font-size: 13px; font-weight: 600; color: #475569; }
+  .footer {
+    font-size: 13px; color: var(--muted); text-align: center; margin: 28px 0 60px;
+  }
+  @media (max-width: 900px) {
+    .grid, .grid-3, .kpi {
+      grid-template-columns: 1fr;
+    }
+    header h1 { font-size: 28px; }
+  }
+
+  .diagram svg text {
+    stroke: none !important;
+    text-shadow: none !important;
+    paint-order: normal !important;
+  }
+
+
+  /* ---- Why Agentic / CSS-only diagrams ---- */
+  .acop-callout {
+    margin: 16px 0;
+    padding: 18px 20px;
+    border: 2px solid #2563eb;
+    border-radius: 16px;
+    background: #eff6ff;
+    color: #0f172a;
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .acop-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+  }
+  .acop-compare-card {
+    border: 1px solid #dbe2ea;
+    border-radius: 16px;
+    padding: 18px;
+    background: #fff;
+  }
+  .acop-compare-card.old { border-top: 5px solid #94a3b8; }
+  .acop-compare-card.new { border-top: 5px solid #2563eb; background: #f8fbff; }
+  .acop-compare-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 12px;
+  }
+  .acop-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 620px;
+    margin: 10px auto;
+  }
+  .acop-node {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 11px 14px;
+    background: #fff;
+    text-align: center;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .acop-node.blue { background: #eef2ff; border-color: #a5b4fc; }
+  .acop-node.green { background: #ecfdf5; border-color: #86efac; }
+  .acop-node.orange { background: #fff7ed; border-color: #fdba74; }
+  .acop-node.purple { background: #f5f3ff; border-color: #c4b5fd; }
+  .acop-arrow {
+    text-align: center;
+    font-size: 24px;
+    line-height: 1.1;
+    color: #475569;
+    font-weight: 800;
+    padding: 3px 0;
+  }
+  .acop-team-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .acop-team {
+    border: 1px solid #a5b4fc;
+    border-radius: 12px;
+    padding: 12px 8px;
+    background: #f5f3ff;
+    text-align: center;
+    font-weight: 800;
+    color: #312e81;
+  }
+  .acop-team small {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+  }
+  .acop-reasons {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+  }
+  .acop-reason {
+    border: 1px solid #dbe2ea;
+    border-radius: 16px;
+    padding: 16px;
+    background: #fff;
+  }
+  .acop-reason .num {
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #1d4ed8;
+    color: white;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .acop-reason h3 { margin: 4px 0 8px; }
+  .acop-map {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-top: 14px;
+  }
+  .acop-map-box {
+    border: 1px solid #dbe2ea;
+    border-radius: 14px;
+    padding: 14px;
+    background: #f8fafc;
+  }
+  .acop-map-arrow {
+    font-size: 28px;
+    font-weight: 800;
+    color: #2563eb;
+  }
+  .acop-arch {
+    max-width: 760px;
+    margin: 16px auto 4px;
+  }
+  .acop-source-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .acop-source {
+    border: 1px solid #a7f3d0;
+    background: #f0fdf4;
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+    font-weight: 700;
+  }
+  .acop-note {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-left: 4px solid #0f766e;
+    background: #f0fdfa;
+    color: #334155;
+    border-radius: 8px;
+  }
+  .acop-level {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #e0e7ff;
+    color: #3730a3;
+    font-weight: 800;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .acop-graph-grid {
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: 16px;
+  }
+  @media (max-width: 900px) {
+    .acop-compare, .acop-reasons, .acop-graph-grid { grid-template-columns: 1fr; }
+    .acop-team-grid, .acop-source-grid { grid-template-columns: 1fr; }
+    .acop-map { grid-template-columns: 1fr; }
+    .acop-map-arrow { transform: rotate(90deg); text-align: center; }
+  }
+
+
+  .gv-wrap { border:1px solid #e5e7eb; border-radius:16px; background:#fff; padding:14px; overflow-x:auto; }
+  .gv-svg { width:100%; height:auto; min-width:760px; display:block; }
+  .component-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; }
+  .component-card { border:1px solid #dbe2ea; border-radius:14px; padding:15px; background:#fff; }
+  .component-card h3 { margin:0 0 8px; font-size:17px; }
+  .component-card .role { font-weight:800; color:#1d4ed8; margin-bottom:6px; }
+  .component-card .io { margin-top:8px; padding:9px 10px; background:#f8fafc; border-radius:9px; font-size:13px; color:#475569; }
+  .slot-title { display:inline-block; padding:7px 12px; border-radius:10px; background:linear-gradient(135deg,#6d28d9,#4f46e5); color:white; font-weight:900; letter-spacing:.02em; box-shadow:0 5px 14px rgba(79,70,229,.22); }
+  .folder-tree { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:#0f172a; color:#e2e8f0; border-radius:14px; padding:18px; white-space:pre-wrap; overflow-x:auto; line-height:1.72; }
+  .why-box { padding:14px 16px; border-left:4px solid #2563eb; background:#eff6ff; border-radius:10px; margin-top:14px; }
+  .ownership-table td:first-child { width:22%; font-weight:800; background:#f8fafc; }
+  .role-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .role-card { border:1px solid #dbe2ea; border-radius:16px; padding:16px; background:#fff; }
+  .role-card h3 { margin:0 0 10px; }
+  .role-card.runtime { border-top:5px solid #7c3aed; }
+  .role-card.integration { border-top:5px solid #0f766e; }
+  .role-card.agent { border-top:5px solid #2563eb; }
+  .role-card.ui { border-top:5px solid #f59e0b; }
+  .boundary-note { font-size:13px; color:#475569; background:#f8fafc; border-radius:10px; padding:9px 11px; margin-top:10px; }
+  @media (max-width:900px){ .component-grid,.role-grid{grid-template-columns:1fr;} .gv-svg{min-width:680px;} }
+
+</style>
+</head>
+<body>
+<header>
+  <h1>A-COP: AI 연동형 모듈형 에이전틱 고객운영 플랫폼</h1>
+  <p><strong>부트캠프 주제 대응:</strong> 다중 에이전트 서빙 기반 고객 피드백 분석 및 맞춤형 응대 자동화 시스템</p>
+  <p>고객 피드백 분석 + 전문 Agent Team 협업 + 외부 소비자 AI 연동 + 모듈형 Agentic Basement</p>
+</header>
+
+<div class="container">
+
+  <section class="section">
+    <h2>1. 한눈에 보는 핵심 그림</h2>
+    <p class="lead">이 프로젝트는 단순 챗봇이 아니라, 고객 피드백을 기반으로 실제 업무 단위의 전문 AI Agent Team이 협업하여 문제를 해결하는 <strong>Agentic Customer Operations Platform</strong>이다.</p>
+    <div class="grid-3">
+      <div class="card">
+        <h3>핵심 아이디어</h3>
+        <ul>
+          <li>고객 피드백을 단순 답변용 입력이 아니라 <strong>Customer Case</strong>로 관리</li>
+          <li><strong>업무 책임 단위 Agent Team Module</strong> 구성 — 실제 Team 종류와 개수는 요구사항 분석 후 결정</li>
+          <li>RAG, Memory, Shared State를 통해 Agent 협업</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>차별점</h3>
+        <ul>
+          <li>고정 파이프라인이 아니라 <strong>동적 분기·재처리·승인</strong></li>
+          <li>외부 사용자의 <strong>개인 AI(ChatGPT/Claude/Gemini)</strong>가 우리 서비스 API/MCP로 접속 가능</li>
+          <li>도메인 확장이 가능한 <strong>모듈형 Basement</strong> 구조</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>시연 포인트</h3>
+        <ul>
+          <li>구독 해지 후 추가 결제</li>
+          <li>권한 동기화 오류</li>
+          <li>반복 VOC 탐지 및 리포트</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  
+<section class="section">
+  <h2>2. 왜 기존 Pipeline을 Agentic Customer Operations로 확장하는가?</h2>
+  <p class="lead">
+    팀에게는 “Agentic AI를 쓰자”부터 설명하는 것이 아니라, <strong>기존 구조가 어떤 문제를 해결하지 못하는지</strong>부터 보여준다.
+  </p>
+
+  <div class="acop-callout">
+    Agent 수를 늘리자는 제안이 아니다. 고정된 처리 단계를 Agent라고 부르는 대신,
+    실제 고객 업무에서 서로 다른 책임·지식·도구를 가진 업무 단위를 모듈형 Agent Team으로 구성하고,
+    상위 Agentic System이 이들의 협업과 상태를 관리하도록 만들자는 제안이다.
+  </div>
+
+  <div class="acop-compare">
+    <div class="acop-compare-card old">
+      <div class="acop-compare-title">기존 안 — 단계 중심 Pipeline</div>
+      <div class="acop-flow">
+        <div class="acop-node">고객</div>
+        <div class="acop-arrow">↓</div>
+        <div class="acop-node">감성·의도·이슈 분석</div>
+        <div class="acop-arrow">↓</div>
+        <div class="acop-node">검색 / RAG</div>
+        <div class="acop-arrow">↓</div>
+        <div class="acop-node">답변 생성</div>
+        <div class="acop-arrow">↓</div>
+        <div class="acop-node">검수</div>
+      </div>
+      <p class="small">
+        분석·검색·생성·검수를 각각 Agent라고 부르면 구조는 여전히 A → B → C → D로 고정되어 있어
+        “왜 굳이 Multi-Agent인가?”라는 질문이 남는다.
+      </p>
+    </div>
+
+    <div class="acop-compare-card new">
+      <div class="acop-compare-title">제안 안 — 업무 책임 중심 Agentic System</div>
+      <div class="acop-flow">
+        <div class="acop-node blue">고객 문제</div>
+        <div class="acop-arrow">↓</div>
+        <div class="acop-node blue">Customer Case</div>
+        <div class="acop-arrow">↓</div>
+        <div class="acop-node purple">Agentic Controller</div>
+        <div class="acop-arrow">↓</div>
+        <div class="acop-team-grid">
+          <div class="acop-team">Agent Team A<small>업무 책임 A</small></div>
+          <div class="acop-team">Agent Team B<small>업무 책임 B</small></div>
+          <div class="acop-team">Agent Team C<small>업무 책임 C</small></div>
+        </div>
+        <div class="acop-arrow">↓</div>
+        <div class="acop-node orange">Shared State</div>
+        <div class="acop-arrow">↓</div>
+        <div class="acop-node green">해결 / 재계획 / 승인 / 다른 Team 위임</div>
+      </div>
+      <p class="small">
+        Team A/B/C는 고정 이름이 아니다. 실제 업무 분석 결과에 따라 필요한 Team Module을 만들고 Registry에 등록한다.
+      </p>
+    </div>
+  </div>
+
+  <div class="acop-reasons">
+    <div class="acop-reason">
+      <div class="num">1</div>
+      <h3>Multi-Agent의 이유가 생긴다</h3>
+      <p>
+        검색 Agent, 생성 Agent처럼 단계를 나누는 것이 아니라 서로 다른 <strong>업무 목표·권한·Tool·Knowledge</strong>를
+        가진 팀을 분리한다. 따라서 Agent 간 협업 자체가 실제 업무 구조와 연결된다.
+      </p>
+    </div>
+
+    <div class="acop-reason">
+      <div class="num">2</div>
+      <h3>LangGraph의 이유가 생긴다</h3>
+      <p>
+        한 Case가 한 번에 끝나지 않고 Team 재배정, 추가 정보 대기, Human Approval,
+        실패 후 재처리, 상태 복원과 같은 <strong>분기·순환·중단·재개</strong>를 갖는다.
+      </p>
+    </div>
+
+    <div class="acop-reason">
+      <div class="num">3</div>
+      <h3>기존 과제를 버리지 않는다</h3>
+      <p>
+        고객 피드백, 감성·의도·이슈 분석, RAG, Multi-Agent, 맞춤형 응대는 그대로 유지한다.
+        단순 답변 Pipeline을 <strong>Customer Case 해결 시스템</strong>으로 확장한다.
+      </p>
+    </div>
+  </div>
+
+  <h3>기존 부트캠프 요구사항과의 연결</h3>
+  <div class="acop-map">
+    <div class="acop-map-box">
+      <strong>기존 요구</strong><br/>
+      고객 피드백 수집 · 감성/의도/이슈 분석 · RAG · Multi-Agent · 맞춤형 응대
+    </div>
+    <div class="acop-map-arrow">→</div>
+    <div class="acop-map-box">
+      <strong>확장된 구현</strong><br/>
+      Customer Case · 업무별 Agent Team · Shared State · 동적 재계획 · Human Approval · 외부 AI 연동
+    </div>
+  </div>
+
+  <div class="acop-note">
+    <strong>팀 설명용 한 문장:</strong>
+    기존 과제를 없애는 것이 아니라, “고객에게 답변 하나 생성”에서
+    “하나의 고객 문제를 여러 전문 AI 팀이 협업하여 해결”하는 구조로 한 단계 확장한다.
+  </div>
+</section>
+
+
+
+
+
+
+<section class="section">
+  <h2>3. 전체 아키텍처 — Level 1 + 상세 아키텍처</h2>
+  <p class="lead">
+    먼저 전체 책임 흐름을 단순하게 보고, 바로 아래에서 Message Broker·Registry·Shared State·Tool Layer까지 포함한 상세 구조를 본다.
+  </p>
+
+  <h3>3-1. Level 1 — 팀원이 먼저 이해해야 하는 전체 흐름</h3>
+  <div class="diagram">
+    <div class="acop-arch">
+      <div class="acop-node blue">사용자</div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-team-grid">
+        <div class="acop-team">Web UI<small>일반 사용자 접점</small></div>
+        <div class="acop-team">Personal AI<small>ChatGPT / Claude / 기타 AI</small></div>
+        <div class="acop-team">운영자 UI<small>Case / Trace / Approval</small></div>
+      </div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-node blue">Agent API / MCP</div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-node blue">Agent Gateway · 인증 / 권한 / Scope</div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-node purple">Customer Case Layer</div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-node green">Context Broker</div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-source-grid">
+        <div class="acop-source">RAG / Knowledge</div>
+        <div class="acop-source">DB / Current State</div>
+        <div class="acop-source">Memory / History</div>
+      </div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-node purple">Agentic Controller</div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-team-grid">
+        <div class="acop-team">Agent Team A<small>등록형 Module</small></div>
+        <div class="acop-team">Agent Team B<small>등록형 Module</small></div>
+        <div class="acop-team">Agent Team C<small>등록형 Module</small></div>
+      </div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-node orange">Shared State</div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-node blue">Tool / Action Layer</div>
+      <div class="acop-arrow">↓</div>
+      <div class="acop-node green">결과 / 응답 / 후속 작업</div>
+    </div>
+  </div>
+
+  <h3>3-2. 상세 아키텍처 — 구현 시 실제로 분리되는 컴포넌트</h3>
+  <div class="gv-wrap"><!-- Generated by graphviz version 2.42.4 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg class="gv-svg"
+ viewBox="0.00 0.00 842.80 735.80" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(14.4 721.4)">
+<title>G</title>
+<g id="clust1" class="cluster">
+<title>cluster_clients</title>
+<path fill="transparent" stroke="#dbeafe" stroke-dasharray="5,2" d="M20,-628C20,-628 340,-628 340,-628 346,-628 352,-634 352,-640 352,-640 352,-687 352,-687 352,-693 346,-699 340,-699 340,-699 20,-699 20,-699 14,-699 8,-693 8,-687 8,-687 8,-640 8,-640 8,-634 14,-628 20,-628"/>
+<text text-anchor="middle" x="180" y="-687" font-family="Arial, sans-serif" font-size="10.00" fill="#1d4ed8">External Interfaces</text>
+</g>
+<!-- web -->
+<g id="node1" class="node">
+<title>web</title>
+<path fill="#eef2ff" stroke="#cbd5e1" stroke-width="1.2" d="M331.5,-672C331.5,-672 296.5,-672 296.5,-672 290.5,-672 284.5,-666 284.5,-660 284.5,-660 284.5,-648 284.5,-648 284.5,-642 290.5,-636 296.5,-636 296.5,-636 331.5,-636 331.5,-636 337.5,-636 343.5,-642 343.5,-648 343.5,-648 343.5,-660 343.5,-660 343.5,-666 337.5,-672 331.5,-672"/>
+<text text-anchor="middle" x="314" y="-651.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Web UI</text>
+</g>
+<!-- api -->
+<g id="node4" class="node">
+<title>api</title>
+<path fill="#dbeafe" stroke="#cbd5e1" stroke-width="1.5" d="M230.5,-596C230.5,-596 149.5,-596 149.5,-596 143.5,-596 137.5,-590 137.5,-584 137.5,-584 137.5,-572 137.5,-572 137.5,-566 143.5,-560 149.5,-560 149.5,-560 230.5,-560 230.5,-560 236.5,-560 242.5,-566 242.5,-572 242.5,-572 242.5,-584 242.5,-584 242.5,-590 236.5,-596 230.5,-596"/>
+<text text-anchor="middle" x="190" y="-575.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Agent API / MCP</text>
+</g>
+<!-- web&#45;&gt;api -->
+<g id="edge1" class="edge">
+<title>web&#45;&gt;api</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M289.75,-635.99C289.75,-613.51 289.75,-578 289.75,-578 289.75,-578 249.5,-578 249.5,-578"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="249.5,-575.55 242.5,-578 249.5,-580.45 249.5,-575.55"/>
+</g>
+<!-- pai -->
+<g id="node2" class="node">
+<title>pai</title>
+<path fill="#eef2ff" stroke="#cbd5e1" stroke-width="1.2" d="M248,-672C248,-672 132,-672 132,-672 126,-672 120,-666 120,-660 120,-660 120,-648 120,-648 120,-642 126,-636 132,-636 132,-636 248,-636 248,-636 254,-636 260,-642 260,-648 260,-648 260,-660 260,-660 260,-666 254,-672 248,-672"/>
+<text text-anchor="middle" x="190" y="-657.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Personal AI</text>
+<text text-anchor="middle" x="190" y="-645.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">ChatGPT · Claude · etc.</text>
+</g>
+<!-- pai&#45;&gt;api -->
+<g id="edge2" class="edge">
+<title>pai&#45;&gt;api</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M190,-635.99C190,-635.99 190,-603.15 190,-603.15"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="192.45,-603.15 190,-596.15 187.55,-603.15 192.45,-603.15"/>
+</g>
+<!-- ops -->
+<g id="node3" class="node">
+<title>ops</title>
+<path fill="#eef2ff" stroke="#cbd5e1" stroke-width="1.2" d="M84,-672C84,-672 28,-672 28,-672 22,-672 16,-666 16,-660 16,-660 16,-648 16,-648 16,-642 22,-636 28,-636 28,-636 84,-636 84,-636 90,-636 96,-642 96,-648 96,-648 96,-660 96,-660 96,-666 90,-672 84,-672"/>
+<text text-anchor="middle" x="56" y="-651.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Operator UI</text>
+</g>
+<!-- ops&#45;&gt;api -->
+<g id="edge3" class="edge">
+<title>ops&#45;&gt;api</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M92.25,-635.99C92.25,-613.51 92.25,-578 92.25,-578 92.25,-578 130.41,-578 130.41,-578"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="130.41,-580.45 137.41,-578 130.41,-575.55 130.41,-580.45"/>
+</g>
+<!-- gate -->
+<g id="node5" class="node">
+<title>gate</title>
+<path fill="#dbeafe" stroke="#cbd5e1" stroke-width="1.5" d="M272,-520C272,-520 108,-520 108,-520 102,-520 96,-514 96,-508 96,-508 96,-496 96,-496 96,-490 102,-484 108,-484 108,-484 272,-484 272,-484 278,-484 284,-490 284,-496 284,-496 284,-508 284,-508 284,-514 278,-520 272,-520"/>
+<text text-anchor="middle" x="190" y="-505.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Agent Gateway</text>
+<text text-anchor="middle" x="190" y="-493.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">OAuth · User/Client · Scope · Risk</text>
+</g>
+<!-- api&#45;&gt;gate -->
+<g id="edge4" class="edge">
+<title>api&#45;&gt;gate</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M190,-559.99C190,-559.99 190,-527.15 190,-527.15"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="192.45,-527.15 190,-520.15 187.55,-527.15 192.45,-527.15"/>
+</g>
+<!-- case -->
+<g id="node6" class="node">
+<title>case</title>
+<path fill="#ede9fe" stroke="#cbd5e1" stroke-width="1.5" d="M267,-444C267,-444 113,-444 113,-444 107,-444 101,-438 101,-432 101,-432 101,-420 101,-420 101,-414 107,-408 113,-408 113,-408 267,-408 267,-408 273,-408 279,-414 279,-420 279,-420 279,-432 279,-432 279,-438 273,-444 267,-444"/>
+<text text-anchor="middle" x="190" y="-429.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Customer Case Layer</text>
+<text text-anchor="middle" x="190" y="-417.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Case lifecycle · Event · Approval</text>
+</g>
+<!-- gate&#45;&gt;case -->
+<g id="edge5" class="edge">
+<title>gate&#45;&gt;case</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M190,-483.99C190,-483.99 190,-451.15 190,-451.15"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="192.45,-451.15 190,-444.15 187.55,-451.15 192.45,-451.15"/>
+</g>
+<!-- ctl -->
+<g id="node7" class="node">
+<title>ctl</title>
+<path fill="#ede9fe" stroke="#cbd5e1" stroke-width="1.5" d="M279.5,-356C279.5,-356 100.5,-356 100.5,-356 94.5,-356 88.5,-350 88.5,-344 88.5,-344 88.5,-332 88.5,-332 88.5,-326 94.5,-320 100.5,-320 100.5,-320 279.5,-320 279.5,-320 285.5,-320 291.5,-326 291.5,-332 291.5,-332 291.5,-344 291.5,-344 291.5,-350 285.5,-356 279.5,-356"/>
+<text text-anchor="middle" x="190" y="-341.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Agentic Controller</text>
+<text text-anchor="middle" x="190" y="-329.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Route · Replan · Wait/Resume · Stop</text>
+</g>
+<!-- case&#45;&gt;ctl -->
+<g id="edge6" class="edge">
+<title>case&#45;&gt;ctl</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M190,-407.77C190,-407.77 190,-363.21 190,-363.21"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="192.45,-363.21 190,-356.21 187.55,-363.21 192.45,-363.21"/>
+</g>
+<!-- slot -->
+<g id="node8" class="node">
+<title>slot</title>
+<path fill="#6d28d9" stroke="#5b21b6" stroke-width="2.2" d="M282.5,-268C282.5,-268 97.5,-268 97.5,-268 91.5,-268 85.5,-262 85.5,-256 85.5,-256 85.5,-240 85.5,-240 85.5,-234 91.5,-228 97.5,-228 97.5,-228 282.5,-228 282.5,-228 288.5,-228 294.5,-234 294.5,-240 294.5,-240 294.5,-256 294.5,-256 294.5,-262 288.5,-268 282.5,-268"/>
+<text text-anchor="middle" x="190" y="-251.6" font-family="Arial, sans-serif" font-size="13.00" fill="white">AGENT TEAM SLOT</text>
+<text text-anchor="middle" x="190" y="-237.6" font-family="Arial, sans-serif" font-size="13.00" fill="white">selected module executes here</text>
+</g>
+<!-- ctl&#45;&gt;slot -->
+<g id="edge7" class="edge">
+<title>ctl&#45;&gt;slot</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M156.17,-319.79C156.17,-319.79 156.17,-275.06 156.17,-275.06"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="158.62,-275.06 156.17,-268.06 153.72,-275.06 158.62,-275.06"/>
+</g>
+<!-- state -->
+<g id="node9" class="node">
+<title>state</title>
+<path fill="#ffedd5" stroke="#cbd5e1" stroke-width="1.5" d="M295.5,-188C295.5,-188 84.5,-188 84.5,-188 78.5,-188 72.5,-182 72.5,-176 72.5,-176 72.5,-164 72.5,-164 72.5,-158 78.5,-152 84.5,-152 84.5,-152 295.5,-152 295.5,-152 301.5,-152 307.5,-158 307.5,-164 307.5,-164 307.5,-176 307.5,-176 307.5,-182 301.5,-188 295.5,-188"/>
+<text text-anchor="middle" x="190" y="-173.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Shared State</text>
+<text text-anchor="middle" x="190" y="-161.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Evidence · Decisions · Open Tasks · Version</text>
+</g>
+<!-- slot&#45;&gt;state -->
+<g id="edge8" class="edge">
+<title>slot&#45;&gt;state</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M190,-227.91C190,-227.91 190,-195.15 190,-195.15"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="192.45,-195.15 190,-188.15 187.55,-195.15 192.45,-195.15"/>
+</g>
+<!-- state&#45;&gt;ctl -->
+<g id="edge19" class="edge">
+<title>state&#45;&gt;ctl</title>
+<path fill="none" stroke="#7c3aed" stroke-width="1.35" stroke-dasharray="5,2" d="M301,-188.27C301,-230.64 301,-332 301,-332 301,-332 298.54,-332 298.54,-332"/>
+<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="1.35" points="298.54,-329.55 291.54,-332 298.54,-334.45 298.54,-329.55"/>
+</g>
+<!-- action -->
+<g id="node10" class="node">
+<title>action</title>
+<path fill="#dbeafe" stroke="#cbd5e1" stroke-width="1.5" d="M307,-112C307,-112 73,-112 73,-112 67,-112 61,-106 61,-100 61,-100 61,-88 61,-88 61,-82 67,-76 73,-76 73,-76 307,-76 307,-76 313,-76 319,-82 319,-88 319,-88 319,-100 319,-100 319,-106 313,-112 307,-112"/>
+<text text-anchor="middle" x="190" y="-97.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Tool / Action Layer</text>
+<text text-anchor="middle" x="190" y="-85.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Capability API · Permission · Idempotency · Audit</text>
+</g>
+<!-- state&#45;&gt;action -->
+<g id="edge9" class="edge">
+<title>state&#45;&gt;action</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M190,-151.99C190,-151.99 190,-119.15 190,-119.15"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="192.45,-119.15 190,-112.15 187.55,-119.15 192.45,-119.15"/>
+</g>
+<!-- result -->
+<g id="node11" class="node">
+<title>result</title>
+<path fill="#dcfce7" stroke="#cbd5e1" stroke-width="1.5" d="M261.5,-36C261.5,-36 118.5,-36 118.5,-36 112.5,-36 106.5,-30 106.5,-24 106.5,-24 106.5,-12 106.5,-12 106.5,-6 112.5,0 118.5,0 118.5,0 261.5,0 261.5,0 267.5,0 273.5,-6 273.5,-12 273.5,-12 273.5,-24 273.5,-24 273.5,-30 267.5,-36 261.5,-36"/>
+<text text-anchor="middle" x="190" y="-15.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Result / Response / Follow&#45;up</text>
+</g>
+<!-- action&#45;&gt;result -->
+<g id="edge10" class="edge">
+<title>action&#45;&gt;result</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M190,-75.99C190,-75.99 190,-43.15 190,-43.15"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="192.45,-43.15 190,-36.15 187.55,-43.15 192.45,-43.15"/>
+</g>
+<!-- broker -->
+<g id="node12" class="node">
+<title>broker</title>
+<path fill="#fff7ed" stroke="#fdba74" stroke-width="1.2" d="M484,-368C484,-368 328,-368 328,-368 322,-368 316,-362 316,-356 316,-356 316,-320 316,-320 316,-314 322,-308 328,-308 328,-308 484,-308 484,-308 490,-308 496,-314 496,-320 496,-320 496,-356 496,-356 496,-362 490,-368 484,-368"/>
+<text text-anchor="middle" x="406" y="-353.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Message Broker</text>
+<text text-anchor="middle" x="406" y="-341.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Queue · Retry · Event / Pub&#45;Sub</text>
+<text text-anchor="middle" x="406" y="-329.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">MVP: in&#45;process / Redis</text>
+<text text-anchor="middle" x="406" y="-317.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Option: Streams / RabbitMQ</text>
+</g>
+<!-- broker&#45;&gt;ctl -->
+<g id="edge11" class="edge">
+<title>broker&#45;&gt;ctl</title>
+<path fill="none" stroke="#b45309" stroke-width="1.35" stroke-dasharray="5,2" d="M315.96,-344C315.96,-344 298.78,-344 298.78,-344"/>
+<polygon fill="#b45309" stroke="#b45309" stroke-width="1.35" points="298.78,-341.55 291.78,-344 298.78,-346.45 298.78,-341.55"/>
+</g>
+<!-- broker&#45;&gt;slot -->
+<g id="edge12" class="edge">
+<title>broker&#45;&gt;slot</title>
+<path fill="none" stroke="#b45309" stroke-width="1.35" stroke-dasharray="5,2" d="M315.98,-314C270.09,-314 223.83,-314 223.83,-314 223.83,-314 223.83,-275.16 223.83,-275.16"/>
+<polygon fill="#b45309" stroke="#b45309" stroke-width="1.35" points="226.28,-275.16 223.83,-268.16 221.38,-275.16 226.28,-275.16"/>
+</g>
+<!-- registry -->
+<g id="node13" class="node">
+<title>registry</title>
+<path fill="#f0fdfa" stroke="#5eead4" stroke-width="1.2" d="M802,-356C802,-356 670,-356 670,-356 664,-356 658,-350 658,-344 658,-344 658,-332 658,-332 658,-326 664,-320 670,-320 670,-320 802,-320 802,-320 808,-320 814,-326 814,-332 814,-332 814,-344 814,-344 814,-350 808,-356 802,-356"/>
+<text text-anchor="middle" x="736" y="-341.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Agent Team Registry</text>
+<text text-anchor="middle" x="736" y="-329.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Capability · Version · Scope</text>
+</g>
+<!-- registry&#45;&gt;ctl -->
+<g id="edge13" class="edge">
+<title>registry&#45;&gt;ctl</title>
+<path fill="none" stroke="#0f766e" stroke-width="1.35" stroke-dasharray="5,2" d="M710,-356.03C710,-372.4 710,-394 710,-394 710,-394 286.25,-394 286.25,-394 286.25,-394 286.25,-363.03 286.25,-363.03"/>
+<polygon fill="#0f766e" stroke="#0f766e" stroke-width="1.35" points="288.7,-363.03 286.25,-356.03 283.8,-363.03 288.7,-363.03"/>
+</g>
+<!-- ctx -->
+<g id="node14" class="node">
+<title>ctx</title>
+<path fill="#dcfce7" stroke="#86efac" stroke-width="1.2" d="M622,-356C622,-356 532,-356 532,-356 526,-356 520,-350 520,-344 520,-344 520,-332 520,-332 520,-326 526,-320 532,-320 532,-320 622,-320 622,-320 628,-320 634,-326 634,-332 634,-332 634,-344 634,-344 634,-350 628,-356 622,-356"/>
+<text text-anchor="middle" x="577" y="-341.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Context Broker</text>
+<text text-anchor="middle" x="577" y="-329.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Build Context Pack</text>
+</g>
+<!-- ctx&#45;&gt;ctl -->
+<g id="edge14" class="edge">
+<title>ctx&#45;&gt;ctl</title>
+<path fill="none" stroke="#0f766e" stroke-width="1.35" stroke-dasharray="5,2" d="M558.17,-356.49C558.17,-368.14 558.17,-381 558.17,-381 558.17,-381 288,-381 288,-381 288,-381 288,-363.49 288,-363.49"/>
+<polygon fill="#0f766e" stroke="#0f766e" stroke-width="1.35" points="290.45,-363.49 288,-356.49 285.55,-363.49 290.45,-363.49"/>
+</g>
+<!-- ctx&#45;&gt;slot -->
+<g id="edge15" class="edge">
+<title>ctx&#45;&gt;slot</title>
+<path fill="none" stroke="#0f766e" stroke-width="1.35" stroke-dasharray="5,2" d="M577,-319.79C577,-293.49 577,-248 577,-248 577,-248 301.73,-248 301.73,-248"/>
+<polygon fill="#0f766e" stroke="#0f766e" stroke-width="1.35" points="301.73,-245.55 294.73,-248 301.73,-250.45 301.73,-245.55"/>
+</g>
+<!-- rag -->
+<g id="node15" class="node">
+<title>rag</title>
+<path fill="#f0fdf4" stroke="#cbd5e1" stroke-width="1.2" d="M484,-444C484,-444 398,-444 398,-444 392,-444 386,-438 386,-432 386,-432 386,-420 386,-420 386,-414 392,-408 398,-408 398,-408 484,-408 484,-408 490,-408 496,-414 496,-420 496,-420 496,-432 496,-432 496,-438 490,-444 484,-444"/>
+<text text-anchor="middle" x="441" y="-423.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">RAG / Knowledge</text>
+</g>
+<!-- rag&#45;&gt;ctx -->
+<g id="edge16" class="edge">
+<title>rag&#45;&gt;ctx</title>
+<path fill="none" stroke="#0f766e" stroke-width="1.35" d="M496.02,-426C503.13,-426 508,-426 508,-426 508,-426 508,-338 508,-338 508,-338 512.7,-338 512.7,-338"/>
+<polygon fill="#0f766e" stroke="#0f766e" stroke-width="1.35" points="512.7,-340.45 519.7,-338 512.7,-335.55 512.7,-340.45"/>
+</g>
+<!-- db -->
+<g id="node16" class="node">
+<title>db</title>
+<path fill="#f0fdf4" stroke="#cbd5e1" stroke-width="1.2" d="M621.5,-444C621.5,-444 532.5,-444 532.5,-444 526.5,-444 520.5,-438 520.5,-432 520.5,-432 520.5,-420 520.5,-420 520.5,-414 526.5,-408 532.5,-408 532.5,-408 621.5,-408 621.5,-408 627.5,-408 633.5,-414 633.5,-420 633.5,-420 633.5,-432 633.5,-432 633.5,-438 627.5,-444 621.5,-444"/>
+<text text-anchor="middle" x="577" y="-423.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">DB / Current State</text>
+</g>
+<!-- db&#45;&gt;ctx -->
+<g id="edge17" class="edge">
+<title>db&#45;&gt;ctx</title>
+<path fill="none" stroke="#0f766e" stroke-width="1.35" d="M595.83,-407.77C595.83,-407.77 595.83,-363.21 595.83,-363.21"/>
+<polygon fill="#0f766e" stroke="#0f766e" stroke-width="1.35" points="598.28,-363.21 595.83,-356.21 593.38,-363.21 598.28,-363.21"/>
+</g>
+<!-- mem -->
+<g id="node17" class="node">
+<title>mem</title>
+<path fill="#f0fdf4" stroke="#cbd5e1" stroke-width="1.2" d="M750,-444C750,-444 670,-444 670,-444 664,-444 658,-438 658,-432 658,-432 658,-420 658,-420 658,-414 664,-408 670,-408 670,-408 750,-408 750,-408 756,-408 762,-414 762,-420 762,-420 762,-432 762,-432 762,-438 756,-444 750,-444"/>
+<text text-anchor="middle" x="710" y="-423.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Memory / History</text>
+</g>
+<!-- mem&#45;&gt;ctx -->
+<g id="edge18" class="edge">
+<title>mem&#45;&gt;ctx</title>
+<path fill="none" stroke="#0f766e" stroke-width="1.35" d="M657.74,-426C650.79,-426 646,-426 646,-426 646,-426 646,-338 646,-338 646,-338 641.3,-338 641.3,-338"/>
+<polygon fill="#0f766e" stroke="#0f766e" stroke-width="1.35" points="641.3,-335.55 634.3,-338 641.3,-340.45 641.3,-335.55"/>
+</g>
+</g>
+</svg>
+</div>
+  <div class="why-box">
+    <strong>중요:</strong> Context Broker와 Message Broker는 같은 것이 아니다.
+    Context Broker는 “판단에 필요한 정보를 구성”하고, Message Broker는 “비동기 Task/Event를 운반”한다.
+    상세도에서는 둘을 별도 컴포넌트로 배치했다.
+  </div>
+
+  <h3>3-3. 컴포넌트 사전 — 브리핑만 보고도 역할을 알 수 있게</h3>
+  <div class="component-grid">
+    <div class="component-card"><h3>Agent Gateway</h3><div class="role">외부 AI/사용자 요청의 Trust Boundary</div><p>OAuth Access Token을 검증하고 사용자, 외부 AI Client, Scope, 요청 위험도를 확인한 뒤 내부 Case 요청으로 넘긴다.</p><div class="io">입력: REST/MCP 요청 + Token → 출력: 인증·인가된 요청 Context</div></div>
+    <div class="component-card"><h3>Customer Case Layer</h3><div class="role">한 번의 메시지를 장기 실행 가능한 업무 Case로 변환</div><p>문의 원문, 현재 상태, 담당 Capability, Event, 승인 대기, 재개 지점 등을 Case 단위로 관리한다.</p><div class="io">입력: 승인된 고객 요청 → 출력: case_id + lifecycle state</div></div>
+    <div class="component-card"><h3>Context Broker</h3><div class="role">Agent에게 필요한 Context Pack 구성</div><p>RAG, 현재 DB 상태, Case History, Memory 중 필요한 정보만 선택·정규화·압축해 Controller/Team에 공급한다.</p><div class="io">메시지를 운반하지 않음. “무엇을 알아야 하는가?”를 담당</div></div>
+    <div class="component-card"><h3>Message Broker</h3><div class="role">비동기 Task/Event 전달</div><p>긴 작업, 재시도, Worker 분리, Event Pub/Sub를 담당한다. MVP는 in-process/Redis로 시작하고 필요 시 Redis Streams 또는 RabbitMQ Adapter로 확장한다.</p><div class="io">Context를 만들지 않음. “어떤 Task/Event를 어디로 전달할까?”를 담당</div></div>
+    <div class="component-card"><h3>Agentic Controller</h3><div class="role">Case의 상위 의사결정·라우팅</div><p>Capability에 맞는 Team을 선택하고 해결 여부를 판단하며 WAIT/RESUME, Human Approval, Replan, 종료를 관리한다.</p><div class="io">Top-Level LangGraph가 위치하는 핵심 계층</div></div>
+    <div class="component-card"><h3><span class="slot-title">Agent Team Slot</span></h3><div class="role">교체 가능한 Team Module의 실행 경계</div><p>Registry가 선택한 Team Module이 여기서 실행된다. 내부가 Single-Agent, Multi-Agent, LangGraph, Rule/ML 혼합이어도 Core는 Team Contract만 본다.</p><div class="io">입력: TeamTask/CaseContext → 출력: TeamResult</div></div>
+    <div class="component-card"><h3>Shared State</h3><div class="role">여러 Team이 공유하는 Case의 단일 기준 상태</div><p>evidence, decisions, open_tasks, owner, status, version, approval 상태를 저장해 서로 다른 Team이 같은 Case를 이어서 처리할 수 있게 한다.</p><div class="io">팀별 Memory와 다름: Shared State는 “현재 Case의 공식 상태”</div></div>
+    <div class="component-card"><h3>Tool / Action Layer</h3><div class="role">실제 외부 시스템을 변경하는 실행 계층</div><p>조회·환불 요청·계정 변경·알림 같은 Business Capability API를 제공한다. 권한, idempotency, audit, 승인 여부를 확인한 후 side effect를 실행한다.</p><div class="io">Agent가 DB를 직접 만지는 대신 통제된 Tool을 호출</div></div>
+    <div class="component-card"><h3>Agent Team Registry</h3><div class="role">Capability → Team Module 탐색</div><p>team_id, capabilities, version, tool_scope, knowledge_scope, 활성 상태를 관리해 Team을 추가·교체해도 Core가 특정 팀 이름에 의존하지 않게 한다.</p><div class="io">예: capability=refund_review → 현재 활성 Team Module 반환</div></div>
+  </div>
+</section>
+
+
+
+
+
+  
+
+<section class="section">
+  <h2>4. 핵심 Workflow — Top-Level Graph + Team별 Subgraph</h2>
+  <div class="acop-note"><strong>왜 4-1을 단순화해서 표현하나?</strong> Level 1/2는 “Case가 어느 Team으로 가고 다시 돌아오는지”를 보여주는 상위 Graph이고, 실제 Team 내부에는 각자 별도의 LangGraph/Subgraph가 존재할 수 있다. 상위 Graph와 내부 Graph를 한 그림에 모두 펼치면 흐름이 오히려 읽히지 않기 때문에 계층을 나눈다.</div>
+
+  <h3>4-1. Graph 계층 구조</h3>
+  <div class="acop-flow">
+    <div class="acop-node purple">Top-Level Case Graph<br><small>Routing · WAIT/RESUME · Approval · Replan · End</small></div>
+    <div class="acop-arrow">↓</div>
+    <div class="acop-team-grid">
+      <div class="acop-team">Team A Subgraph<small>자체 Graph / Agents / RAG / Tools</small></div>
+      <div class="acop-team">Team B Subgraph<small>완전히 다른 내부 구성 가능</small></div>
+      <div class="acop-team">Team C Runtime<small>Graph 없이 Rule/ML 조합도 가능</small></div>
+    </div>
+  </div>
+
+  <div class="acop-graph-grid" style="margin-top:16px;">
+    <div class="card"><span class="acop-level">Level 2 · Top-Level Graph</span><h3>4-2. Customer Case Orchestration</h3><div class="mono">Customer Case
+      ↓
+Agentic Controller
+      ↓
+Capability / Shared State 판단
+      ↓
+Agent Team 선택
+      ↓
+선택된 Team Subgraph 실행
+      ↓
+TeamResult + Shared State 갱신
+      ↓
+해결 여부 평가
+ ├─ 해결됨 → 응답 / Case 종료
+ ├─ 추가 정보 필요 → WAIT → 사용자 응답 → RESUME
+ ├─ 고위험 Action → Human Approval → 승인 후 재개
+ └─ 미해결 / 다른 Capability 필요 → Replan → 다른 Team 선택</div></div>
+    <div class="card"><span class="acop-level">Level 3 · Team Subgraph</span><h3>4-3. Agent Team 내부 예시</h3><div class="mono">START
+  ↓
+현재 Context 충분?
+ ├─ NO → Context Broker → RAG/DB/Memory 추가 조회 ─┐
+ └─ YES                                            │
+      ↓                                             │
+   업무 계획 수립 ←─────────────────────────────────┘
+      ↓
+   Tool / Action 실행
+      ↓
+   결과 검증
+   ├─ PASS → TeamResult
+   └─ FAIL → Replan / Retry → 업무 계획 수립</div><p class="small">각 Team은 자체 Retrieval/Memory 정책과 내부 Agent 수를 자유롭게 정한다.</p></div>
+  </div>
+
+  <div class="grid" style="margin-top:16px;">
+    <div class="card"><h3>4-4. 개인 AI 연동 흐름</h3><div class="mono">사용자
+↓
+Personal AI
+↓
+OAuth 로그인 / Consent / Scope 승인
+↓
+Agent API / MCP
+↓
+Customer Case 생성·조회·작업 요청
+↓
+내부 Agentic System 처리
+↓
+결과 반환</div></div>
+    <div class="card"><h3>4-5. Message Broker의 위치</h3><div class="mono">Agentic Controller
+      │ Task / Event
+      ▼
+ Message Broker
+      │
+ ┌────┼────┐
+ ▼    ▼    ▼
+Team A Team B Team C</div><p><strong>역할:</strong> 비동기 작업 전달, Queue, Retry, Event/Pub-Sub, Worker 분리.</p><p class="small"><strong>MVP:</strong> in-process queue / Redis<br><strong>확장 옵션:</strong> Redis Streams · RabbitMQ</p><div class="boundary-note">Context Broker는 정보를 구성하고, Message Broker는 Task/Event를 전달한다.</div></div>
+  </div>
+</section>
+
+
+
+  
+<section class="section">
+  <h2>5. 클린 아키텍처 기반 폴더 구조 — 각 폴더 역할 포함</h2>
+  <div class="folder-tree">project/
+├─ app/
+│  ├─ presentation/                 # 외부 요청/응답 경계. 비즈니스 로직을 두지 않음
+│  │  ├─ api/                      # REST/OpenAPI endpoint
+│  │  ├─ mcp/                      # MCP tools/resources endpoint
+│  │  ├─ web/                      # 사용자/운영자 UI 연결부
+│  │  └─ schemas/                  # Request/Response DTO, validation schema
+│  │
+│  ├─ application/                  # “무엇을 실행할지”를 조합하는 application layer
+│  │  ├─ usecases/                 # CreateCase, ExecuteCase, ApproveAction 같은 유스케이스
+│  │  ├─ workflows/                # Top-Level Case Graph 정의
+│  │  └─ services/                 # 여러 유스케이스가 공유하는 application service
+│  │
+│  ├─ domain/                       # 프레임워크와 독립적인 핵심 업무 모델
+│  │  ├─ entities/                 # CustomerCase, ActionRequest, TeamResult 등
+│  │  ├─ value_objects/            # Scope, Capability, CaseStatus 등 불변 값 객체
+│  │  ├─ repositories/             # 저장소 “인터페이스(Port)”만 정의
+│  │  └─ policies/                 # 승인/위험도/상태전이 같은 도메인 규칙
+│  │
+│  ├─ core/                         # 도메인에 재사용 가능한 Agentic Basement
+│  │  ├─ contracts/                # AgentTeam, Tool, Event, ContextProvider Contract
+│  │  ├─ registry/                 # Capability → Team/Tool 탐색
+│  │  ├─ state/                    # Shared State / checkpoint / version 관리
+│  │  ├─ orchestration/            # Controller, routing, replan, wait/resume
+│  │  ├─ context/                  # Context Broker 인터페이스/공통 조립 로직
+│  │  ├─ messaging/                # Message Broker Port, task/event envelope
+│  │  └─ tools/                    # Tool/Action Gateway 공통 contract
+│  │
+│  ├─ infrastructure/               # 위 Port들의 실제 기술 구현
+│  │  ├─ db/                       # PostgreSQL ORM/Repository 구현
+│  │  ├─ vectorstore/              # pgvector 등 기본 Vector Search Adapter
+│  │  ├─ llm/                      # OpenAI/Anthropic/Local model Adapter
+│  │  ├─ messaging/                # in-process/Redis/RabbitMQ Adapter
+│  │  ├─ auth/                     # OAuth/Token/Scope 검증 구현
+│  │  ├─ adapters/                 # 외부 라이브러리/SDK 감싸기
+│  │  └─ integrations/             # 결제/계정/알림 등 외부 시스템 연결
+│  │
+│  └─ modules/
+│     └─ customer_ops/              # 이번 프로젝트의 실제 도메인 Module
+│        ├─ team_modules/           # 요구사항에 따라 추가/교체되는 Agent Team들
+│        │  ├─ team_a/
+│        │  │  ├─ graph/            # 이 Team만의 LangGraph/Subgraph
+│        │  │  ├─ agents/           # 내부 Agent 구성
+│        │  │  ├─ tools/            # Team 전용 Tool 조합/Wrapper
+│        │  │  ├─ retrieval/        # Knowledge scope, 검색/Rerank 전략
+│        │  │  ├─ memory/           # Team 전용 episodic memory 정책
+│        │  │  └─ prompts/          # Team prompt/template
+│        │  └─ team_b/ ...          # 동일 Contract만 지키면 내부는 다르게 구성 가능
+│        ├─ case_policies/          # Customer Ops 특화 상태/승인 정책
+│        └─ feedback/               # 감성·의도·이슈/VOC 분석 capability
+│
+├─ tests/                            # unit/integration/e2e/agent evaluation
+├─ docs/                             # architecture, ADR, API/MCP spec
+├─ scripts/                          # ingestion, migration, local utilities
+└─ docker/                           # local/runtime container 구성</div>
+  <div class="why-box"><strong>핵심:</strong> Core는 Team 내부 구현을 알지 못하고 Contract만 안다. Agent Team은 자신의 graph/agents/retrieval/memory/tools를 독립적으로 소유한다.</div>
+</section>
+
+
+  
+<section class="section">
+  <h2>6. 모듈형 Basement 구조</h2>
+  <div class="grid-3">
+    <div class="card"><h3>Core Basement</h3><span class="pill">Team Registry</span><span class="pill">Tool Registry</span><span class="pill">Shared State</span><span class="pill">Context Broker</span><span class="pill">Message Port</span><span class="pill">Orchestration</span><p class="small">도메인에 의존하지 않는 공통 실행·계약·상태 기반</p></div>
+    <div class="card"><h3>Customer Ops Domain</h3><span class="pill">Agent Team Module A</span><span class="pill">Agent Team Module B</span><span class="pill">Agent Team Module C</span><span class="pill">Case Policy</span><span class="pill">Feedback Analysis</span><p class="small">Team 이름·개수는 요구사항 분석 후 결정. A/B/C는 자리 예시</p></div>
+    <div class="card"><h3>Team 내부 자유도</h3><span class="pill">Single/Multi Agent</span><span class="pill">Own Subgraph</span><span class="pill">Own RAG Policy</span><span class="pill">Own Memory Policy</span><span class="pill">Own Tools</span><p class="small">Team Contract만 지키면 내부 스택과 구조는 독립적으로 설계 가능</p></div>
+  </div>
+</section>
+
+
+  
+<section class="section">
+  <h2>7. 주요 스키마</h2>
+  <div class="grid">
+    <div class="card"><h3>7-1. Customer Case Schema</h3><div class="mono">{
+  "case_id": "CASE-1204",
+  "customer_id": "U100",
+  "channel": "personal_ai",
+  "capability": "subscription_issue",
+  "status": "investigating",
+  "owner_team_id": "team_module_a",
+  "version": 7,
+  "evidence": ["payment_event", "subscription_state"],
+  "decisions": ["needs_policy_check"],
+  "open_tasks": ["retrieve_policy", "validate_action"],
+  "approval_state": "not_required"
+}</div></div>
+    <div class="card"><h3>7-2. Agent Team Registry Schema</h3><div class="mono">{
+  "team_id": "team_module_a",
+  "capabilities": ["subscription_issue", "refund_review"],
+  "version": "1.2.0",
+  "entrypoint": "modules.customer_ops.team_a:run",
+  "allowed_tools": ["subscription.read", "refund.request"],
+  "knowledge_scope": ["subscription_policy"],
+  "status": "active"
+}</div></div>
+  </div>
+</section>
+
+
+  
+
+
+<section class="section">
+  <h2>8. ERD(개념 수준) — 관계선 자동 배치 버전</h2>
+  <p class="lead">customer_cases에서 memory_items / agent_runs / action_requests로 내려가는 관계를 직교선으로 분리했다. external_ai_clients는 users의 왼쪽에 배치한다.</p>
+  <div class="gv-wrap"><!-- Generated by graphviz version 2.42.4 (0)
+ -->
+<!-- Title: ERD Pages: 1 -->
+<svg class="gv-svg"
+ viewBox="0.00 0.00 1189.92 525.92" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(12.96 512.96)">
+<title>ERD</title>
+<!-- external -->
+<g id="node1" class="node">
+<title>external</title>
+<polygon fill="white" stroke="transparent" points="0,-363 0,-500 135,-500 135,-363 0,-363"/>
+<polygon fill="#e0f2fe" stroke="transparent" points="1.5,-471.5 1.5,-498.5 134.5,-498.5 134.5,-471.5 1.5,-471.5"/>
+<text text-anchor="start" x="7.5" y="-482.3" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">external_ai_clients</text>
+<text text-anchor="start" x="7.5" y="-454.3" font-family="Arial, sans-serif" font-size="14.00">PK connection_id</text>
+<text text-anchor="start" x="7.5" y="-427.3" font-family="Arial, sans-serif" font-size="14.00">FK user_id</text>
+<text text-anchor="start" x="7.5" y="-400.3" font-family="Arial, sans-serif" font-size="14.00">provider / client_id</text>
+<text text-anchor="start" x="7.5" y="-373.3" font-family="Arial, sans-serif" font-size="14.00">scopes / status</text>
+<polygon fill="none" stroke="#cbd5e1" points="0,-363 0,-500 135,-500 135,-363 0,-363"/>
+</g>
+<!-- users -->
+<g id="node2" class="node">
+<title>users</title>
+<polygon fill="white" stroke="transparent" points="208,-376.5 208,-486.5 289,-486.5 289,-376.5 208,-376.5"/>
+<polygon fill="#e0f2fe" stroke="transparent" points="209.5,-458.5 209.5,-485.5 288.5,-485.5 288.5,-458.5 209.5,-458.5"/>
+<text text-anchor="start" x="230.5" y="-469.3" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">users</text>
+<text text-anchor="start" x="215.5" y="-441.3" font-family="Arial, sans-serif" font-size="14.00">PK user_id</text>
+<text text-anchor="start" x="215.5" y="-414.3" font-family="Arial, sans-serif" font-size="14.00">email</text>
+<text text-anchor="start" x="215.5" y="-387.3" font-family="Arial, sans-serif" font-size="14.00">name</text>
+<polygon fill="none" stroke="#cbd5e1" points="208,-376.5 208,-486.5 289,-486.5 289,-376.5 208,-376.5"/>
+</g>
+<!-- external&#45;&gt;users -->
+<g id="edge1" class="edge">
+<title>external&#45;&gt;users</title>
+<path fill="none" stroke="#64748b" stroke-width="1.4" d="M135.16,-431C135.16,-431 201.48,-431 201.48,-431"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.4" points="201.48,-433.28 207.98,-431 201.48,-428.73 201.48,-433.28"/>
+</g>
+<!-- cases -->
+<g id="node3" class="node">
+<title>cases</title>
+<polygon fill="white" stroke="transparent" points="373.5,-363 373.5,-500 535.5,-500 535.5,-363 373.5,-363"/>
+<polygon fill="#ede9fe" stroke="transparent" points="374.5,-471.5 374.5,-498.5 534.5,-498.5 534.5,-471.5 374.5,-471.5"/>
+<text text-anchor="start" x="401" y="-482.3" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">customer_cases</text>
+<text text-anchor="start" x="380.5" y="-454.3" font-family="Arial, sans-serif" font-size="14.00">PK case_id</text>
+<text text-anchor="start" x="380.5" y="-427.3" font-family="Arial, sans-serif" font-size="14.00">FK user_id</text>
+<text text-anchor="start" x="380.5" y="-400.3" font-family="Arial, sans-serif" font-size="14.00">capability / status</text>
+<text text-anchor="start" x="380.5" y="-373.3" font-family="Arial, sans-serif" font-size="14.00">owner_team_id / version</text>
+<polygon fill="none" stroke="#cbd5e1" points="373.5,-363 373.5,-500 535.5,-500 535.5,-363 373.5,-363"/>
+</g>
+<!-- users&#45;&gt;cases -->
+<g id="edge2" class="edge">
+<title>users&#45;&gt;cases</title>
+<path fill="none" stroke="#64748b" stroke-width="1.4" d="M289.2,-431C289.2,-431 366.9,-431 366.9,-431"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.4" points="366.9,-433.28 373.4,-431 366.9,-428.73 366.9,-433.28"/>
+</g>
+<!-- events -->
+<g id="node4" class="node">
+<title>events</title>
+<polygon fill="white" stroke="transparent" points="595,-363 595,-500 734,-500 734,-363 595,-363"/>
+<polygon fill="#f3f4f6" stroke="transparent" points="596.5,-471.5 596.5,-498.5 733.5,-498.5 733.5,-471.5 596.5,-471.5"/>
+<text text-anchor="start" x="624.5" y="-482.3" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">case_events</text>
+<text text-anchor="start" x="602.5" y="-454.3" font-family="Arial, sans-serif" font-size="14.00">PK event_id</text>
+<text text-anchor="start" x="602.5" y="-427.3" font-family="Arial, sans-serif" font-size="14.00">FK case_id</text>
+<text text-anchor="start" x="602.5" y="-400.3" font-family="Arial, sans-serif" font-size="14.00">event_type / payload</text>
+<text text-anchor="start" x="602.5" y="-373.3" font-family="Arial, sans-serif" font-size="14.00">created_at</text>
+<polygon fill="none" stroke="#cbd5e1" points="595,-363 595,-500 734,-500 734,-363 595,-363"/>
+</g>
+<!-- cases&#45;&gt;events -->
+<g id="edge3" class="edge">
+<title>cases&#45;&gt;events</title>
+<path fill="none" stroke="#64748b" stroke-width="1.4" d="M535.69,-431C535.69,-431 588.29,-431 588.29,-431"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.4" points="588.29,-433.28 594.79,-431 588.29,-428.73 588.29,-433.28"/>
+</g>
+<!-- memory -->
+<g id="node5" class="node">
+<title>memory</title>
+<polygon fill="white" stroke="transparent" points="210.5,-168 210.5,-305 368.5,-305 368.5,-168 210.5,-168"/>
+<polygon fill="#f0fdf4" stroke="transparent" points="211.5,-276.5 211.5,-303.5 367.5,-303.5 367.5,-276.5 211.5,-276.5"/>
+<text text-anchor="start" x="240.5" y="-287.3" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">memory_items</text>
+<text text-anchor="start" x="217.5" y="-259.3" font-family="Arial, sans-serif" font-size="14.00">PK memory_id</text>
+<text text-anchor="start" x="217.5" y="-232.3" font-family="Arial, sans-serif" font-size="14.00">FK case_id (nullable)</text>
+<text text-anchor="start" x="217.5" y="-205.3" font-family="Arial, sans-serif" font-size="14.00">team_id / memory_type</text>
+<text text-anchor="start" x="217.5" y="-178.3" font-family="Arial, sans-serif" font-size="14.00">content / tags</text>
+<polygon fill="none" stroke="#cbd5e1" points="210.5,-168 210.5,-305 368.5,-305 368.5,-168 210.5,-168"/>
+</g>
+<!-- cases&#45;&gt;memory -->
+<g id="edge4" class="edge">
+<title>cases&#45;&gt;memory</title>
+<path fill="none" stroke="#64748b" stroke-width="1.4" d="M373.44,-369C349.11,-369 328.75,-369 328.75,-369 328.75,-369 328.75,-311.58 328.75,-311.58"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.4" points="331.03,-311.58 328.75,-305.08 326.48,-311.58 331.03,-311.58"/>
+<text text-anchor="middle" x="297" y="-331.8" font-family="Arial, sans-serif" font-size="9.00" fill="#475569">1:N</text>
+</g>
+<!-- runs -->
+<g id="node6" class="node">
+<title>runs</title>
+<polygon fill="white" stroke="transparent" points="398.5,-168 398.5,-305 510.5,-305 510.5,-168 398.5,-168"/>
+<polygon fill="#f0fdf4" stroke="transparent" points="399.5,-276.5 399.5,-303.5 509.5,-303.5 509.5,-276.5 399.5,-276.5"/>
+<text text-anchor="start" x="418" y="-287.3" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">agent_runs</text>
+<text text-anchor="start" x="405.5" y="-259.3" font-family="Arial, sans-serif" font-size="14.00">PK run_id</text>
+<text text-anchor="start" x="405.5" y="-232.3" font-family="Arial, sans-serif" font-size="14.00">FK case_id</text>
+<text text-anchor="start" x="405.5" y="-205.3" font-family="Arial, sans-serif" font-size="14.00">team_id / status</text>
+<text text-anchor="start" x="405.5" y="-178.3" font-family="Arial, sans-serif" font-size="14.00">result_summary</text>
+<polygon fill="none" stroke="#cbd5e1" points="398.5,-168 398.5,-305 510.5,-305 510.5,-168 398.5,-168"/>
+</g>
+<!-- cases&#45;&gt;runs -->
+<g id="edge5" class="edge">
+<title>cases&#45;&gt;runs</title>
+<path fill="none" stroke="#64748b" stroke-width="1.4" d="M426.5,-362.75C426.5,-362.75 426.5,-311.79 426.5,-311.79"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.4" points="428.78,-311.79 426.5,-305.29 424.23,-311.79 428.78,-311.79"/>
+<text text-anchor="middle" x="462" y="-331.8" font-family="Arial, sans-serif" font-size="9.00" fill="#475569">1:N</text>
+</g>
+<!-- actions -->
+<g id="node7" class="node">
+<title>actions</title>
+<polygon fill="white" stroke="transparent" points="541,-168 541,-305 672,-305 672,-168 541,-168"/>
+<polygon fill="#fff7ed" stroke="transparent" points="542.5,-276.5 542.5,-303.5 671.5,-303.5 671.5,-276.5 542.5,-276.5"/>
+<text text-anchor="start" x="555" y="-287.3" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">action_requests</text>
+<text text-anchor="start" x="548.5" y="-259.3" font-family="Arial, sans-serif" font-size="14.00">PK action_id</text>
+<text text-anchor="start" x="548.5" y="-232.3" font-family="Arial, sans-serif" font-size="14.00">FK case_id</text>
+<text text-anchor="start" x="548.5" y="-205.3" font-family="Arial, sans-serif" font-size="14.00">action_type / status</text>
+<text text-anchor="start" x="548.5" y="-178.3" font-family="Arial, sans-serif" font-size="14.00">approval_required</text>
+<polygon fill="none" stroke="#cbd5e1" points="541,-168 541,-305 672,-305 672,-168 541,-168"/>
+</g>
+<!-- cases&#45;&gt;actions -->
+<g id="edge6" class="edge">
+<title>cases&#45;&gt;actions</title>
+<path fill="none" stroke="#64748b" stroke-width="1.4" d="M523,-362.85C523,-306.52 523,-236 523,-236 523,-236 534.21,-236 534.21,-236"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.4" points="534.21,-238.28 540.71,-236 534.21,-233.73 534.21,-238.28"/>
+<text text-anchor="middle" x="563" y="-331.8" font-family="Arial, sans-serif" font-size="9.00" fill="#475569">1:N</text>
+</g>
+<!-- approvals -->
+<g id="node8" class="node">
+<title>approvals</title>
+<polygon fill="white" stroke="transparent" points="536.5,0 536.5,-110 676.5,-110 676.5,0 536.5,0"/>
+<polygon fill="#fff7ed" stroke="transparent" points="537.5,-82 537.5,-109 675.5,-109 675.5,-82 537.5,-82"/>
+<text text-anchor="start" x="550.5" y="-92.8" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">action_approvals</text>
+<text text-anchor="start" x="543.5" y="-64.8" font-family="Arial, sans-serif" font-size="14.00">PK approval_id</text>
+<text text-anchor="start" x="543.5" y="-37.8" font-family="Arial, sans-serif" font-size="14.00">FK action_id</text>
+<text text-anchor="start" x="543.5" y="-10.8" font-family="Arial, sans-serif" font-size="14.00">approved_by / status</text>
+<polygon fill="none" stroke="#cbd5e1" points="536.5,0 536.5,-110 676.5,-110 676.5,0 536.5,0"/>
+</g>
+<!-- actions&#45;&gt;approvals -->
+<g id="edge7" class="edge">
+<title>actions&#45;&gt;approvals</title>
+<path fill="none" stroke="#64748b" stroke-width="1.4" d="M606.5,-167.88C606.5,-167.88 606.5,-116.65 606.5,-116.65"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.4" points="608.78,-116.65 606.5,-110.15 604.23,-116.65 608.78,-116.65"/>
+<text text-anchor="middle" x="615" y="-136.8" font-family="Arial, sans-serif" font-size="9.00" fill="#475569">0..N</text>
+</g>
+<!-- registry -->
+<g id="node9" class="node">
+<title>registry</title>
+<polygon fill="white" stroke="transparent" points="764,-376.5 764,-486.5 963,-486.5 963,-376.5 764,-376.5"/>
+<polygon fill="#f0fdfa" stroke="transparent" points="765.5,-458.5 765.5,-485.5 962.5,-485.5 962.5,-458.5 765.5,-458.5"/>
+<text text-anchor="start" x="797.5" y="-469.3" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">agent_team_registry</text>
+<text text-anchor="start" x="771.5" y="-441.3" font-family="Arial, sans-serif" font-size="14.00">PK team_id</text>
+<text text-anchor="start" x="771.5" y="-414.3" font-family="Arial, sans-serif" font-size="14.00">capabilities / version</text>
+<text text-anchor="start" x="771.5" y="-387.3" font-family="Arial, sans-serif" font-size="14.00">tool_scope / knowledge_scope</text>
+<polygon fill="none" stroke="#cbd5e1" points="764,-376.5 764,-486.5 963,-486.5 963,-376.5 764,-376.5"/>
+</g>
+<!-- registry&#45;&gt;runs -->
+<g id="edge8" class="edge">
+<title>registry&#45;&gt;runs</title>
+<path fill="none" stroke="#64748b" stroke-width="1.4" stroke-dasharray="5,2" d="M863.5,-376.46C863.5,-358.46 863.5,-343 863.5,-343 863.5,-343 454.5,-343 454.5,-343 454.5,-343 454.5,-311.65 454.5,-311.65"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.4" points="456.78,-311.65 454.5,-305.15 452.23,-311.65 456.78,-311.65"/>
+<text text-anchor="middle" x="751.5" y="-331.8" font-family="Arial, sans-serif" font-size="9.00" fill="#475569">team_id</text>
+</g>
+<!-- docs -->
+<g id="node10" class="node">
+<title>docs</title>
+<polygon fill="white" stroke="transparent" points="993,-376.5 993,-486.5 1164,-486.5 1164,-376.5 993,-376.5"/>
+<polygon fill="#f0fdf4" stroke="transparent" points="994.5,-458.5 994.5,-485.5 1163.5,-485.5 1163.5,-458.5 994.5,-458.5"/>
+<text text-anchor="start" x="1003.5" y="-469.3" font-family="Arial, sans-serif" font-weight="bold" font-size="14.00">knowledge_documents</text>
+<text text-anchor="start" x="1000.5" y="-441.3" font-family="Arial, sans-serif" font-size="14.00">PK doc_id</text>
+<text text-anchor="start" x="1000.5" y="-414.3" font-family="Arial, sans-serif" font-size="14.00">domain / namespace</text>
+<text text-anchor="start" x="1000.5" y="-387.3" font-family="Arial, sans-serif" font-size="14.00">doc_type / embedding_ref</text>
+<polygon fill="none" stroke="#cbd5e1" points="993,-376.5 993,-486.5 1164,-486.5 1164,-376.5 993,-376.5"/>
+</g>
+<!-- docs&#45;&gt;runs -->
+<g id="edge9" class="edge">
+<title>docs&#45;&gt;runs</title>
+<path fill="none" stroke="#64748b" stroke-width="1.4" stroke-dasharray="5,2" d="M1078.5,-376.49C1078.5,-350.04 1078.5,-324 1078.5,-324 1078.5,-324 482.5,-324 482.5,-324 482.5,-324 482.5,-311.51 482.5,-311.51"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.4" points="484.78,-311.51 482.5,-305.01 480.23,-311.51 484.78,-311.51"/>
+<text text-anchor="middle" x="977" y="-331.8" font-family="Arial, sans-serif" font-size="9.00" fill="#475569">retrieval evidence</text>
+</g>
+</g>
+</svg>
+</div>
+  <div class="why-box"><strong>관계 해석:</strong> external_ai_clients는 사용자가 연결 승인한 외부 AI 연결 정보이고, users가 Customer Case를 소유한다. 각 Case는 Event/Run/Memory/Action 기록을 독립적으로 남긴다.</div>
+</section>
+
+
+
+
+  <section class="section">
+    <h2>9. 외부 소비자 AI 연동 구조</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>9-1. 제공 인터페이스</h3>
+        <ul>
+          <li>REST API / OpenAPI</li>
+          <li>MCP Server(시범 구현 가능)</li>
+          <li>OAuth 2.0 기반 사용자 인증</li>
+          <li>Scope 기반 권한 분리</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>9-2. 예시 Capability API</h3>
+        <ul>
+          <li>get_my_subscription()</li>
+          <li>get_payment_history()</li>
+          <li>open_support_case()</li>
+          <li>get_case_status()</li>
+          <li>request_refund()</li>
+        </ul>
+      </div>
+    </div>
+    <div class="mono">Human
+↓
+Personal AI (ChatGPT / Claude / Gemini)
+↓
+Agent API / MCP
+↓
+OAuth + Scope Check
+↓
+Customer Case 생성
+↓
+업무 Capability에 맞는 Agent Team Module 처리
+↓
+결과 반환</div>
+  </section>
+
+  
+
+
+
+<section class="section">
+  <h2>9-A. Agent Team 모듈화 — Team 내부는 자유롭고, 바깥 Contract만 고정</h2>
+  <p class="lead">Registry와 Team Contract의 역할을 실행 흐름과 섞지 않는다. Registry는 Team을 찾고, Team Contract는 교체 가능성을 보장하는 인터페이스 규칙이다.</p>
+  <div class="gv-wrap"><!-- Generated by graphviz version 2.42.4 (0)
+ -->
+<!-- Title: MOD Pages: 1 -->
+<svg class="gv-svg"
+ viewBox="0.00 0.00 1095.80 362.80" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(14.4 348.4)">
+<title>MOD</title>
+<g id="clust1" class="cluster">
+<title>cluster_modules</title>
+<path fill="transparent" stroke="#c4b5fd" stroke-dasharray="5,2" d="M804,-8C804,-8 1055,-8 1055,-8 1061,-8 1067,-14 1067,-20 1067,-20 1067,-314 1067,-314 1067,-320 1061,-326 1055,-326 1055,-326 804,-326 804,-326 798,-326 792,-320 792,-314 792,-314 792,-20 792,-20 792,-14 798,-8 804,-8"/>
+<text text-anchor="middle" x="929.5" y="-313.2" font-family="Arial, sans-serif" font-size="11.00" fill="#5b21b6">Pluggable Agent Team Modules — all interchangeable</text>
+</g>
+<!-- core -->
+<g id="node1" class="node">
+<title>core</title>
+<path fill="#eef2ff" stroke="#cbd5e1" stroke-width="1.2" d="M111,-158C111,-158 21,-158 21,-158 15,-158 9,-152 9,-146 9,-146 9,-134 9,-134 9,-128 15,-122 21,-122 21,-122 111,-122 111,-122 117,-122 123,-128 123,-134 123,-134 123,-146 123,-146 123,-152 117,-158 111,-158"/>
+<text text-anchor="middle" x="66" y="-143.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Agentic Core</text>
+<text text-anchor="middle" x="66" y="-131.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">asks for a capability</text>
+</g>
+<!-- reg -->
+<g id="node2" class="node">
+<title>reg</title>
+<path fill="#dcfce7" stroke="#cbd5e1" stroke-width="1.6" d="M364,-164C364,-164 221,-164 221,-164 215,-164 209,-158 209,-152 209,-152 209,-128 209,-128 209,-122 215,-116 221,-116 221,-116 364,-116 364,-116 370,-116 376,-122 376,-128 376,-128 376,-152 376,-152 376,-158 370,-164 364,-164"/>
+<text text-anchor="middle" x="292.5" y="-149.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Agent Team Registry</text>
+<text text-anchor="middle" x="292.5" y="-137.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">capability → module resolution</text>
+<text text-anchor="middle" x="292.5" y="-125.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">version / activation / scopes</text>
+</g>
+<!-- core&#45;&gt;reg -->
+<g id="edge1" class="edge">
+<title>core&#45;&gt;reg</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M123.16,-140C123.16,-140 201.62,-140 201.62,-140"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="201.62,-142.52 208.82,-140 201.62,-137.48 201.62,-142.52"/>
+<text text-anchor="middle" x="170.5" y="-142.4" font-family="Arial, sans-serif" font-size="9.50" fill="#475569">resolve</text>
+</g>
+<!-- slot -->
+<g id="node3" class="node">
+<title>slot</title>
+<path fill="#6d28d9" stroke="#5b21b6" stroke-width="2.3" d="M687,-160C687,-160 504,-160 504,-160 498,-160 492,-154 492,-148 492,-148 492,-132 492,-132 492,-126 498,-120 504,-120 504,-120 687,-120 687,-120 693,-120 699,-126 699,-132 699,-132 699,-148 699,-148 699,-154 693,-160 687,-160"/>
+<text text-anchor="middle" x="595.5" y="-143.6" font-family="Arial, sans-serif" font-size="13.00" fill="white">AGENT TEAM SLOT</text>
+<text text-anchor="middle" x="595.5" y="-129.6" font-family="Arial, sans-serif" font-size="13.00" fill="white">standard input/output boundary</text>
+</g>
+<!-- reg&#45;&gt;slot -->
+<g id="edge2" class="edge">
+<title>reg&#45;&gt;slot</title>
+<path fill="none" stroke="#64748b" stroke-width="1.35" d="M376.1,-140C376.1,-140 484.71,-140 484.71,-140"/>
+<polygon fill="#64748b" stroke="#64748b" stroke-width="1.35" points="484.71,-142.52 491.91,-140 484.71,-137.48 484.71,-142.52"/>
+<text text-anchor="middle" x="434" y="-142.4" font-family="Arial, sans-serif" font-size="9.50" fill="#475569">selected module</text>
+</g>
+<!-- a -->
+<g id="node5" class="node">
+<title>a</title>
+<path fill="#f5f3ff" stroke="#cbd5e1" stroke-width="1.2" d="M981,-298C981,-298 878,-298 878,-298 872,-298 866,-292 866,-286 866,-286 866,-250 866,-250 866,-244 872,-238 878,-238 878,-238 981,-238 981,-238 987,-238 993,-244 993,-250 993,-250 993,-286 993,-286 993,-292 987,-298 981,-298"/>
+<text text-anchor="middle" x="929.5" y="-283.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Module A</text>
+<text text-anchor="middle" x="929.5" y="-271.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Own Graph / Agents</text>
+<text text-anchor="middle" x="929.5" y="-259.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">RAG &amp; Memory policy</text>
+<text text-anchor="middle" x="929.5" y="-247.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Tools</text>
+</g>
+<!-- slot&#45;&gt;a -->
+<g id="edge4" class="edge">
+<title>slot&#45;&gt;a</title>
+<path fill="none" stroke="#7c3aed" stroke-width="1.35" d="M596,-160.28C596,-196.37 596,-268 596,-268 596,-268 858.79,-268 858.79,-268"/>
+<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="1.35" points="858.79,-270.52 865.99,-268 858.79,-265.48 858.79,-270.52"/>
+<text text-anchor="middle" x="749.5" y="-252.4" font-family="Arial, sans-serif" font-size="9.50" fill="#7c3aed">one selected</text>
+</g>
+<!-- b -->
+<g id="node6" class="node">
+<title>b</title>
+<path fill="#f5f3ff" stroke="#cbd5e1" stroke-width="1.2" d="M990,-212C990,-212 869,-212 869,-212 863,-212 857,-206 857,-200 857,-200 857,-176 857,-176 857,-170 863,-164 869,-164 869,-164 990,-164 990,-164 996,-164 1002,-170 1002,-176 1002,-176 1002,-200 1002,-200 1002,-206 996,-212 990,-212"/>
+<text text-anchor="middle" x="929.5" y="-197.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Module B</text>
+<text text-anchor="middle" x="929.5" y="-185.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Different internals allowed</text>
+<text text-anchor="middle" x="929.5" y="-173.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Single or Multi&#45;Agent</text>
+</g>
+<!-- slot&#45;&gt;b -->
+<g id="edge5" class="edge">
+<title>slot&#45;&gt;b</title>
+<path fill="none" stroke="#7c3aed" stroke-width="1.35" d="M699.31,-149C774.86,-149 864,-149 864,-149 864,-149 864,-156.77 864,-156.77"/>
+<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="1.35" points="861.48,-156.77 864,-163.97 866.52,-156.77 861.48,-156.77"/>
+</g>
+<!-- c -->
+<g id="node7" class="node">
+<title>c</title>
+<path fill="#f5f3ff" stroke="#cbd5e1" stroke-width="1.2" d="M976,-138C976,-138 883,-138 883,-138 877,-138 871,-132 871,-126 871,-126 871,-102 871,-102 871,-96 877,-90 883,-90 883,-90 976,-90 976,-90 982,-90 988,-96 988,-102 988,-102 988,-126 988,-126 988,-132 982,-138 976,-138"/>
+<text text-anchor="middle" x="929.5" y="-123.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Module C</text>
+<text text-anchor="middle" x="929.5" y="-111.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Rule / ML / LLM mix</text>
+<text text-anchor="middle" x="929.5" y="-99.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">Optional RAG</text>
+</g>
+<!-- slot&#45;&gt;c -->
+<g id="edge6" class="edge">
+<title>slot&#45;&gt;c</title>
+<path fill="none" stroke="#7c3aed" stroke-width="1.35" d="M699.35,-129C699.35,-129 863.76,-129 863.76,-129"/>
+<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="1.35" points="863.76,-131.52 870.96,-129 863.76,-126.48 863.76,-131.52"/>
+</g>
+<!-- d -->
+<g id="node8" class="node">
+<title>d</title>
+<path fill="#ede9fe" stroke="#cbd5e1" stroke-width="1.2" d="M977.5,-64C977.5,-64 881.5,-64 881.5,-64 875.5,-64 869.5,-58 869.5,-52 869.5,-52 869.5,-28 869.5,-28 869.5,-22 875.5,-16 881.5,-16 881.5,-16 977.5,-16 977.5,-16 983.5,-16 989.5,-22 989.5,-28 989.5,-28 989.5,-52 989.5,-52 989.5,-58 983.5,-64 977.5,-64"/>
+<text text-anchor="middle" x="929.5" y="-49.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">New Module D</text>
+<text text-anchor="middle" x="929.5" y="-37.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">register later</text>
+<text text-anchor="middle" x="929.5" y="-25.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">without Core change</text>
+</g>
+<!-- slot&#45;&gt;d -->
+<g id="edge7" class="edge">
+<title>slot&#45;&gt;d</title>
+<path fill="none" stroke="#7c3aed" stroke-width="1.35" d="M630,-119.58C630,-93.02 630,-50 630,-50 630,-50 862.05,-50 862.05,-50"/>
+<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="1.35" points="862.05,-52.52 869.25,-50 862.05,-47.48 862.05,-52.52"/>
+</g>
+<!-- contract -->
+<g id="node4" class="node">
+<title>contract</title>
+<path fill="#fff7ed" stroke="#fdba74" stroke-width="1.5" d="M120,-96C120,-96 12,-96 12,-96 6,-96 0,-90 0,-84 0,-84 0,-48 0,-48 0,-42 6,-36 12,-36 12,-36 120,-36 120,-36 126,-36 132,-42 132,-48 132,-48 132,-84 132,-84 132,-90 126,-96 120,-96"/>
+<text text-anchor="middle" x="66" y="-81.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">TEAM CONTRACT</text>
+<text text-anchor="middle" x="66" y="-69.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">case/task input</text>
+<text text-anchor="middle" x="66" y="-57.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">TeamResult output</text>
+<text text-anchor="middle" x="66" y="-45.2" font-family="Arial, sans-serif" font-size="11.00" fill="#0f172a">capabilities · tool scope</text>
+</g>
+<!-- contract&#45;&gt;slot -->
+<g id="edge3" class="edge">
+<title>contract&#45;&gt;slot</title>
+<path fill="none" stroke="#b45309" stroke-width="1.35" stroke-dasharray="5,2" d="M132.24,-77C267.13,-77 561,-77 561,-77 561,-77 561,-112.52 561,-112.52"/>
+<polygon fill="#b45309" stroke="#b45309" stroke-width="1.35" points="558.48,-112.52 561,-119.72 563.52,-112.52 558.48,-112.52"/>
+<text text-anchor="middle" x="292.5" y="-77.4" font-family="Arial, sans-serif" font-size="9.50" fill="#b45309">boundary rule</text>
+</g>
+</g>
+</svg>
+</div>
+
+  <h3>9-A-1. 왜 “각 팀이 전부 독립적으로 다시 만드는 것”과 다른가?</h3>
+  <div class="table-wrap"><table class="ownership-table"><thead><tr><th>구분</th><th>Platform이 공통 제공</th><th>각 Agent Team이 소유</th></tr></thead><tbody>
+    <tr><td>계약/통합</td><td>Team Contract, Registry, Case/State schema, Tool 권한 경계, Trace/Audit 형식</td><td>어떤 Capability를 담당하고 TeamResult를 어떻게 만들지</td></tr>
+    <tr><td>RAG</td><td>Vector/Search Port, 기본 pgvector Adapter, 연결/로깅/권한 primitive</td><td>문서 범위, chunk/index namespace, 검색 방식, rerank, context 구성 규칙</td></tr>
+    <tr><td>Memory</td><td>Memory Store Port, persistence/TTL/versioning primitive</td><td>무엇을 기억할지, 언제 읽고 쓸지, episodic memory schema</td></tr>
+    <tr><td>Workflow</td><td>Top-Level Case Graph와 Team 호출 Contract</td><td>Team 내부 Subgraph/Agent 수/Retry/검증 구조</td></tr>
+    <tr><td>Tools</td><td>Tool/Action Gateway, Auth, Scope, Idempotency, Audit</td><td>어떤 Tool 조합을 쓰고 어떤 순서/정책으로 호출할지</td></tr>
+  </tbody></table></div>
+  <div class="why-box"><strong>설계 이유:</strong> 팀별 업무 로직은 독립시키되, OAuth·DB 연결·Audit·Case State·Tool 권한 같은 공통 기반을 각 Team이 중복 구현하지 않게 한다. 필요하면 Team이 기본 Adapter를 쓰지 않고 자신만의 Retrieval/Memory Adapter를 Contract에 맞춰 교체할 수도 있다.</div>
+</section>
+
+
+
+
+
+
+<section class="section">
+  <h2>10. 구현 로드맵</h2>
+  <div class="kpi">
+    <div class="box"><div class="n">1</div><div>업무 Capability 도출</div><div class="small">Agent Team 수/경계는 여기서 결정</div></div>
+    <div class="box"><div class="n">2</div><div>Core Basement MVP</div><div class="small">Case/State, Registry, Contract, Context/Message Port</div></div>
+    <div class="box"><div class="n">3</div><div>Team Module 1..N</div><div class="small">각 Team 내부 Graph/RAG/Memory/Tools 구현</div></div>
+    <div class="box"><div class="n">4</div><div>외부 AI + UI + 평가</div><div class="small">OAuth/MCP, 운영 화면, 평가 리포트</div></div>
+  </div>
+  <div class="grid" style="margin-top:16px;"><div class="card"><h3>8~10주 권장 일정</h3><ul><li><strong>1~2주차</strong>: 요구사항, Capability Map, Case State, ERD</li><li><strong>3~4주차</strong>: Core Basement + External Gateway 골격</li><li><strong>5~6주차</strong>: 확정된 Agent Team Module 구현</li><li><strong>7주차</strong>: Team 통합, UI, OAuth/MCP</li><li><strong>8주차+</strong>: 평가, 오류/재처리 시나리오, 데모/발표</li></ul></div><div class="card"><h3>평가 포인트</h3><ul><li>단일 LLM + 단순 RAG 대비 Case 해결률</li><li>고정 Pipeline 대비 동적 재계획 성공률</li><li>WAIT/RESUME 및 Human Approval 정확성</li><li>Team 교체/추가 시 Core 수정량</li><li>외부 AI 연동 및 Scope 차단 성공률</li></ul></div></div>
+</section>
+
+
+  
+
+
+<section class="section">
+  <h2>11. 6명 팀 역할 분담 — 2개 Core 파트 + Agent Team 3명 + UI/Evaluation 1명</h2>
+  <p class="lead">Core를 “아키텍처 담당 vs 백엔드 담당”처럼 겹치게 나누지 않고, <strong>실행 조정</strong>과 <strong>외부/인프라 통합</strong>이라는 서로 다른 책임 경계로 분리한다.</p>
+
+  <h3>11-1. Core Platform — 2개 파트, 각 1명</h3>
+  <div class="role-grid">
+    <div class="role-card runtime"><h3>Part A · Agentic Runtime & Coordination</h3><ul><li>Customer Case lifecycle / Shared State 모델</li><li>Top-Level LangGraph: routing, replan, wait/resume, approval</li><li>Agent Team Contract / Registry</li><li>Context Broker의 orchestration 측 인터페이스</li><li>Message task/event envelope와 checkpoint 규칙</li></ul><div class="boundary-note"><strong>하지 않는 것:</strong> OAuth endpoint, REST/MCP 구현, DB driver/ORM, UI, Team 내부 RAG/Prompt 구현</div></div>
+    <div class="role-card integration"><h3>Part B · Platform Integration & Execution</h3><ul><li>Agent Gateway: OAuth, Token, Scope, External AI 연결</li><li>REST/OpenAPI / MCP endpoint</li><li>Tool / Action Gateway와 외부 Business API Adapter</li><li>PostgreSQL/Vector/Message/LLM 기술 Adapter</li><li>Audit/Observability/배포·환경 통합</li></ul><div class="boundary-note"><strong>하지 않는 것:</strong> Case 라우팅 의사결정, Team 내부 Workflow, 업무별 Retrieval/Memory 정책</div></div>
+  </div>
+
+  <h3>11-2. Agent Team Module 개발 — 3명</h3>
+  <div class="role-card agent"><p>요구사항 분석 후 확정된 Agent Team Module에 3명을 배치한다. Team 이름과 개수는 아직 고정하지 않는다.</p><ul><li>Team 내부 Agent/Subgraph 설계</li><li>업무별 Prompt/Tool 조합</li><li>Team 전용 Knowledge Scope / Retrieval / Rerank</li><li>Team 전용 Episodic Memory 정책</li><li>Team 단위 테스트와 실패/재처리 시나리오</li></ul><div class="boundary-note">예: Team 3개면 각 1명, Team 2개면 2명+1명, 복잡한 Team 하나에 2명 배치 가능.</div></div>
+
+  <h3>11-3. UX / Observability / Evaluation — 1명</h3>
+  <div class="role-card ui"><ul><li>사용자/운영자 Web UI</li><li>Case 상태, Agent Trace, Approval 화면</li><li>Baseline vs Agentic 비교 Evaluation harness</li><li>Case 해결률, Tool 호출, 재처리, latency/cost 지표</li><li>통합 시나리오/데모/발표 리포트</li></ul><div class="boundary-note">Agent Team 내부 로직이나 Core Gateway를 중복 구현하지 않고 “보이게 만들고 측정하는 역할”로 경계를 분리한다.</div></div>
+
+  <h3>11-4. 왜 이 분리가 덜 겹치는가?</h3>
+  <div class="table-wrap"><table><thead><tr><th>질문</th><th>담당</th></tr></thead><tbody><tr><td>어느 Team을 언제 호출할까?</td><td>Core Part A</td></tr><tr><td>외부 AI가 어떤 권한으로 어떻게 들어올까?</td><td>Core Part B</td></tr><tr><td>선택된 Team 안에서 문제를 어떻게 풀까?</td><td>Agent Team Module 개발자 3명</td></tr><tr><td>사용자/운영자가 무엇을 보고, 시스템 품질을 어떻게 평가할까?</td><td>UX / Evaluation 1명</td></tr></tbody></table></div>
+</section>
+
+
+
+
+  <section class="section">
+    <h2>12. 엑셀 입력용 요약</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>팀 이름</th>
+            <th>팀원</th>
+            <th>프로젝트 주제</th>
+            <th>프로젝트 주제 설명</th>
+            <th>활용 기술 스택</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>6</td>
+            <td>A-COP Lab (예시)</td>
+            <td>[팀원명 입력]</td>
+            <td>다중 에이전트 서빙 기반 고객 피드백 분석 및 맞춤형 응대 자동화 시스템</td>
+            <td>고객 리뷰·문의·상담 로그를 분석하여 감성·의도·이슈를 분류하고, 요구사항에 따라 구성되는 업무별 전문 Agent Team Module이 Shared State와 기업 지식(RAG)을 기반으로 협업하여 맞춤형 응대를 수행하는 Agentic Customer Operations Platform을 구축한다. 또한 사용자가 ChatGPT·Claude·Gemini 같은 개인 AI를 통해 우리 서비스의 Agent API/MCP에 접속하여 문의·조회·작업 요청을 수행할 수 있도록 외부 AI 연동 인터페이스를 제공한다.</td>
+            <td>Python, FastAPI, React, PostgreSQL, pgvector, LangGraph, RAG, OpenAPI, OAuth2, Docker</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="footer">
+    생성일: 2026-08-12 · 브리핑용 HTML 파일
+  </div>
+</div>
+</body>
+</html>

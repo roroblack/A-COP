@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A-COP Commerce - 서비스 흐름 스토리보드 목업</title>
+  <style>
+    :root {
+      --acop-navy: #102a43;
+      --acop-navy-2: #173b5c;
+      --acop-teal: #167c7a;
+      --acop-teal-soft: #e3f4f1;
+      --acop-sky-soft: #edf5fb;
+      --acop-amber: #a76218;
+      --acop-amber-soft: #fff2e3;
+      --acop-red: #a23d48;
+      --acop-red-soft: #fcebed;
+      --acop-ink: #173044;
+      --acop-muted: #647586;
+      --acop-line: #d9e3e8;
+      --acop-paper: #ffffff;
+      --acop-bg: #f3f7f8;
+      --acop-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --acop-sans: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--acop-bg);
+      color: var(--acop-ink);
+      font-family: var(--acop-sans);
+      line-height: 1.6;
+      word-break: keep-all;
+    }
+    button { font: inherit; }
+    button:focus-visible { outline: 3px solid #8ad1cb; outline-offset: 2px; }
+    .shell { max-width: 1320px; margin: 0 auto; padding: 0 22px 48px; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 19px 0;
+      color: var(--acop-paper);
+    }
+    .topbar-wrap { background: var(--acop-navy); }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 700; letter-spacing: -.02em; }
+    .brand-mark { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 9px; background: var(--acop-teal); color: white; font-family: var(--acop-mono); font-size: 12px; }
+    .topbar-note { color: #c7d7e2; font-size: 12px; }
+    .hero { padding: 35px 0 23px; }
+    .eyebrow { color: var(--acop-teal); font: 700 11px/1 var(--acop-mono); letter-spacing: .13em; }
+    h1 { margin: 11px 0 9px; font-size: clamp(27px, 4vw, 38px); line-height: 1.25; letter-spacing: -.045em; }
+    h1 span { color: var(--acop-teal); }
+    .hero p { max-width: 760px; margin: 0; color: var(--acop-muted); font-size: 15px; }
+    .demo-notice { display: flex; align-items: flex-start; gap: 10px; margin-top: 17px; max-width: 760px; padding: 12px 14px; border-left: 3px solid var(--acop-amber); border-radius: 9px; background: var(--acop-amber-soft); color: #714418; font-size: 13px; }
+    .demo-notice b { white-space: nowrap; }
+
+    .storyboard { display: grid; grid-template-columns: 245px minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
+    .surface { background: var(--acop-paper); border: 1px solid var(--acop-line); border-radius: 15px; box-shadow: 0 7px 22px rgba(23, 48, 68, .045); }
+    .case-picker { padding: 17px; position: sticky; top: 15px; }
+    .panel-label { color: var(--acop-teal); font: 700 10.5px/1 var(--acop-mono); letter-spacing: .1em; }
+    .case-picker h2, .case-board h2 { margin: 8px 0 13px; font-size: 16px; letter-spacing: -.02em; }
+    .case-choice { display: grid; gap: 8px; }
+    .case-button {
+      width: 100%; padding: 12px; border: 1px solid var(--acop-line); border-radius: 10px; background: #fff; color: var(--acop-ink); text-align: left; cursor: pointer;
+      transition: background .18s, border-color .18s, transform .18s;
+    }
+    .case-button:hover { border-color: #7dbbb7; transform: translateY(-1px); }
+    .case-button[aria-pressed="true"] { border-color: var(--acop-teal); background: var(--acop-teal-soft); }
+    .case-number { display: block; color: var(--acop-teal); font: 700 10px/1 var(--acop-mono); letter-spacing: .08em; }
+    .case-name { display: block; margin-top: 4px; font-size: 13px; font-weight: 700; line-height: 1.35; }
+    .case-caption { display: block; margin-top: 4px; color: var(--acop-muted); font-size: 11.5px; line-height: 1.45; }
+    .picker-rule { margin: 17px 0; border: 0; border-top: 1px solid var(--acop-line); }
+    .picker-mini { color: var(--acop-muted); font-size: 12px; }
+    .picker-mini b { color: var(--acop-ink); }
+
+    .story-main { min-width: 0; }
+    .progress { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-bottom: 14px; }
+    .progress-step { min-height: 74px; padding: 10px; border: 1px solid var(--acop-line); border-radius: 10px; background: #fff; color: var(--acop-muted); }
+    .progress-step[aria-current="step"] { border-color: var(--acop-teal); background: var(--acop-teal-soft); color: #165e5b; }
+    .progress-step.is-done { background: var(--acop-sky-soft); color: #315b78; }
+    .progress-num { display: block; font: 700 10px/1 var(--acop-mono); letter-spacing: .08em; }
+    .progress-name { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; line-height: 1.25; }
+    .stage { overflow: hidden; }
+    .stage-head { display: flex; justify-content: space-between; gap: 15px; align-items: flex-start; padding: 21px 23px 17px; border-bottom: 1px solid var(--acop-line); }
+    .stage-kicker { color: var(--acop-teal); font: 700 10.5px/1 var(--acop-mono); letter-spacing: .11em; }
+    .stage-head h2 { margin: 7px 0 0; font-size: 22px; letter-spacing: -.035em; line-height: 1.35; }
+    .stage-state { flex: 0 0 auto; padding: 5px 8px; border-radius: 6px; background: var(--acop-sky-soft); color: #315b78; font: 700 10px/1.3 var(--acop-mono); text-align: center; }
+    .stage-body { padding: 22px; }
+    .story-layout { display: grid; grid-template-columns: minmax(0, 1fr) 215px; gap: 16px; }
+    .conversation { padding: 16px; border: 1px solid var(--acop-line); border-radius: 12px; background: #f9fbfc; }
+    .conversation-title { margin-bottom: 12px; color: var(--acop-muted); font: 700 10.5px/1 var(--acop-mono); letter-spacing: .09em; }
+    .message { max-width: 93%; padding: 12px 13px; border-radius: 11px; font-size: 13px; }
+    .message + .message { margin-top: 10px; }
+    .message.customer { margin-left: auto; background: var(--acop-navy); color: white; border-bottom-right-radius: 2px; }
+    .message.system { background: var(--acop-teal-soft); color: #1d5757; border-bottom-left-radius: 2px; }
+    .message.operator { background: var(--acop-amber-soft); color: #714418; border-bottom-left-radius: 2px; }
+    .message small { display: block; margin-bottom: 5px; font: 700 10px/1 var(--acop-mono); letter-spacing: .06em; opacity: .76; }
+    .fact-box { padding: 15px; border-radius: 12px; background: var(--acop-navy); color: white; }
+    .fact-box .panel-label { color: #8ed9d2; }
+    .fact-box h3 { margin: 7px 0 13px; font-size: 15px; }
+    .fact-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(255,255,255,.16); font-size: 12px; }
+    .fact-row span { color: #c7d7e2; }
+    .fact-row b { text-align: right; }
+    .agent-lane { margin-top: 16px; padding: 15px; border: 1px solid var(--acop-line); border-radius: 12px; }
+    .agent-lane h3 { margin: 0; font-size: 14px; }
+    .agent-lane p { margin: 5px 0 12px; color: var(--acop-muted); font-size: 12.5px; }
+    .agent-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .agent-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid var(--acop-line); border-radius: 7px; color: var(--acop-muted); font: 700 10.5px/1 var(--acop-mono); }
+    .agent-chip.active { border-color: var(--acop-teal); background: var(--acop-teal-soft); color: #145b58; }
+    .agent-chip.pending { border-color: #e8c28e; background: var(--acop-amber-soft); color: #875015; }
+    .agent-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .action-box { margin-top: 16px; padding: 15px; border-left: 4px solid var(--acop-teal); border-radius: 0 10px 10px 0; background: var(--acop-teal-soft); }
+    .action-box.alert { border-left-color: var(--acop-amber); background: var(--acop-amber-soft); }
+    .action-box h3 { margin: 0; color: #155855; font-size: 14px; }
+    .action-box.alert h3 { color: #754613; }
+    .action-box p { margin: 6px 0 0; color: #3e6664; font-size: 12.7px; }
+    .action-box.alert p { color: #78522b; }
+    .stage-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; }
+    .stage-guide { color: var(--acop-muted); font-size: 12px; }
+    .button-row { display: flex; gap: 8px; }
+    .control {
+      padding: 9px 13px; border: 1px solid var(--acop-line); border-radius: 8px; background: #fff; color: var(--acop-ink); cursor: pointer; font-size: 12px; font-weight: 700;
+    }
+    .control:hover { background: #f3f8f9; }
+    .control.primary { border-color: var(--acop-teal); background: var(--acop-teal); color: white; }
+    .control:disabled { opacity: .42; cursor: default; }
+
+    .case-board { padding: 17px; position: sticky; top: 15px; }
+    .status-label { display: inline-flex; margin-bottom: 12px; padding: 4px 7px; border-radius: 6px; background: var(--acop-teal-soft); color: #155b57; font: 700 10px/1.3 var(--acop-mono); }
+    .case-board h3 { margin: 0; font-size: 14px; line-height: 1.4; }
+    .board-list { margin: 14px 0 0; padding: 0; list-style: none; }
+    .board-list li { padding: 11px 0; border-top: 1px solid var(--acop-line); }
+    .board-list span { display: block; color: var(--acop-muted); font: 700 10px/1 var(--acop-mono); letter-spacing: .06em; }
+    .board-list b { display: block; margin-top: 5px; font-size: 12.5px; line-height: 1.4; }
+    .mini-divider { margin: 16px 0; border: 0; border-top: 1px solid var(--acop-line); }
+    .review-card { padding: 12px; border-radius: 10px; background: #f8fbfc; color: var(--acop-muted); font-size: 12px; }
+    .review-card b { display: block; margin-bottom: 5px; color: var(--acop-ink); font-size: 12px; }
+    .legend { margin-top: 25px; padding: 15px 17px; }
+    .legend h2 { margin: 8px 0 8px; font-size: 15px; }
+    .legend p { margin: 0; color: var(--acop-muted); font-size: 12.5px; }
+    .legend-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+    .legend-item { padding: 12px; border-top: 2px solid var(--acop-line); background: #fff; }
+    .legend-item:nth-child(1) { border-top-color: var(--acop-navy); }
+    .legend-item:nth-child(2) { border-top-color: var(--acop-teal); }
+    .legend-item:nth-child(3) { border-top-color: var(--acop-amber); }
+    .legend-item b { display: block; margin-bottom: 4px; font: 700 10.5px/1 var(--acop-mono); letter-spacing: .07em; }
+    .legend-item span { color: var(--acop-muted); font-size: 12px; }
+    .footer { padding-top: 23px; color: var(--acop-muted); font: 11px/1.5 var(--acop-mono); letter-spacing: .03em; }
+
+    @media (max-width: 1080px) {
+      .storyboard { grid-template-columns: 215px minmax(0, 1fr); }
+      .case-board { position: static; grid-column: 1 / -1; }
+      .case-board-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+      .case-board h2 { grid-column: 1 / -1; margin-bottom: 0; }
+      .mini-divider { display: none; }
+    }
+    @media (max-width: 760px) {
+      .shell { padding: 0 14px 34px; }
+      .topbar { padding: 14px 0; }
+      .topbar-note { display: none; }
+      .storyboard { grid-template-columns: 1fr; }
+      .case-picker { position: static; }
+      .case-choice { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .picker-rule, .picker-mini { display: none; }
+      .progress { grid-template-columns: 1fr 1fr; }
+      .story-layout { grid-template-columns: 1fr; }
+      .case-board-inner { grid-template-columns: 1fr; }
+      .legend-list { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 500px) {
+      .case-choice { grid-template-columns: 1fr; }
+      .progress { grid-template-columns: 1fr; }
+      .stage-head, .stage-footer { display: block; }
+      .stage-state { display: inline-block; margin-top: 10px; }
+      .button-row { margin-top: 14px; }
+      .stage-body { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar-wrap">
+    <div class="shell topbar">
+      <div class="brand"><span class="brand-mark">A·C</span><span>A-COP Commerce</span></div>
+      <div class="topbar-note">SERVICE FLOW STORYBOARD · TEAM EXPLAINER</div>
+    </div>
+  </div>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="eyebrow">INTERACTIVE STORYBOARD MOCKUP</div>
+      <h1 id="page-title">한 건의 피드백이 <span>안전한 처리와 운영 인사이트</span>가 되는 과정</h1>
+      <p>팀 설명용 흐름 목업입니다. 왼쪽의 가상 Case를 선택하고 단계 이동 버튼을 누르면, A-COP이 구매자 요청을 어떻게 접수·분류·협업·승인·분석하는지 확인할 수 있습니다.</p>
+      <div class="demo-notice"><b>DEMO ONLY</b><span>주문·고객·리뷰·정책·에이전트 결과는 모두 데모를 위해 만든 합성 골드셋입니다. 실제 AI, RAG, 외부 API 또는 개인정보와 연결되지 않습니다.</span></div>
+    </section>
+
+    <section class="storyboard" aria-label="A-COP 처리 흐름 목업">
+      <aside class="surface case-picker" aria-label="가상 Case 선택">
+        <div class="panel-label">GOLD SET · 3 CASES</div>
+        <h2>설명할 상황 선택</h2>
+        <div class="case-choice" id="case-choice"></div>
+        <hr class="picker-rule">
+        <p class="picker-mini"><b>사용 방법</b><br>Case를 바꾸면 첫 단계로 돌아갑니다. 단계별 화면은 실제 연동 결과가 아니라 팀이 합의할 서비스 동작을 표현합니다.</p>
+      </aside>
+
+      <div class="story-main">
+        <div class="progress" id="progress" aria-label="처리 단계"></div>
+        <section class="surface stage" aria-live="polite" aria-labelledby="stage-title">
+          <header class="stage-head">
+            <div>
+              <div class="stage-kicker" id="stage-kicker"></div>
+              <h2 id="stage-title"></h2>
+            </div>
+            <div class="stage-state" id="stage-state"></div>
+          </header>
+          <div class="stage-body">
+            <div class="story-layout">
+              <div>
+                <div class="conversation" id="conversation"></div>
+                <div class="agent-lane" id="agent-lane"></div>
+                <div class="action-box" id="action-box"></div>
+              </div>
+              <aside class="fact-box" id="fact-box" aria-label="현재 Case 정보"></aside>
+            </div>
+            <div class="stage-footer">
+              <div class="stage-guide" id="stage-guide"></div>
+              <div class="button-row">
+                <button type="button" class="control" id="prev-step">이전 단계</button>
+                <button type="button" class="control primary" id="next-step">다음 단계</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="surface case-board" aria-label="현재 Case 요약">
+        <div class="panel-label">LIVE CASE BOARD</div>
+        <h2>현재 처리 카드</h2>
+        <div class="case-board-inner">
+          <div>
+            <div class="status-label" id="board-status"></div>
+            <h3 id="board-title"></h3>
+            <ul class="board-list" id="board-list"></ul>
+          </div>
+          <hr class="mini-divider">
+          <div class="review-card" id="review-card"></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="surface legend" aria-label="목업 읽는 방법">
+      <div class="panel-label">WHAT THIS MOCKUP DEMONSTRATES</div>
+      <h2>세 가지 장면으로 설명하는 프로젝트 핵심</h2>
+      <p>반품·환불을 대신 결정하는 챗봇이 아니라, 책임 주체가 다른 이슈를 Case로 묶어 안전하게 협업시키고 피드백을 운영 개선으로 연결하는 구조입니다.</p>
+      <div class="legend-list">
+        <div class="legend-item"><b>CASE AUTOMATION</b><span>접수부터 외부 대기·재개·승인까지 한 건의 상태를 잃지 않습니다.</span></div>
+        <div class="legend-item"><b>MULTI-AGENT COLLAB</b><span>주문·물류·판매자 품질 팀이 필요한 근거만 확인하고 제안을 냅니다.</span></div>
+        <div class="legend-item"><b>FEEDBACK INSIGHT</b><span>반복 불만을 경보로 만들되, 제재와 금전 처리는 사람의 승인으로 제한합니다.</span></div>
+      </div>
+    </section>
+    <footer class="footer">A-COP COMMERCE · STORYBOARD MOCKUP · SYNTHETIC GOLD SET ONLY · 2026.08</footer>
+  </main>
+
+  <script>
+    const stages = [
+      { id: "intake", label: "요청 접수", state: "new" },
+      { id: "classify", label: "Case 분류", state: "classified" },
+      { id: "collaborate", label: "팀 협업", state: "gathering_evidence" },
+      { id: "approval", label: "승인·실행", state: "waiting_approval" },
+      { id: "insight", label: "피드백 반영", state: "resolved" }
+    ];
+
+    const cases = [
+      {
+        id: "damage-return",
+        short: "파손·지연 반품",
+        title: "파손된 상품과 배송 지연을 함께 신고한 구매자",
+        caption: "복합 Case · 반품 / 배송 / 판매자 품질",
+        status: "HIGH RISK · MONEY",
+        board: [
+          ["ORDER", "OD-2026-0184 · 조명 2개"],
+          ["REQUEST", "상품 1개 반품 + 배송 지연 문의"],
+          ["RESPONSIBILITY", "판매자 + 배송사 · 복합"],
+          ["RISK", "금전 처리 · 운영자 승인 필요"]
+        ],
+        review: "<b>골드셋 메모</b>파손 사진 2장과 송장 이력을 포함한 합성 주문 Case. '부분 반품'은 주문 전체가 아닌 상품·수량 단위로 다룹니다.",
+        steps: [
+          {
+            title: "구매자가 주문 상품 1개를 선택해 요청을 남긴다",
+            messages: [["customer", "구매자", "조명 2개 중 1개가 파손됐어요. 배송도 예정일보다 이틀 늦었습니다. 파손된 1개만 반품하고 싶어요."]],
+            facts: [["주문", "OD-2026-0184"], ["대상", "조명 1 / 2개"], ["첨부", "파손 사진 2장"], ["채널", "통합 요청 폼"]],
+            agents: [["SUP", "대기"], ["ORD", "대기"], ["LOG", "대기"], ["SEL", "대기"]],
+            action: ["접수 완료", "주문 상품과 반품 수량, 파손 사진, 고객 메시지를 하나의 Case에 묶습니다. 이 시점에는 환불·책임을 판단하지 않습니다.", false],
+            guide: "핵심: 폼이 주문 상품과 수량을 받기 때문에 ‘부분 반품’의 대상이 명확합니다."
+          },
+          {
+            title: "Supervisor가 복합 이슈와 우선순위를 판별한다",
+            messages: [["customer", "구매자", "조명 2개 중 1개가 파손됐어요. 배송도 예정일보다 이틀 늦었습니다. 파손된 1개만 반품하고 싶어요."], ["system", "SUPERVISOR", "반품 요청 + 배송 지연 + 파손 가능성으로 분류했습니다. 주문·물류·판매자 품질 확인을 순서대로 시작합니다."]],
+            facts: [["의도", "부분 반품 / 환불"], ["주체", "판매자 + 배송사"], ["감성", "부정 · 우선 처리"], ["상태", "classified"]],
+            agents: [["SUP", "active"], ["ORD", "pending"], ["LOG", "pending"], ["SEL", "대기"]],
+            action: ["분류 결과", "한 고객 메시지를 여러 책임 주체로 쪼개되, 고객에게는 하나의 Case 진행 상황으로 보여줍니다.", false],
+            guide: "핵심: 다중 에이전트는 팀을 많이 만드는 것이 아니라 서로 다른 데이터·승인 경계를 분리하기 위해 사용합니다."
+          },
+          {
+            title: "주문·물류 팀이 각각의 근거를 확인한다",
+            messages: [["system", "ORDER OPS", "수령일은 반품 가능 기간 안입니다. 상품 1개에 대한 반품 회수 및 환불 제안이 가능합니다."], ["system", "LOGISTICS OPS", "송장 이력상 배송이 2일 지연됐습니다. 파손 사진을 포함해 배송사 확인 요청을 생성합니다."], ["customer", "구매자", "진행 상황을 알려 주세요."]],
+            facts: [["주문 근거", "반품 가능 기간 내"], ["물류 근거", "2일 배송 지연"], ["외부 확인", "배송사 요청 생성"], ["상태", "waiting_external"]],
+            agents: [["SUP", "active"], ["ORD", "active"], ["LOG", "active"], ["SEL", "pending"]],
+            action: ["근거 수집", "Order Ops는 정책과 주문을, Logistics Ops는 송장 이력을 봅니다. 배송사 응답을 기다리는 동안 Case는 멈추지 않고 외부 대기 상태로 기록됩니다.", false],
+            guide: "핵심: 실제 주문·배송 정보는 RAG가 아니라 구조화된 DB 또는 공식 연동에서 확인한다는 설계입니다."
+          },
+          {
+            title: "시스템은 처리안을 만들고 운영자 승인을 요청한다",
+            messages: [["system", "ACTION PROPOSAL", "제안: 조명 1개 반품 회수 후 해당 상품 금액 환불. 배송사 파손 클레임은 별도 진행."], ["operator", "운영자", "근거와 대상 수량을 확인했습니다. 데모 환경에서 처리안을 승인합니다."]],
+            facts: [["제안", "상품 1개 반품 회수"], ["금전", "환불은 승인 후 Mock 실행"], ["제재", "반복성 확인 전 미실행"], ["상태", "waiting_approval"]],
+            agents: [["SUP", "active"], ["ORD", "active"], ["LOG", "active"], ["SEL", "pending"]],
+            action: ["승인 경계", "AI는 근거가 붙은 Action Proposal만 반환합니다. 실제 금전·제재 조치는 운영자가 승인한 뒤에만 실행됩니다.", true],
+            guide: "핵심: 중요한 것은 ‘자동 환불’이 아니라 안전한 제안·승인·감사 로그 흐름을 보여주는 것입니다."
+          },
+          {
+            title: "구매자 안내와 품질 피드백이 함께 남는다",
+            messages: [["system", "A-COP 안내", "선택하신 조명 1개의 반품 회수가 접수되었습니다. 회수 완료 후 환불이 진행됩니다. 배송사 파손 확인도 함께 요청했습니다."], ["system", "SELLER QUALITY", "같은 상품의 파손 불만이 최근 7일간 증가했는지 모니터링 목록에 반영했습니다."]],
+            facts: [["고객 응대", "현재 단계 + 다음 일정"], ["VOC 태그", "파손 / 포장 / 배송 지연"], ["운영 인사이트", "반복 불만 추적"], ["상태", "resolved"]],
+            agents: [["SUP", "active"], ["ORD", "active"], ["LOG", "active"], ["SEL", "active"]],
+            action: ["처리와 분석의 연결", "개별 Case는 해결되지만 익명화된 원인·결과는 누적 분석에 남습니다. 다음 품질 이슈를 먼저 찾는 근거가 됩니다.", false],
+            guide: "핵심: 이 프로젝트는 단일 고객 응대 자동화와 피드백 분석을 동시에 산출합니다."
+          }
+        ]
+      },
+      {
+        id: "feedback-alert",
+        short: "반복 불만 경보",
+        title: "특정 상품의 포장 불량 리뷰가 급증한 상황",
+        caption: "피드백 분석 Case · 리뷰/VOC → 운영 검토",
+        status: "QUALITY ALERT · REVIEW",
+        board: [
+          ["SCOPE", "판매자 S-042 · 무드등 M-14"],
+          ["SIGNAL", "포장 불량 부정 리뷰 증가"],
+          ["WINDOW", "최근 7일 · 기준선 대비 상승"],
+          ["DECISION", "자동 제재 금지 · 검토안 생성"]
+        ],
+        review: "<b>골드셋 메모</b>동일 원인으로 라벨링된 합성 리뷰 12건을 묶은 분석 상황. 경보는 사실 판정이나 제재가 아닙니다.",
+        steps: [
+          {
+            title: "리뷰와 해결된 VOC가 익명화되어 분석 후보가 된다",
+            messages: [["customer", "리뷰", "상품은 예쁜데 상자가 찌그러져 와서 선물하기 어려웠어요."], ["customer", "리뷰", "무드등이 깨져 있었습니다. 포장이 너무 약한 것 같아요."]],
+            facts: [["입력", "리뷰 + 해결 Case"], ["식별", "판매자·상품 연결"], ["개인정보", "분석용 최소화"], ["상태", "new"]],
+            agents: [["SUP", "대기"], ["ORD", "대기"], ["LOG", "대기"], ["SEL", "대기"]],
+            action: ["분석 후보 생성", "모든 리뷰를 상담 Case로 만들지 않습니다. 위험 규칙 또는 분석 대상 텍스트만 익명화해 피드백 분석 파이프라인으로 보냅니다.", false],
+            guide: "핵심: 공개 리뷰는 고객의 공식 반품 요청과 다르며, 자동 조치를 위한 근거가 아니라 분석 신호로 사용합니다."
+          },
+          {
+            title: "분석기는 원인·감성·책임 주체를 묶는다",
+            messages: [["system", "FEEDBACK ANALYZER", "유사 표현을 ‘포장 불량 / 파손’ 원인으로 묶었습니다. 감성은 부정, 관련 주체는 판매자 품질과 배송 가능성입니다."]],
+            facts: [["원인", "포장 불량 / 파손"], ["감성", "부정"], ["유사 묶음", "12건"], ["상태", "classified"]],
+            agents: [["SUP", "active"], ["ORD", "대기"], ["LOG", "pending"], ["SEL", "pending"]],
+            action: ["패턴 분류", "감성 분석은 화면 장식이 아니라 반복 원인 분류와 경보 우선순위를 정하는 입력으로 연결됩니다.", false],
+            guide: "핵심: ‘피드백 분석’이 개별 고객 응대의 뒷단이 아니라 독립된 운영 산출물임을 보여줍니다."
+          },
+          {
+            title: "기준선 대비 증가를 운영 경보로 바꾼다",
+            messages: [["system", "QUALITY SIGNAL", "최근 7일간 포장 불량 관련 부정 피드백이 기준선보다 증가했습니다. 근거 묶음을 Seller Quality 팀에 전달합니다."]],
+            facts: [["기준선", "최근 4주 평균"], ["변화", "부정 피드백 증가"], ["경보", "운영자 검토 필요"], ["상태", "gathering_evidence"]],
+            agents: [["SUP", "active"], ["ORD", "대기"], ["LOG", "pending"], ["SEL", "active"]],
+            action: ["경보 생성", "경보에는 유사 리뷰 수, 발생 기간, 상품·판매자 정보, 연결된 파손 Case 같은 근거를 함께 표시합니다.", true],
+            guide: "핵심: ‘떠오르는 이슈’를 미리 발견하되, 시스템이 판매자 잘못을 확정하지는 않습니다."
+          },
+          {
+            title: "판매자 품질 팀이 확인 요청과 검토안을 만든다",
+            messages: [["system", "SELLER QUALITY", "제안: 포장 방식 확인 요청, 최근 출고분 검수 강화, 배송 파손 이력 교차 확인."], ["operator", "운영자", "검토안을 확인하고 판매자에게 포장 기준 확인을 요청합니다."]],
+            facts: [["제안", "포장 검수·확인 요청"], ["허용 행동", "문의 / 검수 제안"], ["금지 행동", "자동 경고·판매중지"], ["상태", "waiting_approval"]],
+            agents: [["SUP", "active"], ["ORD", "대기"], ["LOG", "active"], ["SEL", "active"]],
+            action: ["사람 검토", "반복 불만은 중요한 운영 신호이지만, 경고·판매중지처럼 파트너에게 영향이 큰 조치는 사람이 검토하고 승인합니다.", true],
+            guide: "핵심: 피드백 분석 결과는 ‘자동 처벌’이 아니라 근거를 갖춘 운영 의사결정 보조입니다."
+          },
+          {
+            title: "경보 결과가 개선 추적 항목으로 남는다",
+            messages: [["system", "A-COP INSIGHT", "포장 방식 확인 요청이 생성됐습니다. 이후 2주간 동일 원인 피드백 추이를 다시 관찰합니다."]],
+            facts: [["결과", "운영 검토 완료"], ["후속", "2주 추이 관찰"], ["대시보드", "원인별 추이 반영"], ["상태", "resolved"]],
+            agents: [["SUP", "active"], ["ORD", "대기"], ["LOG", "active"], ["SEL", "active"]],
+            action: ["운영 학습", "Case의 최종 결과와 이후 피드백 추이를 함께 보면, 단순 경보보다 실제 개선 여부를 설명할 수 있습니다.", false],
+            guide: "핵심: 프로젝트의 두 번째 산출물은 운영자가 반복 문제를 발견하고 개선을 추적할 수 있는 인사이트입니다."
+          }
+        ]
+      },
+      {
+        id: "personalized-delay",
+        short: "맞춤형 지연 응대",
+        title: "미해결 이력이 있는 고객의 배송 지연 문의",
+        caption: "맞춤형 응대 Case · 동일 정책 / 다른 안내 순서",
+        status: "PRIORITY SUPPORT · REVIEW",
+        board: [
+          ["ORDER", "OD-2026-0221 · 운동화 1개"],
+          ["SIGNAL", "강한 부정 감성 + 미해결 이력"],
+          ["POLICY", "모든 고객에게 동일 적용"],
+          ["PERSONALIZE", "빠른 사람 연결 + 앱 알림"]
+        ],
+        review: "<b>골드셋 메모</b>고객별 환불 권리는 바꾸지 않고, 안내 순서·채널·사람 연결 우선순위만 조정하는 합성 Case.",
+        steps: [
+          {
+            title: "구매자가 배송 지연에 대한 불만을 남긴다",
+            messages: [["customer", "구매자", "아직도 배송 준비중인가요? 지난 문의도 답이 늦었는데 너무 답답합니다."]],
+            facts: [["주문", "운동화 1개"], ["채널", "앱 문의"], ["메시지", "강한 불만"], ["상태", "new"]],
+            agents: [["SUP", "대기"], ["ORD", "대기"], ["LOG", "대기"], ["SEL", "대기"]],
+            action: ["요청 접수", "배송 문의 자체는 일반적인 Case로 시작합니다. 고객의 감정은 기록하되, 이 단계에서 보상·책임을 추정하지 않습니다.", false],
+            guide: "핵심: 개인화는 고객을 우대하는 ‘특혜’가 아니라 필요한 지원을 더 빨리 연결하기 위한 맥락입니다."
+          },
+          {
+            title: "Supervisor가 배송 이슈와 지원 우선순위를 구분한다",
+            messages: [["system", "SUPERVISOR", "배송 지연 문의로 분류했습니다. 최근 미해결 문의와 강한 부정 감성을 확인해 Logistics Ops와 운영자 우선 검토를 함께 배정합니다."]],
+            facts: [["의도", "배송 상태 확인"], ["감성", "강한 부정"], ["맥락", "최근 미해결 Case"], ["상태", "classified"]],
+            agents: [["SUP", "active"], ["ORD", "대기"], ["LOG", "pending"], ["SEL", "대기"]],
+            action: ["개인화 신호", "재구매 여부·선호 채널·미해결 이력은 안내 우선순위에만 사용합니다. 환불 권리와 정책 자체는 바꾸지 않습니다.", false],
+            guide: "핵심: 맞춤형 응대의 실체를 ‘응대 톤·순서·에스컬레이션’으로 좁혀 안전하게 정의합니다."
+          },
+          {
+            title: "물류 팀이 공식 배송 상태를 확인한다",
+            messages: [["system", "LOGISTICS OPS", "출고 지연이 확인됐습니다. 판매자 출고 예정일은 내일이며, 지연 사유 확인 요청을 생성합니다."]],
+            facts: [["송장", "아직 미생성"], ["출고 예정", "내일"], ["외부 확인", "판매자 요청"], ["상태", "waiting_external"]],
+            agents: [["SUP", "active"], ["ORD", "대기"], ["LOG", "active"], ["SEL", "pending"]],
+            action: ["사실 확인", "정확한 배송 상태는 주문·물류 데이터에서 확인합니다. 자연어 모델이 배송 상태를 추측하지 않도록 분리합니다.", false],
+            guide: "핵심: 고객 문맥은 응대를 바꾸지만, 거래 사실은 공식 데이터로 확인한다는 원칙입니다."
+          },
+          {
+            title: "같은 정책 안에서 응대 순서와 채널을 조정한다",
+            messages: [["operator", "운영자", "이전 미해결 건을 고려해 먼저 상태를 안내하고, 담당자가 직접 확인할 수 있도록 우선 연결합니다."], ["system", "A-COP 안내", "배송 지연을 확인 중입니다. 내일 출고 예정이며, 담당자가 판매자 확인 결과를 앱 알림으로 먼저 안내드리겠습니다."]],
+            facts: [["정책", "고객 공통 기준"], ["개인화", "앱 알림 우선"], ["지원", "운영자 우선 연결"], ["상태", "waiting_approval"]],
+            agents: [["SUP", "active"], ["ORD", "대기"], ["LOG", "active"], ["SEL", "대기"]],
+            action: ["맞춤형 안내", "보상 금액이나 환불 조건을 바꾸지 않고, 고객이 가장 필요로 하는 ‘현재 상태·다음 일정·사람 연결’을 먼저 제공합니다.", true],
+            guide: "핵심: ‘맞춤형’이라는 주제어를 개인정보 과다 활용 없이 설명할 수 있는 장면입니다."
+          },
+          {
+            title: "해결 결과와 고객 맥락은 다음 응대의 최소 신호가 된다",
+            messages: [["system", "A-COP 안내", "판매자 출고가 확인되었습니다. 송장 등록 후 앱 알림으로 바로 안내드리겠습니다."], ["system", "CASE LOG", "이 Case의 상태 전이와 응대 채널 선호를 최소 정보로 기록했습니다."]],
+            facts: [["결과", "출고 일정 안내"], ["기록", "선호 채널·해결 상태"], ["보관", "최소 범위"], ["상태", "resolved"]],
+            agents: [["SUP", "active"], ["ORD", "대기"], ["LOG", "active"], ["SEL", "대기"]],
+            action: ["안전한 개인화", "민감정보나 상세 행동 이력은 사용하지 않습니다. 다음 문의에서도 필요한 지원을 빠르게 연결하는 최소 맥락만 남깁니다.", false],
+            guide: "핵심: 개인화와 개인정보 보호를 함께 설명할 수 있는 마무리 장면입니다."
+          }
+        ]
+      }
+    ];
+
+    let selectedCase = 0;
+    let selectedStep = 0;
+
+    const caseChoice = document.getElementById("case-choice");
+    const progress = document.getElementById("progress");
+    const stageKicker = document.getElementById("stage-kicker");
+    const stageTitle = document.getElementById("stage-title");
+    const stageState = document.getElementById("stage-state");
+    const conversation = document.getElementById("conversation");
+    const agentLane = document.getElementById("agent-lane");
+    const actionBox = document.getElementById("action-box");
+    const factBox = document.getElementById("fact-box");
+    const stageGuide = document.getElementById("stage-guide");
+    const prevStep = document.getElementById("prev-step");
+    const nextStep = document.getElementById("next-step");
+    const boardStatus = document.getElementById("board-status");
+    const boardTitle = document.getElementById("board-title");
+    const boardList = document.getElementById("board-list");
+    const reviewCard = document.getElementById("review-card");
+
+    function agentStatus(status) {
+      if (status === "active") return "active";
+      if (status === "pending") return "pending";
+      return "";
+    }
+
+    function agentLabel(status) {
+      if (status === "active") return "확인 중";
+      if (status === "pending") return "대기 예정";
+      return "대기";
+    }
+
+    function renderCaseButtons() {
+      caseChoice.innerHTML = cases.map((item, index) => `
+        <button type="button" class="case-button" data-case-index="${index}" aria-pressed="${index === selectedCase}">
+          <span class="case-number">CASE 0${index + 1}</span>
+          <span class="case-name">${item.short}</span>
+          <span class="case-caption">${item.caption}</span>
+        </button>
+      `).join("");
+      caseChoice.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedCase = Number(button.dataset.caseIndex);
+          selectedStep = 0;
+          render();
+        });
+      });
+    }
+
+    function renderProgress() {
+      progress.innerHTML = stages.map((stage, index) => `
+        <div class="progress-step ${index < selectedStep ? "is-done" : ""}" ${index === selectedStep ? 'aria-current="step"' : ""}>
+          <span class="progress-num">0${index + 1}</span>
+          <span class="progress-name">${stage.label}</span>
+        </div>
+      `).join("");
+    }
+
+    function renderBoard(item, step) {
+      boardStatus.textContent = item.status;
+      boardTitle.textContent = item.title;
+      const liveBoard = [...item.board];
+      liveBoard.push(["CURRENT STATE", stages[selectedStep].state]);
+      boardList.innerHTML = liveBoard.map(([label, value]) => `<li><span>${label}</span><b>${value}</b></li>`).join("");
+      reviewCard.innerHTML = item.review;
+    }
+
+    function renderStage(item, step) {
+      const stage = stages[selectedStep];
+      stageKicker.textContent = `STEP 0${selectedStep + 1} · ${stage.id.toUpperCase()}`;
+      stageTitle.textContent = step.title;
+      stageState.textContent = stage.state;
+      conversation.innerHTML = `<div class="conversation-title">CASE CONVERSATION / SYSTEM EVENT</div>${step.messages.map(([role, sender, text]) => `<div class="message ${role}"><small>${sender}</small>${text}</div>`).join("")}`;
+      agentLane.innerHTML = `<h3>전문 팀 협업 상태</h3><p>각 팀은 필요한 근거를 확인하고, 최종 결정 대신 처리안을 반환합니다.</p><div class="agent-chips">${step.agents.map(([agent, status]) => `<span class="agent-chip ${agentStatus(status)}"><i class="agent-dot"></i>${agent} · ${agentLabel(status)}</span>`).join("")}</div>`;
+      actionBox.className = `action-box ${step.action[2] ? "alert" : ""}`;
+      actionBox.innerHTML = `<h3>${step.action[0]}</h3><p>${step.action[1]}</p>`;
+      factBox.innerHTML = `<div class="panel-label">CASE SNAPSHOT</div><h3>현재 단계의 핵심 정보</h3>${step.facts.map(([label, value]) => `<div class="fact-row"><span>${label}</span><b>${value}</b></div>`).join("")}`;
+      stageGuide.textContent = step.guide;
+      prevStep.disabled = selectedStep === 0;
+      nextStep.disabled = selectedStep === stages.length - 1;
+      nextStep.textContent = selectedStep === stages.length - 1 ? "마지막 단계" : "다음 단계";
+    }
+
+    function render() {
+      const item = cases[selectedCase];
+      const step = item.steps[selectedStep];
+      renderCaseButtons();
+      renderProgress();
+      renderBoard(item, step);
+      renderStage(item, step);
+    }
+
+    prevStep.addEventListener("click", () => {
+      if (selectedStep > 0) { selectedStep -= 1; render(); }
+    });
+    nextStep.addEventListener("click", () => {
+      if (selectedStep < stages.length - 1) { selectedStep += 1; render(); }
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>역할 인식 멀티페르소나 CS 플랫폼 — 아이디어 정리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F3F1;--card:#FFFFFF;--ink:#1B2430;--ink-soft:#4E5A68;--line:#D8DCDE;
+  --buyer:#2D5F8A;--buyer-bg:#E8F0F7;
+  --seller:#2F6E4F;--seller-bg:#E8F1EC;
+  --amber:#B97B10;--amber-bg:#FAF2E2;
+  --violet:#5B4B8A;--violet-bg:#EEEBF5;
+  --dark:#20242E;--mono:'IBM Plex Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'IBM Plex Sans KR',sans-serif;background:var(--paper);color:var(--ink);
+  line-height:1.7;font-size:15.5px;padding-bottom:80px}
+.wrap{max-width:880px;margin:0 auto;padding:0 20px}
+
+/* hero */
+.hero{background:var(--dark);color:#EEF0F3;padding:44px 0 40px}
+.h-label{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:#8B93A3;text-transform:uppercase;margin-bottom:14px}
+h1{font-size:clamp(23px,5vw,32px);font-weight:700;line-height:1.4;letter-spacing:-.01em}
+h1 .b{color:#8FBBE0}h1 .s{color:#8FCBA8}
+.hero p.sub{margin-top:14px;color:#B4BBC7;font-size:15px;max-width:680px}
+
+/* dual mode hero cards */
+.dual{margin-top:26px;display:grid;gap:12px;grid-template-columns:1fr 1fr}
+@media(max-width:600px){.dual{grid-template-columns:1fr}}
+.mode{border-radius:10px;padding:16px 18px;border:1px solid}
+.mode.buyer{background:#243447;border-color:#33506E}
+.mode.seller{background:#25362C;border-color:#3A5B47}
+.mode .tag{font-family:var(--mono);font-size:10px;letter-spacing:.16em;margin-bottom:6px;display:block}
+.mode.buyer .tag{color:#8FBBE0}.mode.seller .tag{color:#8FCBA8}
+.mode h3{font-size:15px;font-weight:700;color:#F0F2F5;margin-bottom:4px}
+.mode p{font-size:12.5px;color:#A9B1BE;line-height:1.6}
+.dual-note{margin-top:12px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:#7E93AC}
+
+section{margin-top:52px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--violet);text-transform:uppercase;margin-bottom:8px}
+h2{font-size:21px;font-weight:700;letter-spacing:-.01em;margin-bottom:14px}
+p.lead{color:var(--ink-soft);margin-bottom:20px;max-width:720px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+strong{font-weight:600}
+
+/* funnel */
+.funnel{display:grid;gap:0;margin-top:6px}
+.f-tier{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:14px 18px;
+  display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;position:relative}
+.f-tier + .f-tier{margin-top:24px}
+.f-tier + .f-tier::before{content:'▲ 미해결·불만 격화 시에만 상승';position:absolute;top:-19px;left:22px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:#96856A}
+.f-tier .lv{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--violet);
+  border:1px solid var(--line);border-radius:6px;padding:4px 9px;white-space:nowrap}
+.f-tier h3{font-size:15px;font-weight:700;margin-bottom:2px}
+.f-tier p{font-size:13px;color:var(--ink-soft);line-height:1.6}
+.f-cost{font-family:var(--mono);font-size:10.5px;text-align:right;white-space:nowrap;line-height:1.7}
+.f-cost .vol{color:var(--buyer)}.f-cost .llm{color:var(--amber)}
+.f-tier.t0{border-left:4px solid var(--buyer)}
+.f-tier.t1{border-left:4px solid #7A6FA8}
+.f-tier.t2{border-left:4px solid var(--violet)}
+.f-tier.t3{border-left:4px solid var(--dark)}
+@media(max-width:600px){.f-tier{grid-template-columns:auto 1fr}.f-cost{display:none}}
+
+/* role branch */
+.branch{display:grid;gap:12px}
+@media(min-width:640px){.branch{grid-template-columns:1fr 1fr}}
+.branch .card{padding:16px 18px;border-top:4px solid}
+.branch .card.b{border-top-color:var(--buyer)}
+.branch .card.s{border-top-color:var(--seller)}
+.branch .rtag{font-family:var(--mono);font-size:10px;letter-spacing:.14em;margin-bottom:6px;display:block}
+.branch .b .rtag{color:var(--buyer)}.branch .s .rtag{color:var(--seller)}
+.branch h3{font-size:15.5px;font-weight:700;margin-bottom:6px}
+.branch p{font-size:13.5px;color:var(--ink-soft)}
+.branch ul{list-style:none;margin-top:8px}
+.branch li{font-size:13px;color:var(--ink-soft);padding:5px 0 5px 16px;position:relative;border-top:1px dashed var(--line)}
+.branch li::before{content:'·';position:absolute;left:4px;font-weight:700}
+.branch .b li::before{color:var(--buyer)}.branch .s li::before{color:var(--seller)}
+
+/* flow steps */
+.flow{display:grid}
+.fstep{display:grid;grid-template-columns:34px 1fr;gap:14px;position:relative;padding-bottom:18px}
+.fstep:last-child{padding-bottom:0}
+.fdot{width:34px;height:34px;border-radius:50%;background:var(--card);border:1.5px solid var(--buyer);
+  color:var(--buyer);font-family:var(--mono);font-size:12px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;z-index:1}
+.flow.sflow .fdot{border-color:var(--seller);color:var(--seller)}
+.fstep::before{content:'';position:absolute;left:16.5px;top:34px;bottom:0;width:1.5px;background:var(--line)}
+.fstep:last-child::before{display:none}
+.fbody{padding-top:4px}
+.fbody b{font-weight:600}
+.fbody span{display:block;font-size:13.5px;color:var(--ink-soft);margin-top:2px}
+.fnote{border-left:3px solid var(--amber);background:var(--amber-bg);border-radius:0 8px 8px 0;
+  padding:11px 15px;margin-top:8px;font-size:13px;color:var(--ink-soft)}
+.fnote b{color:var(--ink)}
+
+/* mechanisms */
+.mech{display:grid;gap:12px}
+@media(min-width:640px){.mech{grid-template-columns:1fr 1fr}}
+.mech .card{padding:16px 18px}
+.mech h3{font-size:14.5px;font-weight:700;margin-bottom:5px;display:flex;gap:8px;align-items:baseline}
+.mech h3 .n{font-family:var(--mono);font-size:10.5px;color:var(--violet);letter-spacing:.08em}
+.mech p{font-size:13.5px;color:var(--ink-soft)}
+.mech .card.hero-m{grid-column:1/-1;border:1.5px solid var(--violet);background:var(--violet-bg)}
+
+/* extensions */
+.ext{display:grid;gap:10px}
+.ext .card{display:grid;grid-template-columns:auto 1fr auto;gap:14px;padding:14px 18px;align-items:baseline}
+@media(max-width:600px){.ext .card{grid-template-columns:auto 1fr}.ext .cost-tag{display:none}}
+.ext .etag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:3px 8px;border-radius:4px;white-space:nowrap;background:var(--violet-bg);color:var(--violet)}
+.ext b{font-weight:700;display:block;font-size:14.5px;margin-bottom:2px}
+.ext p{font-size:13.5px;color:var(--ink-soft)}
+.cost-tag{font-family:var(--mono);font-size:10px;color:var(--ink-soft);white-space:nowrap;text-align:right;line-height:1.7}
+.cost-tag em{font-style:normal;color:var(--amber)}
+
+/* principles */
+.pr{display:grid;gap:10px}
+.pr .card{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:14px 18px;align-items:baseline}
+.pmark{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:.1em;white-space:nowrap}
+.pr p{font-size:13.5px;color:var(--ink-soft)}
+.pr b{color:var(--ink);font-weight:600}
+
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:11px;color:#98A0AA;letter-spacing:.08em}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="h-label">Idea Brief · Personal Draft · 2026-08</div>
+    <h1>로그인한 사람이 누구냐에 따라<br><span class="b">구매자의 CS 창구</span>가 되고, <span class="s">판매자의 파트너</span>가 되는 챗봇</h1>
+    <p class="sub">하나의 엔진(피드백 분석 + Case 처리) 위에서, 인증된 역할에 따라 시스템이 다른 얼굴을 보여준다. 구매자에게는 문의부터 분쟁까지 층을 타고 오르는 응대 퍼널을, 판매자에게는 입점 온보딩부터 소명 지원까지의 운영 파트너를. "고객 대상이 모호하다"는 지적을 <b>역할 인식 설계</b>로 답한다.</p>
+    <div class="dual">
+      <div class="mode buyer">
+        <span class="tag">MODE A · BUYER LOGIN</span>
+        <h3>구매자 모드 — 응대 퍼널</h3>
+        <p>조회·안내·처리형 문의를 즉시 해결하고, 실패한 건만 분쟁 사다리로 격상. 상담에서 구매 완결까지.</p>
+      </div>
+      <div class="mode seller">
+        <span class="tag">MODE B · SELLER LOGIN</span>
+        <h3>판매자 모드 — 운영 파트너</h3>
+        <p>대화형 입점 온보딩, 내 스토어 VOC 요약, 분쟁 소명 지원. 응대에서 배운 것을 입점 단계로 환류.</p>
+      </div>
+    </div>
+    <div class="dual-note">SAME ENGINE · SAME DATA · DIFFERENT FACE — 분기점은 Supervisor 진입점의 role 판별 하나</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section>
+  <div class="eyebrow">01 · Core Structure</div>
+  <h2>구매자 쪽 뼈대 — 문의 퍼널 위에 분쟁 사다리</h2>
+  <p class="lead">CS의 대부분은 분쟁이 아니라 평범한 문의다. 대량의 문의를 아래층에서 싸고 빠르게 끝내고, 해결에 실패했거나 불만으로 번진 소수만 위층으로 올린다. 분쟁은 별개 기능이 아니라 "문의 처리가 실패했을 때의 다음 상태"다.</p>
+  <div class="funnel">
+    <div class="f-tier t0">
+      <span class="lv">L0</span>
+      <div><h3>문의 층 — 넓고 얇게</h3>
+      <p>조회형(배송·주문·적립금: tool call로 DB 조회) / 안내형(정책·FAQ: config+RAG) / 처리형(주소 변경·취소·교환 접수: 자동 승인 한도 내 경량 트랜잭션). 챗봇 상담 → 상품 탐색 → 구매 완결까지 포함.</p></div>
+      <div class="f-cost"><span class="vol">volume ████████</span><br><span class="llm">LLM cost ▁ 소형모델+캐시</span></div>
+    </div>
+    <div class="f-tier t1">
+      <span class="lv">L1</span>
+      <div><h3>판매자 레벨 응대</h3>
+      <p>테넌트 config로 자동 생성되는 스토어별 1차 응대. 스토어 정책 안에서 처리 + 분쟁 성립 여부 판정. 의도적으로 얇게 유지.</p></div>
+      <div class="f-cost"><span class="vol">volume ████</span><br><span class="llm">LLM cost ▂</span></div>
+    </div>
+    <div class="f-tier t2">
+      <span class="lv">L2</span>
+      <div><h3>플랫폼 중재 — 좁고 깊게</h3>
+      <p>SLA 초과·소명 부적절·불복 시 자동 격상. 증거 수집 → 법정 기준(전자상거래법·분쟁해결기준) 조항 인용 판정 → 유사 결정례 제시 → 운영자 승인 후 환불/페널티 트랜잭션.</p></div>
+      <div class="f-cost"><span class="vol">volume ██</span><br><span class="llm">LLM cost ▅ 고성능 모델</span></div>
+    </div>
+    <div class="f-tier t3">
+      <span class="lv">L3</span>
+      <div><h3>외부 절차 연계</h3>
+      <p>중재 실패·고액 분쟁이면 케이스 파일을 소비자원 피해구제 신청 서식으로 자동 패키징 + 절차 안내. 시스템의 한계를 시스템이 알고 출구를 책임진다.</p></div>
+      <div class="f-cost"><span class="vol">volume ▏</span><br><span class="llm">문서 생성</span></div>
+    </div>
+  </div>
+  <div class="fnote" style="margin-top:14px"><b>비용 전략이 구조와 일치:</b> 아래층은 소형 분류기·tool call·FAQ 캐시로 LLM 호출을 최소화하고, 위로 갈수록 비싼 모델을 쓴다. "좋은 성능 · 적은 비용"이 그림 한 장으로 설명됨. 핵심 지표는 <b>자동 해결률</b>(전체 문의 중 L0~L1 종결 비율) — 실무 CS가 실제로 쓰는 지표.</div>
+</section>
+
+<section>
+  <div class="eyebrow">02 · Role-Aware Routing</div>
+  <h2>역할 인식 — 로그인 주체가 라우팅의 첫 입력</h2>
+  <p class="lead">아키텍처상 추가되는 것은 Supervisor 진입점의 분기 하나. 그 아래 인프라(정책 RAG, 분석 결과, 테넌트 config, mock DB)는 전부 공유된다. 기능이 늘어나는 게 아니라 같은 자산에 접근하는 관점이 늘어나는 것.</p>
+  <div class="branch">
+    <div class="card b">
+      <span class="rtag">ROLE = BUYER</span>
+      <h3>구매자로 로그인하면</h3>
+      <p>위의 퍼널 전체가 이 사람의 창구가 된다.</p>
+      <ul>
+        <li>문의·처리·구매 상담 (L0)</li>
+        <li>분쟁 접수와 진행 상태 확인 (L1~L3)</li>
+        <li>다국어 유입 시 해당 언어로 응대 지속</li>
+      </ul>
+    </div>
+    <div class="card s">
+      <span class="rtag">ROLE = SELLER</span>
+      <h3>판매자로 로그인하면</h3>
+      <p>같은 챗봇이 운영 파트너로 바뀐다. MVP는 딱 세 기능.</p>
+      <ul>
+        <li>대화형 입점 온보딩 (아래 04 참고)</li>
+        <li>내 스토어 VOC 요약 조회 — 분석 팀 산출물을 판매자 관점으로 필터링할 뿐이라 추가 비용 ≈ 0</li>
+        <li>진행 중 분쟁의 소명 작성 지원</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">03 · Buyer Journey</div>
+  <h2>과정 ① 구매자 모드 — 한 케이스가 퍼널을 오르는 과정</h2>
+  <div class="card">
+    <div class="flow">
+      <div class="fstep"><div class="fdot">1</div><div class="fbody"><b>문의 접수·분류</b><span>"2주째 미배송이에요" → 소형 모델이 감성(분노)·이슈(미배송)·의도 분류, role=buyer 확인, 케이스 생성. 판매 주체(직매입/위탁/오픈마켓)를 판별해 책임 경로 결정.</span></div></div>
+      <div class="fstep"><div class="fdot">2</div><div class="fbody"><b>L0~L1 시도</b><span>배송조회 tool call → 실제 지연 확인 → 테넌트 봇이 스토어 정책 기반 안내 + 판매자에게 소명 요청. SLA 24h 타이머 가동.</span></div></div>
+      <div class="fstep"><div class="fdot">3</div><div class="fbody"><b>자동 격상</b><span>판매자 무응답 → 타이머 초과 → 조건부 엣지가 L2로 전이. 상태와 시간이 그래프를 움직인다 — LangGraph를 쓰는 이유가 여기서 증명됨.</span></div></div>
+      <div class="fstep"><div class="fdot">4</div><div class="fbody"><b>L2 중재 판정</b><span>증거 수집(주문·결제·배송 이력, 필요 시 파손 사진 VLM 판독) → 리스크 스코어 산정 → 저위험이면 즉시 환불 경로, 고위험이면 소명 절차 경로 → 법 조항 인용 판정 초안 → 운영자 승인 → 환불 트랜잭션 + 판매자 페널티.</span>
+      <div class="fnote"><b>판매자 불복 분기:</b> 이의제기 접수 → 심사 팀이 반품 검수 결과·소명 대조 → 인용/기각. 구매자↔판매자 외에 판매자↔플랫폼이라는 두 번째 분쟁 전선까지 다룬다.</div></div></div>
+      <div class="fstep"><div class="fdot">5</div><div class="fbody"><b>L3 출구 (필요 시)</b><span>중재 실패 → 케이스 파일을 소비자원 피해구제 신청 서식으로 패키징 + 절차 안내.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">04 · Seller Journey</div>
+  <h2>과정 ② 판매자 모드 — 온보딩이 데모 몰을 채운다</h2>
+  <p class="lead">가상 쇼핑몰의 스토어들을 팀이 수작업으로 만드는 대신, 온보딩 에이전트를 통해 판매자가 입점하는 과정으로 만든다. <strong>콜드스타트 비용이 기능 시연으로 전환</strong>되는 구조.</p>
+  <div class="card">
+    <div class="flow sflow">
+      <div class="fstep"><div class="fdot">1</div><div class="fbody"><b>판매자 가입·로그인</b><span>role=seller 인식 → 챗봇이 온보딩 모드로 진입. "어떤 상품을 팔 예정이세요?"</span></div></div>
+      <div class="fstep"><div class="fdot">2</div><div class="fbody"><b>시장 벤치마크 제공</b><span>"캠핑 랜턴 팔려고요" → 우리 몰의 해당 카테고리 데이터를 집계 레벨로 요약: 상품 분포, 가격대, 구매율 평균, 리뷰에서 추출한 주요 이슈. 개별 경쟁 스토어의 내부 수치는 노출하지 않음(집계·익명화 원칙) — 플랫폼이 자기 데이터를 쓰는 것이라 크롤링 불필요.</span></div></div>
+      <div class="fstep"><div class="fdot">3</div><div class="fbody"><b>정보 수집</b><span>판매 결정 후, 에이전트가 필요한 것을 능동적으로 요구: 상품 이미지, 상세설명 자료, 배송·환불 정책, 응대 톤. 부족한 항목을 판단해 되묻는 능동성이 포인트.</span></div></div>
+      <div class="fstep"><div class="fdot">4</div><div class="fbody"><b>초안 생성 + 자동 검수</b><span>상품 페이지 샘플 생성 → 상품정보제공고시 필수 항목 누락·표시광고법상 금지 표현(효능 과장 등)을 정책 RAG로 자동 검수 → "이 카테고리는 사이즈 분쟁이 많으니 실측표를 넣으세요" 같은 VOC 기반 가이드 첨부. <b>분쟁을 처리하며 배운 것이 분쟁을 예방하는 입점 단계로 환류.</b></span></div></div>
+      <div class="fstep"><div class="fdot">5</div><div class="fbody"><b>수정 → 등록</b><span>판매자가 단순 편집 화면에서 수정 → 확정 시 상품 등록 + 테넌트 config 자동 생성 → 이 스토어의 L1 응대 봇이 즉시 가동. 온보딩의 끝이 곧 CS 시스템의 시작.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">05 · Key Mechanisms</div>
+  <h2>고유 메커니즘</h2>
+  <div class="mech">
+    <div class="card hero-m"><h3><span class="n">M-0</span>리스크 기반 하이브리드 환불</h3><p>소명 우선(네이버식: 공정하나 느림)과 선환불(쿠팡식: 빠르나 악용 리스크)을 케이스 단위로 동적 선택. 금액·증빙 수준·고객 환불 이력·판매자 분쟁률로 리스크 스코어를 산정해 경로를 결정한다. 어느 플랫폼도 하지 않는 지점이며, "분석 결과가 시스템 동작을 바꾼다"는 주제 요건의 가장 강한 증명.</p></div>
+    <div class="card"><h3><span class="n">M-1</span>판매자 = 테넌트 config</h3><p>스토어 하나 = config 하나(정책·SLA·자동 승인 한도·톤). 등록하면 L1 봇 자동 생성. 판매자 온보딩 = config 추가를 라이브 데모로.</p></div>
+    <div class="card"><h3><span class="n">M-2</span>판매 주체 판별 라우팅</h3><p>직매입/위탁/오픈마켓에 따라 책임 주체와 정책 경로가 달라짐. 케이스의 첫 질문은 "누가 판매자인가".</p></div>
+    <div class="card"><h3><span class="n">M-3</span>SLA 자동 격상</h3><p>소명 기한을 타이머로 걸어 초과 시 그래프 자동 전이. 현행 플랫폼의 수동 기한 관리를 상태 기계로 명시화.</p></div>
+    <div class="card"><h3><span class="n">M-4</span>판매자 이의제기 심사</h3><p>선환불의 부작용(부당 환불 주장·블랙컨슈머)을 다루는 두 번째 분쟁 전선. 사진 재사용 등 반복 어뷰징 패턴 감지 포함.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">06 · Feature Extensions</div>
+  <h2>기능 확장 카드</h2>
+  <div class="ext">
+    <div class="card"><span class="etag">EXT-1</span><div><b>챗봇 내 구매 완결</b><p>상담 → 상품 탐색 → 장바구니 → 주문 확정까지 대화에서 완결. 확정 전 상품·수량·금액 요약 후 명시적 확인 필수. 카탈로그 임베딩은 온보딩의 시장 조사와 공유.</p></div><span class="cost-tag">비용 <em>중</em><br>효과 상</span></div>
+    <div class="card"><span class="etag">EXT-2</span><div><b>VLM 파손 사진 판정 (축소판)</b><p>직접 학습 없음. VLM에 판정 루브릭(상품 일치 / 파손 유형·부위 / 훼손 등급 3단계)을 줘 zero-shot 판독 → 환불 제안(전액/부분/반품 후 판단)의 입력값으로. 팀 제작 평가셋 수십 장으로 판정 일치율 측정. 증거 판독 모듈 하나로 범위 고정.</p></div><span class="cost-tag">비용 <em>중</em><br>효과 상</span></div>
+    <div class="card"><span class="etag">EXT-3</span><div><b>다국어 응대</b><p>다른 언어로 유입되면 해당 언어로 응대 지속(역직구 대응). LLM 특성상 추가 비용 거의 없이 시연 효과 큼.</p></div><span class="cost-tag">비용 <em>하</em><br>효과 중</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">07 · Principles</div>
+  <h2>지키는 선 — 주객전도 방지</h2>
+  <div class="pr">
+    <div class="card"><span class="pmark">7 : 3</span><p><b>코어 7 : 확장 3.</b> 심장은 Case 처리·분석·평가 파이프라인. 온보딩·구매·VLM은 남는 힘으로 감싸는 주변 기관. 발표에서도 확장은 마지막 2~3분 슬롯으로 고정.</p></div>
+    <div class="card"><span class="pmark">DEP →</span><p><b>의존 방향 규칙.</b> 확장 기능은 코어 산출물(분석 결과·정책 RAG·테넌트 config)을 소비만 한다. 온보딩이 없어도 config 수동 등록으로 데모가 돌아가야 함 — 일정이 밀리면 확장부터 잘라도 본체가 안 다친다.</p></div>
+    <div class="card"><span class="pmark">HITL</span><p><b>돈·페널티는 AI 단독 확정 금지.</b> 환불·제재·이의제기 인용은 조항 인용 + 운영자 승인 필수. 구매 확정도 사용자 명시 확인 필수.</p></div>
+    <div class="card"><span class="pmark">SCOPE</span><p><b>판매자 모드는 3기능까지.</b> 온보딩(초안+검수+config 등록) · VOC 요약 · 소명 지원. 페이지 빌더, 이미지 생성, 광고·프로모션 설정은 명시적 아웃 — 판매자용 SaaS라는 두 번째 프로젝트가 되는 것을 방지.</p></div>
+  </div>
+</section>
+
+<footer>ROLE-AWARE MULTI-PERSONA CS · INQUIRY FUNNEL + DISPUTE LADDER + SELLER ONBOARDING · PERSONAL IDEA DRAFT · 2026.08</footer>
+
+</div>
+</body>
+</html>
