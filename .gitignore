@@ -18,3 +18,7 @@ venv/
 Thumbs.db
 .DS_Store
 *.swp
+
+# 임시 작업물
+.tmp_*
+.tmp_*/
