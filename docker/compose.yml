@@ -1,0 +1,42 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      # The application container reaches the database by service name.
+      ACOP_DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/acop
+    ports:
+      - "${ACOP_APP_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: acop
+    ports:
+      - "${ACOP_DB_PORT:-5433}:5432"
+    volumes:
+      - acop-db-data:/var/lib/postgresql/data
+    command: >-
+      sh -c 'docker-entrypoint.sh postgres &
+      db_pid=$$!;
+      until pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"; do sleep 1; done;
+      psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;";
+      wait $$db_pid'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d acop"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  acop-db-data:
