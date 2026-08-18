@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 from app.core.contracts import ActionProposal, Evidence, NextAction, TeamManifest, TeamResult, TeamTask
@@ -96,6 +97,22 @@ class ReturnExchangeTeam:
 
         if pending and order:
             latest = pending[0]
+            ordered_at = order.get("ordered_at")
+            if isinstance(ordered_at, str):
+                try:
+                    ordered_at = datetime.fromisoformat(ordered_at.replace("Z", "+00:00"))
+                except ValueError:
+                    ordered_at = None
+            if isinstance(ordered_at, datetime) and ordered_at.tzinfo is not None:
+                elapsed_days = (datetime.now(UTC) - ordered_at.astimezone(UTC)).days
+                period_days = 90 if latest.get("reason_code") == "defective" else 7
+                if elapsed_days > period_days:
+                    return TeamResult(
+                        task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id,
+                        outcome="escalated", confidence=0.85, evidence=evidence,
+                        next_action=NextAction.ESCALATE, failure_code="return_period_expired",
+                        warnings=["반품 기한(7일/하자 90일)을 넘겨 접수됨 — 고지 누락 등 예외 사유 확인이 먼저 필요함"],
+                    )
             request_id = str(task.context.current_state.get("request_id") or task.case_id)
             is_exchange = latest.get("reason_code") in EXCHANGE_REASON_CODES
             action_type = "exchange.request" if is_exchange else "return.accept"

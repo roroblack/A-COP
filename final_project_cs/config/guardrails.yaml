@@ -95,6 +95,10 @@ security:
     - return:read
     - action:approve
     - mcp:read
+    - composer:read
+    - composer:validate
+    - composer:write
+  composer_jwt_ttl_minutes: 30
   # ★MCP 에는 mcp:read 외 어떤 scope 도 부여하지 않는다
   mcp_allowed_scopes:
     - mcp:read

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 from uuid import UUID
 
@@ -16,6 +17,31 @@ from app.tools.read_tools import ReadToolbox, ToolLoopExceeded
 
 class LLM(Protocol):
     async def complete(self, prompt_key: str, input_text: str, context: dict[str, Any], *, run_id: UUID | None = None) -> dict[str, Any]: ...
+
+
+def _business_days_since(start: datetime, now: datetime) -> int:
+    """Count weekdays after start through now, without a holiday calendar."""
+    start = start.astimezone(UTC)
+    now = now.astimezone(UTC)
+    day = start.date() + timedelta(days=1)
+    days = 0
+    while day <= now.date():
+        if day.weekday() < 5:
+            days += 1
+        day += timedelta(days=1)
+    return days
+
+
+def _parse_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value if value.tzinfo is not None else None
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo is not None else None
+    return None
 
 
 class OrderShippingTeam:
@@ -120,6 +146,29 @@ class OrderShippingTeam:
         # ★시나리오1 — 배송이 완료로 찍혔는데(운송장 표시) 고객이 못 받았다는 문의가 왔다.
         #   DB 만으로는 "고객이 못 받았다" 를 알 수 없다 — 그건 문의 내용이다.
         #   여기서는 **배송 완료 표시가 있다는 사실**까지만 확인하고, 조사·환불은 제안까지만 한다.
+        delayed_shipment = next(
+            (shipment for shipment in shipments
+             if shipment.get("status") != "delivered" and shipment.get("shipped_at")),
+            None,
+        )
+        shipped_at = _parse_datetime(delayed_shipment.get("shipped_at")) if delayed_shipment else None
+        if shipped_at is not None and _business_days_since(shipped_at, datetime.now(UTC)) >= 5 and order:
+            action_type = "shipping.delay_compensation_propose"
+            proposal = ActionProposal(
+                action_type=action_type,
+                arguments={"order_id": str(order["order_id"])},
+                idempotency_key=idempotency_key(
+                    tenant_id=task.context.tenant_id, request_id=request_id,
+                    action_type=action_type, business_subject=str(task.case_id)),
+                approval_required=True, risk_level="medium",
+                rationale_evidence_ids=[e.evidence_id for e in evidence],
+            )
+            return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id,
+                              outcome="waiting", confidence=0.85, evidence=evidence,
+                              next_action=NextAction.WAIT_FOR_APPROVAL, wait_reason="human_approval",
+                              action_proposals=[proposal],
+                              decisions=[{"classification": "shipping_delay_compensation_review"}])
+
         delivered = any(s.get("status") == "delivered" for s in shipments)
         if delivered and order:
             proposal = ActionProposal(

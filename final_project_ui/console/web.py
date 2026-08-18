@@ -37,6 +37,15 @@ CSS = """
 body{margin:0;background:var(--bg);color:var(--text);font-size:15px;line-height:1.55;
  font-family:system-ui,"Segoe UI","Noto Sans KR",sans-serif}
 .shell{max-width:1100px;margin:0 auto;padding:1.5rem 1.25rem 4rem}
+.topbar{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar__in{max-width:1100px;margin:0 auto;padding:.55rem 1.25rem;display:flex;align-items:center;gap:1rem}
+.brand{font-weight:700;white-space:nowrap}
+.topbar nav{display:flex;gap:.25rem;flex-wrap:wrap}
+.topbar nav a,.topbar nav .nav-disabled{display:inline-block;padding:.3rem .65rem;border-radius:7px;text-decoration:none}
+.topbar nav a{color:var(--text)}
+.topbar nav a:hover{background:var(--bg)}
+.topbar nav a[aria-current='page']{background:var(--accent);color:var(--surface);font-weight:600}
+.topbar nav .nav-disabled{color:var(--dim);cursor:not-allowed}
 a{color:var(--accent)}
 h1{font-size:1.45rem;letter-spacing:-.02em;margin:.2rem 0 .3rem}
 h2{font-size:1rem;margin:0}
@@ -109,12 +118,28 @@ def esc(value: Any) -> str:
     return html.escape("" if value is None else str(value))
 
 
-def page(title: str, body: str, *, lede: str = "") -> HTMLResponse:
+def page(title: str, body: str, *, lede: str = "", path: str = "", current: str = "") -> HTMLResponse:
     lede_html = f"<p class='lede'>{esc(lede)}</p>" if lede else ""
+    # Composer POST의 각 결과 분기도 동일한 화면 메뉴를 유지한다.
+    if not current and title == "구성 조립(Composer)":
+        current = "/composer"
+        path = lede
+    links = [("/", "프로젝트 목록")]
+    if path:
+        links.extend([(f"/project?path={esc(path)}", "조립"),
+                      (f"/composer?path={esc(path)}", "Composer")])
+    else:
+        links.extend([(None, "조립"), (None, "Composer")])
+    nav = "".join(
+        (f"<a href='{href}'{' aria-current=\'page\'' if href.split('?', 1)[0] == current else ''}>{esc(label)}</a>"
+         if href is not None else f"<span class='nav-disabled' aria-disabled='true'>{esc(label)}</span>")
+        for href, label in links)
     return HTMLResponse(
         "<!doctype html><html lang='ko'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         f"<title>{esc(title)} · 개발 콘솔</title><style>{CSS}</style></head><body>"
+        f"<div class='topbar'><div class='topbar__in'><span class='brand'>개발 콘솔</span>"
+        f"<nav aria-label='주 메뉴'>{nav}</nav></div></div>"
         f"<main class='shell'><h1>{esc(title)}</h1>{lede_html}{body}</main></body></html>")
 
 
@@ -347,7 +372,7 @@ def create_app() -> FastAPI:
         found = discover(root)
         if not found:
             return page("프로젝트", f"<div class='empty'><p>{esc(root)} 아래에 폴더가 없습니다.</p></div>",
-                        lede=str(root))
+                        lede=str(root), current="/")
 
         rows = []
         for item in found:
@@ -368,14 +393,15 @@ def create_app() -> FastAPI:
                    + "</div>")
         return page("프로젝트", summary + "<div class='card'>" +
                     table(["폴더", "판별", "근거"], rows) + "</div>",
-                    lede="경로를 주지 않으면 이 콘솔의 상위 폴더를 훑습니다.")
+                    lede="경로를 주지 않으면 이 콘솔의 상위 폴더를 훑습니다.", current="/")
 
     @app.get("/project", response_class=HTMLResponse)
     def project(path: str) -> HTMLResponse:
         found = inspect_path(path)
         if not found.is_project:
             return page("프로젝트", note(
-                f"프로젝트가 아닙니다 — {' · '.join(found.reasons)}", "bad"), lede=str(path))
+                f"프로젝트가 아닙니다 — {' · '.join(found.reasons)}", "bad"),
+                        lede=str(path), path=path, current="/project")
 
         target = Path(path)
         profile = profile_for(target)
@@ -534,19 +560,19 @@ def create_app() -> FastAPI:
                 + f"<div class='card'><h2>연결</h2>{connections}</div>"
                 + f"<p><a href='/composer?path={esc(str(target))}'>구성 조립(Composer) →</a>"
                 + f" &nbsp;·&nbsp; <a href='/'>← 프로젝트 목록</a></p>")
-        return page(found.name, body, lede=str(target))
+        return page(found.name, body, lede=str(target), path=str(target), current="/project")
 
     @app.get("/run", response_class=HTMLResponse)
     def run(path: str = Query(default=""), run_id: str | None = Query(default=None)) -> HTMLResponse:
         if not run_id:
-            return page("실행 추적", note("run_id가 없습니다.", "warn"), lede=path)
+            return page("실행 추적", note("run_id가 없습니다.", "warn"), lede=path, path=path)
 
         target = Path(path) if path else Path(DEFAULT_ROOT)
         profile = profile_for(target)
         result = read_trace(profile.database_url, run_id)
         if not result.ok:
             kind = "warn" if result.status in ("연결 안 함", "그 실행이 없다") else "bad"
-            return page("실행 추적", note(result.detail or result.status, kind), lede=str(target))
+            return page("실행 추적", note(result.detail or result.status, kind), lede=str(target), path=path)
 
         sections = []
         for item in result.trace:
@@ -567,14 +593,15 @@ def create_app() -> FastAPI:
             sections.append(f"<div class='card'><h2>{esc(stage)}</h2>{content}</div>")
 
         back = f"<p><a href='/project?path={esc(str(target))}'>실행 이력으로 돌아가기</a></p>"
-        return page("실행 추적", "".join(sections) + back, lede=f"{target} · {run_id}")
+        return page("실행 추적", "".join(sections) + back, lede=f"{target} · {run_id}", path=path)
 
     @app.get("/composer", response_class=HTMLResponse)
     def composer_form(path: str = Query(default="")) -> HTMLResponse:
         target = Path(path) if path else Path(DEFAULT_ROOT)
         profile = profile_for(target)
         current = composer_client.read_current(profile.composer_url, profile.composer_issuer_secret)
-        return page("구성 조립(Composer)", _composer_body(target, current), lede=str(target))
+        return page("구성 조립(Composer)", _composer_body(target, current), lede=str(target),
+                    path=path, current="/composer")
 
     @app.post("/composer", response_class=HTMLResponse)
     async def composer_submit(request: Request) -> HTMLResponse:
@@ -583,7 +610,8 @@ def create_app() -> FastAPI:
         profile = profile_for(target)
         current = composer_client.read_current(profile.composer_url, profile.composer_issuer_secret)
         if not current.ok:
-            return page("구성 조립(Composer)", _composer_body(target, current), lede=str(target))
+            return page("구성 조립(Composer)", _composer_body(target, current), lede=str(target),
+                        path=str(target), current="/composer")
 
         base_config = current.value.get("config", {})
         module_names = list(base_config.get("modules", {}))
@@ -598,13 +626,14 @@ def create_app() -> FastAPI:
             index = int(form["remove_team"])
             if 0 <= index < len(candidate["teams"]):
                 candidate["teams"].pop(index)
-            return page("구성 조립(Composer)", _composer_body(target, current, config=candidate), lede=str(target))
+            return page("구성 조립(Composer)", _composer_body(target, current, config=candidate), lede=str(target),
+                        path=str(target), current="/composer")
         if form.get("add_team") is not None:
             candidate["teams"].append({"team_id": "new_team", "active": False, "implementation_ref": ""})
             return page("구성 조립(Composer)",
                         note("새 Team을 추가했습니다. 검증 전에는 저장되지 않습니다.", "info")
                         + _composer_body(target, current, config=candidate),
-                        lede=str(target))
+                        lede=str(target), path=str(target), current="/composer")
 
         action = str(form.get("action", ""))
         reason = str(form.get("reason", ""))
@@ -615,13 +644,14 @@ def create_app() -> FastAPI:
                 # ★reason 없이 적용하지 않는다 — 대상 계약(§ audit)이 요구하는 최소한의 근거다
                 return page("구성 조립(Composer)",
                             note("적용하려면 사유(reason)를 적어야 합니다.", "bad")
-                            + _composer_body(target, current, config=candidate), lede=str(target))
+                            + _composer_body(target, current, config=candidate), lede=str(target),
+                            path=str(target), current="/composer")
             outcome = composer_client.apply_candidate(profile.composer_url, profile.composer_issuer_secret, candidate,
                                                        base_revision=str(form.get("base_revision", "")))
         else:
             return page("구성 조립(Composer)",
                         note(f"알 수 없는 동작: {action}", "bad") + _composer_body(target, current, config=candidate),
-                        lede=str(target))
+                        lede=str(target), path=str(target), current="/composer")
 
         kind = "ok" if outcome.ok else ("warn" if outcome.status in ("연결 안 함", "충돌") else "bad")
         detail = outcome.detail or outcome.status
@@ -637,7 +667,7 @@ def create_app() -> FastAPI:
         refreshed = composer_client.read_current(profile.composer_url, profile.composer_issuer_secret) \
             if outcome.status == "적용됨" else current
         return page("구성 조립(Composer)", result_note + _composer_body(target, refreshed, config=candidate),
-                    lede=str(target))
+                    lede=str(target), path=str(target), current="/composer")
 
     return app
 

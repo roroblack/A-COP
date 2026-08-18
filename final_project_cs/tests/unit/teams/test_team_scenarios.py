@@ -113,6 +113,112 @@ async def test_defective_return_still_accepts_return():
 
 
 @pytest.mark.asyncio
+async def test_simple_return_expired_after_seven_days_escalates():
+    context = pack("return_exchange")
+    tools = FakeTools({"read.order": {"order_id": "o1", "item_count": 1,
+                                      "ordered_at": datetime.now(UTC) - timedelta(days=8)},
+                       "read.return": [{"return_id": "r1", "reason_code": "changed_mind",
+                                         "quantity": 1, "status": "requested"}],
+                       "read.policy": policy()})
+    result = await ReturnExchangeTeam(tools).execute(
+        task("return_exchange", "return.diagnose", context, ReturnExchangeTeam.manifest.allowed_tools))
+    assert result.outcome == "escalated"
+    assert result.failure_code == "return_period_expired"
+    assert result.action_proposals == []
+
+
+@pytest.mark.asyncio
+async def test_simple_return_within_period_still_accepts_return():
+    context = pack("return_exchange")
+    tools = FakeTools({"read.order": {"order_id": "o1", "item_count": 1,
+                                      "ordered_at": datetime.now(UTC) - timedelta(days=5)},
+                       "read.return": [{"return_id": "r1", "reason_code": "changed_mind",
+                                         "quantity": 1, "status": "requested"}],
+                       "read.policy": policy()})
+    result = await ReturnExchangeTeam(tools).execute(
+        task("return_exchange", "return.diagnose", context, ReturnExchangeTeam.manifest.allowed_tools))
+    assert result.action_proposals[0].action_type == "return.accept"
+
+
+@pytest.mark.asyncio
+async def test_defective_return_expired_after_ninety_days_escalates():
+    context = pack("return_exchange")
+    tools = FakeTools({"read.order": {"order_id": "o1", "item_count": 1,
+                                      "ordered_at": datetime.now(UTC) - timedelta(days=100)},
+                       "read.return": [{"return_id": "r1", "reason_code": "defective",
+                                         "quantity": 1, "status": "requested"}],
+                       "read.policy": policy()})
+    result = await ReturnExchangeTeam(tools).execute(
+        task("return_exchange", "return.diagnose", context, ReturnExchangeTeam.manifest.allowed_tools))
+    assert result.outcome == "escalated"
+    assert result.failure_code == "return_period_expired"
+
+
+@pytest.mark.asyncio
+async def test_defective_return_within_period_still_accepts_return():
+    context = pack("return_exchange")
+    tools = FakeTools({"read.order": {"order_id": "o1", "item_count": 1,
+                                      "ordered_at": datetime.now(UTC) - timedelta(days=60)},
+                       "read.return": [{"return_id": "r1", "reason_code": "defective",
+                                         "quantity": 1, "status": "requested"}],
+                       "read.policy": policy()})
+    result = await ReturnExchangeTeam(tools).execute(
+        task("return_exchange", "return.diagnose", context, ReturnExchangeTeam.manifest.allowed_tools))
+    assert result.action_proposals[0].action_type == "return.accept"
+
+
+@pytest.mark.asyncio
+async def test_shipping_delay_proposes_compensation_review_without_amount():
+    context = pack("order_shipping")
+    tools = FakeTools({"read.order": {"order_id": "o1", "status": "shipped"},
+                       "read.shipment": [{"shipment_id": "s1", "status": "in_transit",
+                                           "shipped_at": datetime.now(UTC) - timedelta(days=8)}],
+                       "read.policy": policy()})
+    result = await OrderShippingTeam(tools).execute(
+        task("order_shipping", "order.investigate", context, OrderShippingTeam.manifest.allowed_tools))
+    proposal = result.action_proposals[0]
+    assert proposal.action_type == "shipping.delay_compensation_propose"
+    assert "amount" not in proposal.arguments
+    assert "compensation" not in proposal.arguments
+
+
+@pytest.mark.asyncio
+async def test_shipping_delay_under_five_business_days_does_not_propose():
+    context = pack("order_shipping")
+    tools = FakeTools({"read.order": {"order_id": "o1", "status": "shipped"},
+                       "read.shipment": [{"shipment_id": "s1", "status": "in_transit",
+                                           "shipped_at": datetime.now(UTC) - timedelta(days=2)}],
+                       "read.policy": policy()})
+    result = await OrderShippingTeam(tools).execute(
+        task("order_shipping", "order.investigate", context, OrderShippingTeam.manifest.allowed_tools))
+    assert result.action_proposals == []
+
+
+@pytest.mark.asyncio
+async def test_return_without_order_date_keeps_existing_logic():
+    context = pack("return_exchange")
+    tools = FakeTools({"read.order": {"order_id": "o1", "item_count": 1},
+                       "read.return": [{"return_id": "r1", "reason_code": "changed_mind",
+                                         "quantity": 1, "status": "requested"}],
+                       "read.policy": policy()})
+    result = await ReturnExchangeTeam(tools).execute(
+        task("return_exchange", "return.diagnose", context, ReturnExchangeTeam.manifest.allowed_tools))
+    assert result.action_proposals[0].action_type == "return.accept"
+
+
+@pytest.mark.asyncio
+async def test_delivered_shipment_keeps_refund_flow_before_delay_review():
+    context = pack("order_shipping")
+    tools = FakeTools({"read.order": {"order_id": "o1", "status": "delivered"},
+                       "read.shipment": [{"shipment_id": "s1", "status": "delivered",
+                                           "shipped_at": datetime.now(UTC) - timedelta(days=20)}],
+                       "read.policy": policy()})
+    result = await OrderShippingTeam(tools).execute(
+        task("order_shipping", "order.investigate", context, OrderShippingTeam.manifest.allowed_tools))
+    assert result.action_proposals[0].action_type == "refund.request"
+
+
+@pytest.mark.asyncio
 async def test_degraded_context_escalates_without_answer():
     context = pack("order_shipping", degraded=True)
     result = await OrderShippingTeam(FakeTools({})).execute(task("order_shipping", "order.investigate", context, OrderShippingTeam.manifest.allowed_tools))
