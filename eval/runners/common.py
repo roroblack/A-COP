@@ -256,11 +256,12 @@ def _team_context(case: dict[str, Any], arm: str, timeout: float, ablations: lis
     #   한다 — production 라우팅(config/project.yaml)과는 별개다.
     from examples.customer_ops.billing import BillingSubscriptionTeam
     from examples.customer_ops.technical import TechnicalEntitlementTeam
+    from app.modules.customer_ops.read_tools import build_read_tool_functions
     from app.tools.read_tools import ReadToolbox
     settings = _settings()
     intent = case["expected_intent"]
     team = BillingSubscriptionTeam if (intent == "billing" or "no_team_split" in ablations) else TechnicalEntitlementTeam
-    module = team(ReadToolbox(get_connection), llm=_OpenAITeamLLM())
+    module = team(ReadToolbox(build_read_tool_functions(get_connection, policy_search_fn=search_policy)), llm=_OpenAITeamLLM())
     policy_failed = False
     try:
         chunks = [] if "no_rag" in ablations else search_policy(settings.tenant_id, case["message"], module.manifest.knowledge_scope)

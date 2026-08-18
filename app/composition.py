@@ -22,6 +22,7 @@ from app.infrastructure.llm.openai import OpenAITeamLLM
 from app.infrastructure.messaging.outbox import OutboxBrokerAdapter
 from app.infrastructure.rag.retriever import search_policy
 from app.modules.customer_ops import feedback
+from app.modules.customer_ops.read_tools import build_read_tool_functions
 from app.presentation.security import masked
 from app.tools.read_tools import ReadToolbox
 
@@ -49,11 +50,13 @@ class CompositionError(RuntimeError):
 # that the other UI is available.
 _MODULE_IMPLEMENTATIONS = frozenset({
     "vector_rag", "graph_store", "a2a_executor", "mcp", "voc",
-    # ★UI 모듈은 둘이다. "개발 콘솔" 은 이 저장소에 없다 — final_project_ui 가
+    # ★UI 모듈은 하나다. "개발 콘솔"은 이 저장소에 없다 — final_project_ui 가
     #   별도 프로그램으로 read-only 붙는다(app/presentation/ui 의 모듈 docstring 참조).
-    #   ops_ui      /ops/**       고객사 대시보드 — 납품되는 제품
-    #   composer_ui /ui/composer  제작 구성기 — project.yaml 을 쓴다
-    "ops_ui", "composer_ui",
+    #   composer_ui(/ui/composer)는 인증 없이 물려 있던 것을 실측으로 확인해
+    #   제거했다(2026-08-18) — 같은 기능은 final_project_ui가 인증된
+    #   /composer/* API로 제공한다.
+    #   ops_ui /ops/** 고객사 대시보드 — 납품되는 제품
+    "ops_ui",
 })
 
 
@@ -113,7 +116,8 @@ def build_registry(*, tools: ReadToolbox | None = None, llm: Any | None = None,
     _validate_modules(config)
     if tools is None:
         config.require_module("vector_rag", "default ReadToolbox")
-        tools = ReadToolbox(get_connection, policy_search=search_policy)
+        tools = ReadToolbox(tool_functions=build_read_tool_functions(
+            get_connection, policy_search_fn=search_policy), connection_factory=get_connection)
     teams = []
     capabilities: dict[str, str] = {}
     for declaration in config.teams:

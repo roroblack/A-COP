@@ -26,7 +26,7 @@ import pytest
 APP = Path("app")
 
 #: basement — 업무 도메인 어휘가 있으면 안 되는 곳
-BASEMENT_DIRS = ("core", "domain", "application", "infrastructure", "presentation")
+BASEMENT_DIRS = ("core", "domain", "application", "infrastructure", "presentation", "tools", "introspection")
 
 #: 도메인 자리 — 여기서는 도메인을 알아도 된다
 DOMAIN_DIRS = ("modules",)

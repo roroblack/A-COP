@@ -420,7 +420,7 @@ def test_resume_token_is_single_use_expiring_and_hashed(db):
 
 
 def test_loop_guard_rejects_same_tool_and_arguments(db):
-    toolbox = ReadToolbox(get_connection, policy_search=lambda *_: [])
+    toolbox = ReadToolbox({"read.policy": lambda scope, *, query, **_: []})
     context = type("Context", (), {"tenant_id": "test", "case_id": uuid4(), "knowledge_scope": ["billing"],
                                     "current_state": {"customer_id": str(uuid4())}})()
     seen = set()

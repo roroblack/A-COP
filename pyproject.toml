@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "final-project-sample"
-version = "0.1.0"
+version = "0.2.0"
 description = "A-COP S-API product with an optional development console"
 requires-python = ">=3.11"
 dependencies = [

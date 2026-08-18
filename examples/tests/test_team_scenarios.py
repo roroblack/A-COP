@@ -77,13 +77,12 @@ async def test_degraded_context_escalates_without_answer():
 
 
 def test_tool_allowlist_and_repetition_guard():
-    toolbox = ReadToolbox(lambda: None)
+    toolbox = ReadToolbox({"read.subscription": lambda scope, **kwargs: {"status": "cancelled"}})
     context = pack("billing_subscription")
     with pytest.raises(ToolNotAllowed):
         toolbox.call("read.account", context, {}, ["read.subscription"], set())
     seen = set()
     # no DB call is needed: the second identical request is rejected first
-    toolbox.subscription = lambda scope, **kwargs: {"status":"cancelled"}
     toolbox.call("read.subscription", context, {}, ["read.subscription"], seen)
     with pytest.raises(ToolLoopExceeded):
         toolbox.call("read.subscription", context, {}, ["read.subscription"], seen)
