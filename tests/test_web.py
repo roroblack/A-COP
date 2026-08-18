@@ -117,3 +117,32 @@ def test_project_screen_is_rendered_as_html(tmp_path):
 
     assert response.headers["content-type"].startswith("text/html")
     assert "<!doctype html>" in response.text
+
+
+def test_top_navigation_marks_project_screen_and_links_to_composer(tmp_path):
+    project = make_project(tmp_path)
+    body = TestClient(create_app()).get("/project", params={"path": str(project)}).text
+
+    assert "<a href='/project?path=" in body
+    assert "<a href='/project?path=" in body and "aria-current='page'" in body
+    assert f"/composer?path={project}" in body
+
+
+def test_top_navigation_marks_composer_screen(tmp_path):
+    project = make_project(tmp_path)
+    body = TestClient(create_app()).get("/composer", params={"path": str(project)}).text
+
+    assert "<a href='/composer?path=" in body
+    composer_nav = body.split("<nav aria-label='주 메뉴'>", 1)[1].split("</nav>", 1)[0]
+    assert "<a href='/composer?path=" in composer_nav
+    assert "aria-current='page'" in composer_nav
+
+
+def test_top_navigation_disables_project_links_without_a_path(tmp_path):
+    body = TestClient(create_app()).get("/", params={"root": str(tmp_path)}).text
+    nav = body.split("<nav aria-label='주 메뉴'>", 1)[1].split("</nav>", 1)[0]
+
+    assert "<span class='nav-disabled' aria-disabled='true'>조립</span>" in nav
+    assert "<span class='nav-disabled' aria-disabled='true'>Composer</span>" in nav
+    assert "/project?path=" not in nav
+    assert "/composer?path=" not in nav
