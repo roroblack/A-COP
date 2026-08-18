@@ -21,11 +21,16 @@ from fastapi.testclient import TestClient
 
 from app.core.settings import get_settings
 from app.presentation.api.app import create_app
-from app.presentation.security import _development_key
+import jwt
+from datetime import datetime, timedelta, timezone
 
 
-def _token(scope: str) -> str:
-    return _development_key(scope, get_settings().secret_key)
+def _token(scope: str | list[str]) -> str:
+    scopes = [scope] if isinstance(scope, str) else scope
+    now = datetime.now(timezone.utc)
+    return jwt.encode({"sub": "test-actor", "aud": "final_project_sample", "scope": scopes,
+                       "iat": now, "exp": now + timedelta(minutes=30), "jti": str(uuid4())},
+                      get_settings().composer_jwt_secret, algorithm="HS256")
 
 
 def _auth(scope: str = "composer:write") -> dict[str, str]:
@@ -58,6 +63,9 @@ def _client(path: Path) -> TestClient:
     # ★HTML 라우터(`app/presentation/ui/composer.py`)와 같은 관례 —
     #   실제 config/project.yaml 을 건드리지 않고 임시 선언으로 검사한다.
     app.state.project_config_path = path
+    # ★같은 이유로 audit 경로도 주입한다 — 아니면 이 테스트가 돌 때마다
+    #   실제 var/audit/composer_events.jsonl 에 가짜 apply 이벤트가 쌓인다.
+    app.state.composer_audit_path = path.with_name("composer_events.jsonl")
     return TestClient(app)
 
 
@@ -86,14 +94,14 @@ def test_write_channel_survives_composer_ui_being_disabled(config_dir):
     assert client.get("/ui/composer").status_code == 404
 
     # 그런데도 JSON API 는 살아 있다
-    current = client.get("/composer/current", headers=_auth())
+    current = client.get("/composer/current", headers=_auth("composer:read"))
     assert current.status_code == 200
     body = current.json()
     assert body["config"]["modules"]["composer_ui"]["enabled"] is False
 
     body["config"]["modules"]["composer_ui"]["enabled"] = True
     applied = client.post("/composer/apply", headers=_auth(), json={
-        "config": body["config"], "base_revision": body["revision"],
+        "config": body["config"], "base_revision": body["revision"], "reason": "enable composer UI",
     })
     assert applied.status_code == 200
     assert applied.json()["applied"] is True
@@ -106,10 +114,10 @@ def test_validate_does_not_write_the_file(config_dir):
     path = _declaration(config_dir)
     before = path.read_bytes()
     client = _client(path)
-    current = client.get("/composer/current", headers=_auth()).json()
+    current = client.get("/composer/current", headers=_auth("composer:read")).json()
     current["config"]["teams"][0]["implementation_ref"] = "app.nonexistent:Missing"
 
-    response = client.post("/composer/validate", headers=_auth(), json={"config": current["config"]})
+    response = client.post("/composer/validate", headers=_auth("composer:validate"), json={"config": current["config"]})
 
     assert response.status_code == 200
     assert response.json()["valid"] is False
@@ -121,11 +129,11 @@ def test_apply_rejects_unimplementable_reference(config_dir):
     path = _declaration(config_dir)
     before = path.read_bytes()
     client = _client(path)
-    current = client.get("/composer/current", headers=_auth()).json()
+    current = client.get("/composer/current", headers=_auth("composer:read")).json()
     current["config"]["teams"][0]["implementation_ref"] = "app.nonexistent:Missing"
 
     response = client.post("/composer/apply", headers=_auth(), json={
-        "config": current["config"], "base_revision": current["revision"],
+        "config": current["config"], "base_revision": current["revision"], "reason": "test registry rejection",
     })
 
     assert response.status_code == 422
@@ -139,7 +147,7 @@ def test_concurrent_apply_one_wins_one_gets_409(config_dir):
     """
     path = _declaration(config_dir)
     client = _client(path)
-    current = client.get("/composer/current", headers=_auth()).json()
+    current = client.get("/composer/current", headers=_auth("composer:read")).json()
 
     # ★둘 다 원본과, 그리고 서로와 달라야 한다. revision 은 내용 해시라서
     #   "수정 없는" payload 를 보내면 파일이 안 바뀌어 revision 도 안 바뀐다 —
@@ -157,7 +165,7 @@ def test_concurrent_apply_one_wins_one_gets_409(config_dir):
 
     def _apply(index: int, payload: dict) -> None:
         results[index] = client.post("/composer/apply", headers=_auth(), json={
-            "config": payload, "base_revision": current["revision"],
+            "config": payload, "base_revision": current["revision"], "reason": "concurrent test",
         })
 
     t1 = threading.Thread(target=_apply, args=(0, payload_a))

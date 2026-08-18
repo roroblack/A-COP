@@ -33,3 +33,6 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+
+# 런타임 데이터 (Composer audit JSONL 등) — 소스가 아니다, 커밋하지 않는다
+var/

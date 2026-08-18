@@ -119,7 +119,7 @@ eval/reports/  run_id + seed + model + prompt snapshot 을 파일명·메타에 
 
 ---
 
-## 5. 지금 상태 (2026-08-17)
+## 5. 지금 상태 (2026-08-18)
 
 > ★상태표의 숫자는 **문서가 아니라 디스크·DB 를 세어** 갱신한다.
 
@@ -155,9 +155,11 @@ eval/reports/  run_id + seed + model + prompt snapshot 을 파일명·메타에 
 | 릴리스 체크리스트 | **완료** — `docs/release_checklist.md`. ★판정은 **RC 아님** |
 | ★**할루시네이션 방어** (v7 §9-E) | **완료** — 제안의 식별자·금액을 **DB 와 대조**해 실행 전 차단. 검증 2회(제안 시점 + 승인 직전). 거부 시 `escalated` + 실패필드·**hash** 감사. `app/core/verification.py`(순수) + `proposal_guard.py`(재조회) |
 | VOC Team | **완료** (v7 §0 변경 4) — `FeedbackAnalyticsTeam` 이 `run_daily_feedback()` 을 감싼다. `accepted_case_types=[]` 로 Controller 라우팅 격리. `scripts/run_daily_feedback.py` 는 Team 을 거치되 CLI 출력 계약은 그대로(DoD-10) |
-| **테스트 총계** | **334 passed · skipped 0 · failed 0** (2026-08-17. -m "not live" 로 실 LLM 1건 기본 제외) |
+| ★**Composer 쓰기채널 v2** (`docs/handoff/13`) | **완료** (2026-08-18, Codex) — VPN/SSH 전제 + 단명 HMAC JWT(`/auth/token`, `app/presentation/composer_auth.py`), scope 3분화(`composer:read`/`validate`/`write`), `apply` 성공 시 `var/audit/composer_events.jsonl` append(actor·revision·changed_fields·reason), `implementation_ref` 는 registry ID(`KNOWN_IMPLEMENTATION_REFS`) 대조로만 HTTP 경로에서 통과(로컬 `/ui/composer` 는 기존 canonical loader 그대로). 검수 결과 결함 없음 |
+| ★**Response Generation & Review Team** (DoD-29, v8 §8-B) | **완료** (2026-08-18, Codex+Claude) — `app/modules/customer_ops/response_review.py`. 톤 결정 → GEN 초안 → 결정론 REV(금칙어·`refund_amount`/`policy_ref` 사실대조·PII, `app/core/verification.py` 재사용) → LLM 톤 REV → 완료. 최대 3회 재시도, PII 는 즉시 escalate. `accepted_case_types=[]`(Controller 자동배선 범위 밖, `config/project.yaml` 미등록 — 사용자 판단 몫). ★검수 중 **실제 결함 발견해 수정**: 최초 구현이 REV 규칙(금칙어·PII)을 **생성된 응답이 아니라 고객 원문**(`task.input_text`=`case["subject"]`)에 먼저 적용해, 고객이 연락처만 적어도 응답 생성 시도 없이 escalate 시켰다 → preflight 제거, [디버그](docs/reports/debugs/2026-08-18_Composer_v2_ResponseReview_검수.md) |
+| **테스트 총계** | **364 passed · skipped 0 · failed 0** (2026-08-18, `python -m scripts.verify_dod` 재실행 확인) |
 | ★**Docker · AWS 배포 모듈화** | **1단계 완료, 2단계는 초안(가정 명시, 확정 아님)** (둘 다 Codex, 2026-08-17). 1단계: `Dockerfile` + `docker/compose.yml`(conda `pgv` 경로 병행, 대체 아님) + 배포 계약 `docs/handoff/14`. 2단계: `infra/aws/`(Terraform 골격 — ECS Fargate·RDS+pgvector·Secrets Manager 가정) + `.github/workflows/deploy.yml`. ★이 기계엔 Docker·Terraform 둘 다 미설치라 build/run/validate/apply 전부 미검증 — 문법·정적 확인만 했다. AWS 컴퓨트·매니지드 서비스 교체·비밀 관리·CI/CD 는 **가정일 뿐 사용자 확답 전** — 확답 오면 `infra/aws/`만 갱신, 계획 `docs/plans/2026-08-17_Docker_AWS_배포_모듈화_계획.md` §2 |
-| **DoD (v8 §27, 1~28항목 평가됨)** | **evidence 28/28 · 통과 24 · 부분통과 4 · 미착수 0** (`python -m scripts.verify_dod` 재실행 2026-08-17 확인 — 이전 판 "통과 21·미착수 1"은 갱신 누락이었다. 21·26·27은 이미 통과로 넘어가 있었다). 남은 4건 = **15·17**(둘 다 같은 차단항목 — 사람 라벨 20건 대비 judge agreement 미측정. ★도구는 준비됨: `eval/label_holdout_template.py` + `eval/stats/agreement.py`(exact-match+Cohen's kappa), 이 저장소 유일한 사람이 `eval/reports/holdout_human_labels_template.jsonl` 20건을 채워야 판정이 바뀐다 — 라벨 값은 지어내지 않았다) · **23**(consumer idempotency, 대상 1종뿐 — ★게이트 추가함 `tests/architecture/test_consumer_idempotency_gate.py`, 새 consumer 가 테스트 없이 늘면 즉시 실패. 판정 자체는 여전히 부분통과, consumer 가 하나뿐이라는 사실은 안 바뀜) · **28**(방어지표 5종은 완료, 파인튜닝 자체는 미착수). **29번(Response Generation & Review 검증)은 v8에서 신설된 항목으로 이 구현에서는 아직 평가되지 않았다.** |
+| **DoD (v8 §27, 29항목)** | **evidence 29/29 · 통과 25 · 부분통과 4 · 미착수 0** (`python -m scripts.verify_dod` 재실행 2026-08-18 확인). 남은 4건 = **15·17**(둘 다 같은 차단항목 — 사람 라벨 20건 대비 judge agreement 미측정. ★도구는 준비됨: `eval/label_holdout_template.py` + `eval/stats/agreement.py`(exact-match+Cohen's kappa), 이 저장소 유일한 사람이 `eval/reports/holdout_human_labels_template.jsonl` 20건을 채워야 판정이 바뀐다 — 라벨 값은 지어내지 않았다) · **23**(consumer idempotency, 대상 1종뿐 — ★게이트 추가함 `tests/architecture/test_consumer_idempotency_gate.py`, 새 consumer 가 테스트 없이 늘면 즉시 실패. 판정 자체는 여전히 부분통과, consumer 가 하나뿐이라는 사실은 안 바뀜) · **28**(방어지표 5종은 완료, 파인튜닝 자체는 미착수). **29**는 이번에 신설·평가되어 통과로 반영됐다(범위: Team 단독 GEN→REV 계약 — 실 LLM 검증·Controller 자동배선은 한계로 남아 있다) |
 | **M1·M2·M3 게이트** | **전부 도달**. ★단 **RC 는 아니다** — judge 가 사람과 얼마나 맞는지 모르는 상태로 내보낼 수 없다 |
 
 > ★**Codex 산출물은 두 번 다 검수에서 걸렸다**(범위 삭감 2건). 인수 전 `RULE.md` §3.6-3 4종 검사를 거른 적이 없어야 한다.

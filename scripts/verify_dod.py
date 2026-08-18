@@ -49,6 +49,9 @@ ITEMS = (
     ("A2A Catalog Verification 왕복", "DoD-26"),
     ("A2A 실패·타임아웃·취소·인증", "DoD-27"),
     ("파인튜닝 경로와 방어 지표", "DoD-28"),
+    # ── v8 §27 신규 (29) ─────────────────────────────────────────────────
+    # ★기준선이 v7 → v8 로 바뀌며 DoD 가 28 → 29 로 늘었다(CLAUDE.md "DoD 는 1 → 29 항목이다").
+    ("Response Generation & Review Team", "DoD-29"),
 )
 
 
@@ -121,7 +124,7 @@ def _run_tests() -> tuple[str, int, int, int, int, int]:
 
 def main() -> int:
     print("=" * 64)
-    print(f"A-COP DoD 검증  (v7 §27 · {len(ITEMS)}항목)")
+    print(f"A-COP DoD 검증  (v7 §27 1~28 · v8 §27 29 · {len(ITEMS)}항목)")
     print("=" * 64)
     print(f"{' #':>3}  {'항목':<36} {'evidence':<8} {'판정':<8} 결과")
 

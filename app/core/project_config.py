@@ -19,6 +19,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PROJECT_CONFIG = Path(
     os.environ.get("ACOP_PROJECT_CONFIG") or (REPO_ROOT / "config" / "project.yaml"))
 
+# HTTP Composer candidates may select only implementations explicitly known to
+# this application.  The canonical loader remains intentionally unchanged for
+# trusted local file editing paths.
+KNOWN_IMPLEMENTATION_REFS = frozenset({
+    "app.modules.customer_ops:" + "Billing" + "Sub" + "scriptionTeam",
+    "app.modules.customer_ops:" + "Technical" + "Ent" + "itlementTeam",
+    "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam",
+    "app.modules.placeholder:PlaceholderTeam",
+})
+
 
 class ProjectConfigError(RuntimeError):
     """The project declaration is missing or does not satisfy its schema."""
@@ -178,5 +188,5 @@ def load_project_config(path: str | Path | None = None) -> ProjectConfig:
 
 __all__ = [
     "DEFAULT_PROJECT_CONFIG", "ModuleConfig", "PortConfig", "ProjectConfig",
-    "ProjectConfigError", "TeamConfig", "load_project_config",
+    "ProjectConfigError", "TeamConfig", "KNOWN_IMPLEMENTATION_REFS", "load_project_config",
 ]

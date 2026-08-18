@@ -30,7 +30,10 @@ from uuid import uuid4
 
 import yaml
 
-from app.core.project_config import DEFAULT_PROJECT_CONFIG, ProjectConfig, ProjectConfigError, load_project_config
+from app.core.project_config import (
+    DEFAULT_PROJECT_CONFIG, KNOWN_IMPLEMENTATION_REFS, ProjectConfig,
+    ProjectConfigError, load_project_config,
+)
 
 #: ★단일 프로세스 안에서만 동시 쓰기를 막는다. 여러 워커·여러 인스턴스에 걸친
 #:  잠금은 아직 없다 — 지금은 로컬 단일 개발자 도구다. 인스턴스 레지스트리가
@@ -53,11 +56,29 @@ class ValidationResult:
     errors: list[str]
 
 
+def _validate_http_registry(raw: dict[str, Any]) -> list[str]:
+    teams = raw.get("teams")
+    if not isinstance(teams, list):
+        return []
+    errors: list[str] = []
+    for index, team in enumerate(teams):
+        if not isinstance(team, dict) or team.get("active") is not True:
+            continue
+        ref = team.get("implementation_ref")
+        if ref not in KNOWN_IMPLEMENTATION_REFS:
+            errors.append(
+                f"team '{team.get('team_id', index)}' implementation_ref '{ref}' "
+                "is not registered in the implementation registry"
+            )
+    return errors
+
+
 def read_current(path: str | Path | None = None) -> ProjectConfig:
     return load_project_config(path or DEFAULT_PROJECT_CONFIG)
 
 
-def validate_candidate(raw: dict[str, Any], *, path: str | Path | None = None) -> ValidationResult:
+def validate_candidate(raw: dict[str, Any], *, path: str | Path | None = None,
+                       enforce_registry: bool = False) -> ValidationResult:
     """후보 선언을 검증만 한다. **저장하지 않는다.**
 
     ★canonical loader(`load_project_config`)를 그대로 쓴다 — 별도 검증기를 만들지
@@ -65,6 +86,9 @@ def validate_candidate(raw: dict[str, Any], *, path: str | Path | None = None) -
       스키마·활성 Team import·Port 호환성까지 여기서 전부 확인된다.
     """
     target = Path(path or DEFAULT_PROJECT_CONFIG)
+    registry_errors = _validate_http_registry(raw) if enforce_registry else []
+    if registry_errors:
+        return ValidationResult(valid=False, config=None, errors=registry_errors)
     candidate_path = target.with_name(f".{target.stem}.validate.{uuid4().hex}.yaml")
     try:
         candidate_path.write_text(yaml.safe_dump(raw, sort_keys=False, allow_unicode=True), encoding="utf-8")
@@ -77,7 +101,7 @@ def validate_candidate(raw: dict[str, Any], *, path: str | Path | None = None) -
 
 
 def apply_candidate(raw: dict[str, Any], *, base_revision: str,
-                    path: str | Path | None = None) -> ProjectConfig:
+                    path: str | Path | None = None, enforce_registry: bool = False) -> ProjectConfig:
     """검증에 통과하면 **원자적으로, revision 이 맞을 때만** 쓴다.
 
     ★검증(validate)과 별개로 다시 한다 — 사람이 "검증" 버튼을 누른 뒤 "적용" 을
@@ -89,6 +113,9 @@ def apply_candidate(raw: dict[str, Any], *, base_revision: str,
     """
     target = Path(path or DEFAULT_PROJECT_CONFIG)
     with _WRITE_LOCK:
+        registry_errors = _validate_http_registry(raw) if enforce_registry else []
+        if registry_errors:
+            raise ProjectConfigError("; ".join(registry_errors))
         # ★lock 을 잡은 뒤 다시 읽는다 — lock 밖에서 읽은 revision 은 이미 낡았을 수 있다.
         current = load_project_config(target)
         if current.revision != base_revision:
