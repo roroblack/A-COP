@@ -47,7 +47,7 @@ def test_returns_versioned_assembly_state(client):
     assert data["contract_version"]
     assert data["config_revision"]
     assert {t["team_id"] for t in [m for m in data["team_manifests"]]} == \
-        {"billing_subscription", "technical_entitlement", "feedback_analytics"}
+        {"feedback_analytics"}
 
 
 def test_does_not_leak_the_real_api_key(client):

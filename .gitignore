@@ -36,3 +36,6 @@ dist/
 
 # 런타임 데이터 (Composer audit JSONL 등) — 소스가 아니다, 커밋하지 않는다
 var/
+
+# Composer apply_candidate() 가 매 쓰기마다 남기는 직전 상태 백업
+*.yaml.bak

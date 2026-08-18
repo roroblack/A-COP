@@ -82,9 +82,16 @@ def test_team_order_does_change_the_revision(workdir):
     Team 순서는 라우팅 우선순위가 될 수 있으므로 다른 구성으로 본다.
     (순서를 무시하고 싶다면 그건 의도적인 결정이어야 하고, 여기서 뒤집힌다.)
     """
-    before = load_project_config(_write(workdir, name="before.yaml"))
+    def add_fixture(data):
+        data["teams"].append({
+            "team_id": "demo_team",
+            "active": True,
+            "implementation_ref": "tests.unit.test_composition_root:ExtraTeam",
+        })
+
+    before = load_project_config(_write(workdir, add_fixture, name="before.yaml"))
     after = load_project_config(_write(
-        workdir, lambda d: d.__setitem__("teams", list(reversed(d["teams"]))),
+        workdir, lambda d: (add_fixture(d), d.__setitem__("teams", list(reversed(d["teams"]))),),
         name="after.yaml"))
     assert before.revision != after.revision
 

@@ -31,7 +31,7 @@ def graph_case():
             cur.execute(
                 "INSERT INTO customer_cases (tenant_id, customer_id, status, subject, intent, issue_code, "
                 "owner_team_id, version) VALUES (%s,%s,'running',%s,'billing','post_cancel_charge',"
-                "'billing_subscription',1) RETURNING case_id", (tenant, customer_id, "graph v7 fixture"))
+                "'demo_team',1) RETURNING case_id", (tenant, customer_id, "graph v7 fixture"))
             case_id = cur.fetchone()[0]
             cur.execute("INSERT INTO knowledge_documents (tenant_id, title, source_uri, scope, version, pii_class) "
                         "VALUES (%s,'환불 정책','seed://p','billing','1','none') RETURNING document_id", (tenant,))
@@ -72,7 +72,7 @@ def test_case_to_issue_to_policy(graph_case):
 def test_issue_to_team(graph_case):
     """★축 2 — Issue → Team."""
     hops = _neighbors(graph_case, "issue:post_cancel_charge", ["handled_by"])
-    assert {h["node_id"] for h in hops} == {"team:billing_subscription"}
+    assert {h["node_id"] for h in hops} == {"team:demo_team"}
 
 
 def test_case_to_action(graph_case):
@@ -91,7 +91,7 @@ def test_subgraph_includes_the_v7_axes(graph_case):
     node_ids = set(result["nodes"])
     assert "issue:post_cancel_charge" in node_ids, "subgraph() 에 Case→Issue 축이 없다"
     assert str(graph_case["document_id"]) in node_ids, "subgraph() 에 Issue→Policy 축이 없다"
-    assert "team:billing_subscription" in node_ids, "subgraph() 에 Issue→Team 축이 없다"
+    assert "team:demo_team" in node_ids, "subgraph() 에 Issue→Team 축이 없다"
     assert str(graph_case["action_id"]) in node_ids, "subgraph() 에 Case→Action 축이 없다"
 
 

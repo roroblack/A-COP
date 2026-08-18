@@ -250,8 +250,12 @@ def _team_context(case: dict[str, Any], arm: str, timeout: float, ablations: lis
     from app.core.remote_team.executor import LocalTeamExecutor
     from app.infrastructure.rag.retriever import search_policy
     from app.infrastructure.db.session import get_connection
-    from app.modules.customer_ops.billing import BillingSubscriptionTeam
-    from app.modules.customer_ops.technical import TechnicalEntitlementTeam
+    # ★버그사냥 2026-08-18 — Billing/Technical 은 examples/ 로 옮겨졌다(10주
+    #   착수 목록 밖, CLAUDE.md "Agent Team" 행). 골든셋이 이 두 도메인
+    #   시나리오로 구성돼 있어 평가 하네스는 여전히 이 Team 을 실행해야
+    #   한다 — production 라우팅(config/project.yaml)과는 별개다.
+    from examples.customer_ops.billing import BillingSubscriptionTeam
+    from examples.customer_ops.technical import TechnicalEntitlementTeam
     from app.tools.read_tools import ReadToolbox
     settings = _settings()
     intent = case["expected_intent"]

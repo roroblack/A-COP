@@ -67,9 +67,8 @@ def test_enabled_composer_shows_current_teams_and_read_only_components(config_di
     client = _app(_declaration(config_dir))
     response = client.get("/ui/composer")
     assert response.status_code == 200
-    assert "billing_subscription" in response.text
-    assert "technical_entitlement" in response.text
-    assert response.text.count("type='checkbox'") >= 9
+    assert "feedback_analytics" in response.text
+    assert response.text.count("type='checkbox'") >= 8
     assert "컴포넌트 (읽기 전용)" in response.text
     assert "Case lifecycle" in response.text
     assert "name='component" not in response.text
@@ -83,10 +82,10 @@ def test_invalid_active_team_is_not_saved(config_dir):
         "module_vector_rag": "on", "module_graph_store": "on", "module_mcp": "on",
         "module_voc": "on", "module_ops_ui": "on", "module_composer_ui": "on",
         "port_team_executor": "local", "port_message_broker": "outbox", "port_graph_store": "sql",
-        "team_id_0": "billing_subscription", "active_0": "on",
+        "team_id_0": "feedback_analytics", "active_0": "on",
         "implementation_ref_0": "app.nonexistent:Missing",
-        "team_id_1": "technical_entitlement", "active_1": "on",
-        "implementation_ref_1": "app.modules.customer_ops:TechnicalEntitlementTeam",
+        "team_id_1": "feedback_fixture", "active_1": "on",
+        "implementation_ref_1": "tests.unit.test_composition_root:ExtraTeam",
         "save": "1",
     })
     assert response.status_code == 200
@@ -102,10 +101,10 @@ def test_added_team_defaults_to_inactive_and_save_creates_backup(config_dir):
         "module_vector_rag": "on", "module_graph_store": "on", "module_mcp": "on",
         "module_voc": "on", "module_ops_ui": "on", "module_composer_ui": "on",
         "port_team_executor": "local", "port_message_broker": "outbox", "port_graph_store": "sql",
-        "team_id_0": "billing_subscription", "active_0": "on",
-        "implementation_ref_0": "app.modules.customer_ops:BillingSubscriptionTeam",
-        "team_id_1": "technical_entitlement", "active_1": "on",
-        "implementation_ref_1": "app.modules.customer_ops:TechnicalEntitlementTeam",
+        "team_id_0": "feedback_analytics", "active_0": "on",
+        "implementation_ref_0": "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam",
+        "team_id_1": "feedback_fixture", "active_1": "on",
+        "implementation_ref_1": "tests.unit.test_composition_root:ExtraTeam",
         "add_team": "1",
     })
     assert "미구현 — 등록되지만 라우팅되지 않음" in added.text
@@ -115,10 +114,10 @@ def test_added_team_defaults_to_inactive_and_save_creates_backup(config_dir):
         "module_vector_rag": "on", "module_graph_store": "on", "module_mcp": "on",
         "module_voc": "on", "module_ops_ui": "on", "module_composer_ui": "on",
         "port_team_executor": "local", "port_message_broker": "outbox", "port_graph_store": "sql",
-        "team_id_0": "billing_subscription", "active_0": "on",
-        "implementation_ref_0": "app.modules.customer_ops:BillingSubscriptionTeam",
-        "team_id_1": "technical_entitlement", "active_1": "on",
-        "implementation_ref_1": "app.modules.customer_ops:TechnicalEntitlementTeam",
+        "team_id_0": "feedback_analytics", "active_0": "on",
+        "implementation_ref_0": "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam",
+        "team_id_1": "feedback_fixture", "active_1": "on",
+        "implementation_ref_1": "tests.unit.test_composition_root:ExtraTeam",
         "team_id_2": "new_team", "implementation_ref_2": "app.modules.placeholder:PlaceholderTeam",
         "save": "1",
     })

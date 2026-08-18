@@ -7,8 +7,8 @@ import pytest
 
 from app.core.contracts import ContextPack, Evidence, NextAction, TeamTask, ToolNotAllowed
 from app.core.verification import Facts, verify_proposal
-from app.modules.customer_ops.billing import BillingSubscriptionTeam
-from app.modules.customer_ops.technical import TechnicalEntitlementTeam
+from examples.customer_ops.billing import BillingSubscriptionTeam
+from examples.customer_ops.technical import TechnicalEntitlementTeam
 from app.modules.customer_ops.verification_policy import CUSTOMER_OPS_POLICY
 from app.tools.read_tools import ReadToolbox, ToolLoopExceeded
 
@@ -21,7 +21,7 @@ def pack(team_id: str, degraded: bool = False) -> ContextPack:
 
 
 def task(team_id: str, capability: str, context: ContextPack, allowed: list[str]) -> TeamTask:
-    return TeamTask(task_id=uuid4(), run_id=uuid4(), case_id=context.case_id, team_id=team_id, capability=capability, case_version=1, input_text="고객 요청", context=context, allowed_tools=allowed, deadline_at=NOW + timedelta(seconds=90))
+    return TeamTask(task_id=uuid4(), run_id=uuid4(), case_id=context.case_id, team_id=team_id, capability=capability, case_version=1, input_text="怨좉컼 ?붿껌", context=context, allowed_tools=allowed, deadline_at=NOW + timedelta(seconds=90))
 
 
 class FakeTools:
@@ -46,17 +46,16 @@ async def test_billing_cancelled_subscription_waits_for_refund_approval():
     assert result.outcome == "waiting" and result.next_action is NextAction.WAIT_FOR_APPROVAL
     assert result.action_proposals[0].action_type == "refund.request"
     assert result.action_proposals[0].rationale_evidence_ids
-    # ★버그사냥 2026-08-17 — Team 이 만든 제안이 실제로 verify_proposal() 을
-    #   통과하는지까지 확인한다. 전에는 Team 테스트와 verification 테스트가
-    #   서로 다른 손으로 만든 arguments 만 봐서, 실제 Team 출력이 매번 거부
-    #   당하는 걸 아무도 못 잡았다 — 여기서 그 연결을 검사한다.
+    # ?낅쾭洹몄궗??2026-08-17 ??Team ??留뚮뱺 ?쒖븞???ㅼ젣濡?verify_proposal() ??    #   ?듦낵?섎뒗吏源뚯? ?뺤씤?쒕떎. ?꾩뿉??Team ?뚯뒪?몄? verification ?뚯뒪?멸?
+    #   ?쒕줈 ?ㅻⅨ ?먯쑝濡?留뚮뱺 arguments 留?遊먯꽌, ?ㅼ젣 Team 異쒕젰??留ㅻ쾲 嫄곕?
+    #   ?뱁븯??嫄??꾨Т??紐??≪븯?????ш린??洹??곌껐??寃?ы븳??
     proposal = result.action_proposals[0]
     assert proposal.arguments == {"payment_id": payment_id, "amount_cents": 19900}
     facts = Facts(collections={"payments": {payment_id: {"payment_id": payment_id, "amount_cents": 19900}}},
                   evidence_ids=frozenset(e.evidence_id for e in result.evidence))
     problems = verify_proposal(arguments=proposal.arguments, rationale_evidence_ids=proposal.rationale_evidence_ids,
                                facts=facts, policy=CUSTOMER_OPS_POLICY)
-    assert problems == [], f"실제 Team 이 만든 제안이 검증을 통과하지 못한다: {problems}"
+    assert problems == [], f"?ㅼ젣 Team ??留뚮뱺 ?쒖븞??寃利앹쓣 ?듦낵?섏? 紐삵븳?? {problems}"
 
 
 @pytest.mark.asyncio
@@ -65,7 +64,7 @@ async def test_technical_mismatch_returns_procedure_without_mutation():
     tools = FakeTools({"read.entitlement":{"plan":"Free"}, "read.account":{"plan":"Pro"}, "read.incident":[], "read.policy":policy()})
     result = await TechnicalEntitlementTeam(tools).execute(task("technical_entitlement", "entitlement.diagnose", context, TechnicalEntitlementTeam.manifest.allowed_tools))
     assert result.outcome == "completed"
-    assert "동기화" in result.answer
+    assert result.decisions[0]["classification"] == "entitlement_sync_mismatch"
     assert result.decisions[-1]["side_effects"] == []
 
 

@@ -21,9 +21,3 @@ teams:
 - team_id: feedback_analytics
   active: true
   implementation_ref: app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam
-- team_id: billing_subscription
-  active: true
-  implementation_ref: app.modules.customer_ops:BillingSubscriptionTeam
-- team_id: technical_entitlement
-  active: true
-  implementation_ref: app.modules.customer_ops:TechnicalEntitlementTeam

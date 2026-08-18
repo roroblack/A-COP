@@ -25,7 +25,7 @@ class ExtraTeam:
 def test_composition_registers_builtin_teams_and_allows_extension():
     registry = build_registry(tools=ReadToolbox(lambda: None), llm=object())
     assert {manifest.team_id for manifest in registry.manifests()} == {
-        "billing_subscription", "technical_entitlement", "feedback_analytics"
+        "feedback_analytics"
     }
 
     registry.register(ExtraTeam())

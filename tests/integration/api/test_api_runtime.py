@@ -249,7 +249,7 @@ def _put_case_in_waiting_input(api_fixture, case_id: UUID) -> str:
             case = get_case(conn, tenant_id=api_fixture["tenant"], case_id=case_id)
             transition_case(conn, tenant_id=api_fixture["tenant"], case_id=case_id, expected_version=case["version"],
                             event_type=EventType.ROUTED,
-                            payload={"owner_team_id": "billing_subscription", "capability": "billing.investigate"},
+                            payload={"owner_team_id": "demo_team", "capability": "demo.investigate"},
                             actor_type="test")
             transition_case(conn, tenant_id=api_fixture["tenant"], case_id=case_id, expected_version=case["version"] + 1,
                             event_type=EventType.MISSING_INPUT,
@@ -272,10 +272,10 @@ def _client_with_resume_capable_controller(api_fixture) -> TestClient:
 
     class ResumableTeam:
         manifest = TeamManifest(
-            team_id="billing_subscription", display_name="Test Billing", contract_name="a_cop.team_task",
-            supported_contract_versions=["1.0"], capabilities=["billing.investigate"],
+            team_id="demo_team", display_name="Test Team", contract_name="a_cop.team_task",
+            supported_contract_versions=["1.0"], capabilities=["demo.investigate"],
             accepted_case_types=["billing"], required_context=["case_state", "policy", "db_facts", "history"],
-            allowed_tools=[], knowledge_scope=["billing"], implementation_revision="test",
+            allowed_tools=[], knowledge_scope=["demo"], implementation_revision="test",
         )
 
         async def execute(self, task):

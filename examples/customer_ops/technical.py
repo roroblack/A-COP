@@ -40,7 +40,7 @@ class TechnicalEntitlementTeam:
 
     async def execute(self, task: TeamTask) -> TeamResult:
         if task.context.degraded:
-            return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id, outcome="escalated", confidence=0.0, next_action=NextAction.ESCALATE, failure_code="degraded_context", warnings=["정책 근거가 불완전하여 확정 답변을 만들지 않음"])
+            return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id, outcome="escalated", confidence=0.0, next_action=NextAction.ESCALATE, failure_code="degraded_context", warnings=["?뺤콉 洹쇨굅媛 遺덉셿?꾪븯???뺤젙 ?듬???留뚮뱾吏 ?딆쓬"])
         seen: set[str] = set()
         try:
             ent = self.tools.call("read.entitlement", task.context, {}, task.allowed_tools, seen)
@@ -52,14 +52,15 @@ class TechnicalEntitlementTeam:
         evidence = list(task.context.evidence)
         if not policy:
             return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id, outcome="escalated", confidence=0.0, evidence=evidence, next_action=NextAction.ESCALATE, failure_code="policy_not_found")
-        evidence.append(Evidence(evidence_id="tool:technical", source_type="tool_result", source_id="read.technical", claim="계정·권한·incident를 비교했다", value={"entitlement":ent,"account":account,"incidents":incidents,"policy":policy}, confidence=1.0, observed_at=evidence[0].observed_at if evidence else __import__("datetime").datetime.now(__import__("datetime").UTC)))
+        evidence.append(Evidence(evidence_id="tool:technical", source_type="tool_result", source_id="read.technical", claim="怨꾩젙쨌沅뚰븳쨌incident瑜?鍮꾧탳?덈떎", value={"entitlement":ent,"account":account,"incidents":incidents,"policy":policy}, confidence=1.0, observed_at=evidence[0].observed_at if evidence else __import__("datetime").datetime.now(__import__("datetime").UTC)))
         mismatch = ent and account and ent.get("plan") != account.get("plan")
-        answer = "권한 동기화 불일치가 확인되었습니다. 계정 동기화와 캐시 갱신 절차를 안내합니다." if mismatch else "계정·권한·incident를 확인했고 정책 근거에 따라 해결 절차를 안내합니다."
+        answer = "沅뚰븳 ?숆린??遺덉씪移섍? ?뺤씤?섏뿀?듬땲?? 怨꾩젙 ?숆린?붿? 罹먯떆 媛깆떊 ?덉감瑜??덈궡?⑸땲??" if mismatch else "怨꾩젙쨌沅뚰븳쨌incident瑜??뺤씤?덇퀬 ?뺤콉 洹쇨굅???곕씪 ?닿껐 ?덉감瑜??덈궡?⑸땲??"
         if self.llm is not None:
             answer = await self._llm_answer(task, evidence)
             if answer is None:
-                return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id, outcome="failed", confidence=0.0, evidence=evidence, next_action=NextAction.ESCALATE, failure_code="malformed_llm_response", warnings=["LLM 응답이 TeamResult answer 스키마와 일치하지 않음"])
+                return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id, outcome="failed", confidence=0.0, evidence=evidence, next_action=NextAction.ESCALATE, failure_code="malformed_llm_response", warnings=["LLM ?묐떟??TeamResult answer ?ㅽ궎留덉? ?쇱튂?섏? ?딆쓬"])
         return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id, outcome="completed", confidence=0.85, answer=answer, evidence=evidence, next_action=NextAction.RESPOND, decisions=[{"classification":"entitlement_sync_mismatch" if mismatch else "technical_investigation"},{"side_effects":[] }])
 
 
 __all__ = ["TechnicalEntitlementTeam"]
+
