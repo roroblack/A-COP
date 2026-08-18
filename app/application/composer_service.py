@@ -95,6 +95,11 @@ def apply_candidate(raw: dict[str, Any], *, base_revision: str,
             raise RevisionConflict(current.revision)
 
         candidate_path = target.with_name(f".{target.stem}.validate.{uuid4().hex}.yaml")
+        # ★버그사냥 2026-08-17 (라운드 07) — os.replace() 가 실패하면(디스크 오류·
+        #   권한 문제) staged 파일이 finally 에서 안 지워지고 남았다. candidate_path
+        #   와 함께 정리 대상에 넣는다 — os.replace() 가 성공했으면 이미 target 으로
+        #   옮겨져 없으므로 unlink(missing_ok=True) 는 조용히 넘어간다.
+        staged = target.with_name(f".{target.stem}.write.{uuid4().hex}.yaml")
         try:
             candidate_path.write_text(yaml.safe_dump(raw, sort_keys=False, allow_unicode=True), encoding="utf-8")
             candidate = load_project_config(candidate_path)  # 실패하면 여기서 던진다
@@ -104,10 +109,10 @@ def apply_candidate(raw: dict[str, Any], *, base_revision: str,
 
             # ★원자적 교체. "임시 파일에 다 쓰고 나서 os.replace" 라야
             #   쓰다가 죽어도 원본이 반쪽 상태로 남지 않는다 — 새 파일이거나 옛 파일이다.
-            staged = target.with_name(f".{target.stem}.write.{uuid4().hex}.yaml")
             staged.write_text(candidate_path.read_text(encoding="utf-8"), encoding="utf-8")
             os.replace(staged, target)  # POSIX·Windows 모두 원자적
 
             return load_project_config(target)  # 새 revision 을 계산해서 돌려준다
         finally:
             candidate_path.unlink(missing_ok=True)
+            staged.unlink(missing_ok=True)
