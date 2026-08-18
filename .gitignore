@@ -1,5 +1,13 @@
-# 독립 저장소 — 자체 git 이력을 가진다. 여기서 추적하지 않는다.
-final_project_sample/
+# 팀원 개인 작업물 — 이 저장소(SKN32_FINAL)의 산출물이 아니다
+team_branch/
+personal/
+
+# 백업/레거시/아카이브 — 과거 버전 보존용, 현재 산출물 아님
+research/_backup/
+plan/archive/
+briefing/archive/
+legacy/
+.tmp/
 
 # 파이썬
 __pycache__/
@@ -7,6 +15,9 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
 
 # 환경/비밀
 .env
@@ -25,3 +36,16 @@ Thumbs.db
 
 # 논의 원본 (대용량, 로컬 보관)
 *.mhtml
+
+# 로컬 DB 덤프
+*.dump
+*.sqlite3
+
+# 빌드·휠 검사 찌꺼기
+.wheelhouse*/
+build/
+dist/
+
+# 평가 산출물 (raw 는 크고 재생성 가능 — report md 만 커밋한다)
+eval/reports/raw*.jsonl
+eval/reports/pairs*.jsonl

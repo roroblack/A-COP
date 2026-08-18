@@ -1,0 +1,67 @@
+"""쇼핑몰 CS 도메인의 대조 선언 (v7 §9-E).
+
+★basement(`app/core/verification.py`)는 **규칙 엔진**이고, 이 파일이 **어휘**다.
+  엔진은 한 줄도 바뀌지 않았다 — 이 저장소가 sample 에서 복사돼 왔다는 증거다
+  (`docs/handoff/10_도메인_교체_가이드.md` §1-2).
+
+sample(구독·결제) → 이 저장소(커머스) 대응:
+
+    payment_id      → order_id         금액 상한의 출처
+    subscription_id → shipment_id      배송 건
+    amount          → refund_amount    환불 금액
+    (없음)           → return_quantity  반품 수량
+
+★`opaque` 에 넣는다는 것은 **"확인 못 하니 거부한다"** 는 선언이다.
+  귀찮다고 빼면 검사 없이 통과한다 — 조용히 새는 쪽이 더 위험하다.
+"""
+from __future__ import annotations
+
+from decimal import Decimal
+
+from app.core.verification import QuantityRule, VerificationPolicy
+
+#: 이 도메인이 대조할 수 있는 것들.
+CUSTOMER_OPS_POLICY = VerificationPolicy(
+    references={
+        "order_id": "orders",
+        "shipment_id": "shipments",
+        "return_id": "returns",
+    },
+    quantities=(
+        # ★환불액은 주문 총액을 넘을 수 없다. 원 단위 → cents 상한이라 100 을 곱한다.
+        QuantityRule(field="refund_amount", reference="order_id",
+                     limit_key="total_cents", scale=Decimal(100)),
+        QuantityRule(field="refund_amount_cents", reference="order_id",
+                     limit_key="total_cents", scale=Decimal(1)),
+        # ★반품 수량은 주문 수량을 넘을 수 없다. 금액 전용 규칙이 아니다.
+        QuantityRule(field="return_quantity", reference="order_id",
+                     limit_key="item_count", scale=Decimal(1)),
+    ),
+    # ★아직 대조 수단이 없는 식별자. 제안에 나오면 거부한다.
+    #   쿠폰·적립금 테이블이 생기면 references 로 옮긴다.
+    opaque=frozenset({"coupon_id", "point_txn_id", "invoice_id"}),
+    # 대조 대상이 아닌 자유 필드
+    # ★"evidence" — 2026-08-17 실 브라우저 승인 클릭으로 발견: 운영 UI(`app/presentation
+    #   /ui/routes.py::_actions()`)가 `arguments_json.evidence` 를 읽어 근거를 표시하고
+    #   승인 버튼 활성화를 결정한다. 이 키는 대조 대상 필드가 아니라 표시용 데이터이므로
+    #   선언해 두지 않으면 재검증(`proposal_guard.recheck_before_execution`)이
+    #   "선언되지 않은 필드"로 승인 자체를 막는다.
+    ignored=frozenset({"reason", "reason_code", "template", "currency",
+                       "rationale", "memo", "seeded_by", "note", "evidence"}),
+)
+
+#: 사실을 재조회하는 SQL. ★모든 query 에 tenant_id·customer_id 를 건다(설계 원칙 §1).
+FACT_QUERIES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("orders",
+     "SELECT order_id, order_no, total_cents, item_count, status FROM orders "
+     "WHERE tenant_id=%s AND customer_id=%s",
+     ("order_id", "order_no", "total_cents", "item_count", "status")),
+    ("shipments",
+     "SELECT shipment_id, order_id, carrier, status FROM shipments "
+     "WHERE tenant_id=%s AND customer_id=%s",
+     ("shipment_id", "order_id", "carrier", "status")),
+    ("returns",
+     "SELECT return_id, order_id, quantity, status FROM returns "
+     "WHERE tenant_id=%s AND customer_id=%s",
+     ("return_id", "order_id", "quantity", "status")),
+)

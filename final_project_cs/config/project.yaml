@@ -1,0 +1,26 @@
+modules:
+  vector_rag:
+    enabled: true
+  graph_store:
+    enabled: true
+  a2a_executor:
+    enabled: false
+  mcp:
+    enabled: true
+  voc:
+    enabled: true
+  ops_ui:
+    enabled: true
+  composer_ui:
+    enabled: true
+ports:
+  team_executor: local
+  message_broker: outbox
+  graph_store: sql
+teams:
+- team_id: order_shipping
+  active: true
+  implementation_ref: app.modules.customer_ops:OrderShippingTeam
+- team_id: return_exchange
+  active: true
+  implementation_ref: app.modules.customer_ops:ReturnExchangeTeam

@@ -1,0 +1,83 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+import pytest
+
+from app.core.contracts import ContextPack, Evidence, NextAction, TeamTask, ToolNotAllowed
+from app.modules.customer_ops.order_shipping import OrderShippingTeam
+from app.modules.customer_ops.return_exchange import ReturnExchangeTeam
+from app.tools.read_tools import ReadToolbox, ToolLoopExceeded
+
+
+NOW = datetime.now(UTC)
+
+
+def pack(team_id: str, degraded: bool = False) -> ContextPack:
+    return ContextPack(pack_id=uuid4(), case_id=uuid4(), team_id=team_id, tenant_id="test-team-tenant", knowledge_scope=["order", "shipping"], current_state={"customer_id": str(uuid4()), "status": "running"}, estimated_input_tokens=10, degraded=degraded, omissions=["fixture"] if degraded else [])
+
+
+def task(team_id: str, capability: str, context: ContextPack, allowed: list[str]) -> TeamTask:
+    return TeamTask(task_id=uuid4(), run_id=uuid4(), case_id=context.case_id, team_id=team_id, capability=capability, case_version=1, input_text="고객 요청", context=context, allowed_tools=allowed, deadline_at=NOW + timedelta(seconds=90))
+
+
+class FakeTools:
+    def __init__(self, values): self.values = values
+    def call(self, name, context, arguments, allowed_tools, seen):
+        if name not in allowed_tools: raise ToolNotAllowed(name)
+        return self.values[name]
+
+
+def policy():
+    return [Evidence(evidence_id="policy:refund#c1", source_type="policy", source_id="refund#c1", claim="policy", value={}, confidence=1, observed_at=NOW)]
+
+
+@pytest.mark.asyncio
+async def test_delivered_shipment_waits_for_refund_approval():
+    """★시나리오1 — 배송완료 표시가 있으면 조사를 열고 환불을 제안(승인 대기)한다."""
+    context = pack("order_shipping")
+    tools = FakeTools({"read.order": {"order_id": "o1", "order_no": "ORD-1", "total_cents": 50000, "item_count": 2, "status": "delivered"},
+                       "read.shipment": [{"shipment_id": "s1", "order_id": "o1", "status": "delivered"}],
+                       "read.policy": policy()})
+    result = await OrderShippingTeam(tools).execute(task("order_shipping", "order.investigate", context, OrderShippingTeam.manifest.allowed_tools))
+    assert result.outcome == "waiting" and result.next_action is NextAction.WAIT_FOR_APPROVAL
+    assert result.action_proposals[0].action_type == "refund.request"
+    assert result.action_proposals[0].arguments["order_id"] == "o1"
+    assert result.action_proposals[0].rationale_evidence_ids
+
+
+@pytest.mark.asyncio
+async def test_return_request_proposes_action_without_mutation():
+    """★시나리오2 — 반품 요청이 있으면 제안까지만 만든다. 수량 상한 판단은 team 몫이 아니다."""
+    context = pack("return_exchange")
+    tools = FakeTools({"read.order": {"order_id": "o1", "order_no": "ORD-1", "total_cents": 50000, "item_count": 3, "status": "delivered"},
+                       "read.return": [{"return_id": "r1", "order_id": "o1", "reason_code": "size_mismatch", "quantity": 5, "status": "requested"}],
+                       "read.policy": policy()})
+    result = await ReturnExchangeTeam(tools).execute(task("return_exchange", "return.diagnose", context, ReturnExchangeTeam.manifest.allowed_tools))
+    assert result.outcome == "waiting" and result.next_action is NextAction.WAIT_FOR_APPROVAL
+    assert result.action_proposals[0].action_type == "return.accept"
+    assert result.action_proposals[0].arguments == {"order_id": "o1", "return_quantity": 5}
+    # ★team 은 수량 초과를 관측만 한다 — 차단은 Controller 몫이다(DoD-24·25)
+    assert result.decisions[-1]["classification"] == "return_quantity_exceeds_order"
+
+
+@pytest.mark.asyncio
+async def test_degraded_context_escalates_without_answer():
+    context = pack("order_shipping", degraded=True)
+    result = await OrderShippingTeam(FakeTools({})).execute(task("order_shipping", "order.investigate", context, OrderShippingTeam.manifest.allowed_tools))
+    assert result.outcome == "escalated" and result.next_action is NextAction.ESCALATE
+    assert result.answer is None
+
+
+def test_tool_allowlist_and_repetition_guard():
+    toolbox = ReadToolbox(lambda: None)
+    context = pack("order_shipping")
+    with pytest.raises(ToolNotAllowed):
+        toolbox.call("read.account", context, {}, ["read.order"], set())
+    seen = set()
+    # no DB call is needed: the second identical request is rejected first
+    toolbox.order = lambda scope, **kwargs: {"order_id": "o1", "status": "delivered"}
+    toolbox.call("read.order", context, {}, ["read.order"], seen)
+    with pytest.raises(ToolLoopExceeded):
+        toolbox.call("read.order", context, {}, ["read.order"], seen)
