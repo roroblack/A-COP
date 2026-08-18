@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.core.settings as settings_module
+from app.core.contracts import StateConflict
 from app.infrastructure.db.repository import get_case
 from app.infrastructure.db.session import get_connection
 from app.presentation import security
@@ -225,6 +226,41 @@ def test_create_escalates_when_injected_classifier_fails(api_fixture):
             (api_fixture["tenant"], case_id),
         )
         assert cur.fetchall() == [("created", None), ("classification_failed", "classification_failed")]
+
+
+def test_create_does_not_relabel_a_transition_bug_as_classification_failure(api_fixture, monkeypatch):
+    """★버그사냥 2026-08-18 (라운드 08) — `classifier()` 호출뿐 아니라 뒤이은
+    `transition_case(...CLASSIFIED...)` 호출 자체의 실패(예: `StateConflict`)까지
+    같은 `except Exception:` 이 잡아 `classification_failed` 로 뭉갰다. 상태
+    충돌을 "분류 실패" 로 보고하면 원인을 못 찾는다(CLAUDE.md §3 "오류 메시지가
+    사실을 잘못 전하지 않게 한다"). classifier 는 정상 값을 반환했는데도
+    이렇게 된다는 게 핵심 — classifier 문제가 아니라 전이 자체의 버그다."""
+    import app.presentation.api.cases as cases_module
+    real_transition_case = cases_module.transition_case
+    calls = {"n": 0}
+
+    def flaky_transition_case(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:  # the CLASSIFIED transition — not the classifier call
+            raise StateConflict("simulated non-classifier transition bug")
+        return real_transition_case(*args, **kwargs)
+
+    monkeypatch.setattr(cases_module, "transition_case", flaky_transition_case)
+    app = create_app(classifier=lambda _message: {"intent": "billing", "issue_code": "payment_failed", "sentiment": "negative"})
+    # ★raise_server_exceptions=False — 진짜 원인이 앱의 500 핸들러까지 도달하는지
+    #   보려는 것이지, pytest 프로세스로 예외가 그대로 새는지 보려는 게 아니다.
+    client = TestClient(app, raise_server_exceptions=False)
+    response = client.post(
+        "/v1/cases",
+        headers={"Authorization": api_fixture["token"]("case:write")},
+        json={"request_id": "transition-bug-" + uuid4().hex, "customer_id": str(api_fixture["customer"]), "message": "please help", "channel": "test"},
+    )
+    # ★진짜 원인(StateConflict)이 정직하게 500 으로 드러나야 한다 — classifier
+    #   실패인 것처럼 201 + classification_failed 로 조용히 넘어가면 안 된다.
+    assert response.status_code == 500
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM customer_cases WHERE tenant_id=%s", (api_fixture["tenant"],))
+        assert cur.fetchone()[0] == 0, "실패한 전이가 있으면 트랜잭션 전체가 롤백돼야 한다"
 
 
 def _put_case_in_waiting_input(api_fixture, case_id: UUID) -> str:

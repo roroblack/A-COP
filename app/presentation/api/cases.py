@@ -86,13 +86,23 @@ def build_router(classifier: Classifier | None = None, controller: Any | None = 
                 case_id = repository.create_case(conn, tenant_id=tenant, customer_id=request.customer_id, subject=request.message, state_json={"request_id": request.request_id})
                 transition_case(conn, tenant_id=tenant, case_id=case_id, expected_version=0, event_type=EventType.CREATED,
                                 payload={"channel": request.channel, "message": request.message}, actor_type="api", actor_id=principal.key_id)
+                # ★버그사냥 2026-08-18 (라운드 08) — try 가 classifier() 뿐 아니라
+                #   뒤이은 CLASSIFIED transition_case() 호출까지 감싸고 있었다.
+                #   그 결과 전이 자체의 버그(StateConflict/InvalidTransition)도
+                #   전부 "classification_failed" 로 뭉개졌다 — 상태 충돌을 분류
+                #   실패로 보고하면 원인을 못 찾는다(CLAUDE.md §3). classifier
+                #   호출만 감싼다 — CLASSIFIED 전이 자체의 실패는 있는 그대로
+                #   드러낸다(test_create_does_not_relabel_a_transition_bug_as_classification_failure).
                 try:
                     result = classifier(masked(request.message)) if classifier else None
                     if not result or not all(k in result for k in ("intent", "issue_code", "sentiment")):
                         raise ValueError("classifier unavailable")
+                except Exception:
+                    result = None
+                if result is not None:
                     transition_case(conn, tenant_id=tenant, case_id=case_id, expected_version=1, event_type=EventType.CLASSIFIED,
                                     payload=result, actor_type="api", actor_id=principal.key_id)
-                except Exception:
+                else:
                     transition_case(conn, tenant_id=tenant, case_id=case_id, expected_version=1, event_type=EventType.CLASSIFICATION_FAILED,
                                     payload={"failure_code": "classification_failed"}, actor_type="api", actor_id=principal.key_id)
                 repository.create_action_request(conn, tenant_id=tenant, case_id=case_id, action_type="case.create",
