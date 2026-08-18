@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "final-project-sample"
+version = "0.1.0"
+description = "A-COP S-API product with an optional development console"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "httpx",
+  "pydantic>=2",
+  "PyYAML",
+]
+
+[project.optional-dependencies]
+console = ["final-project-sample"]
+product = []
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["app.console*", "tests*", "docs*", "eval*", "knowledge*"]
