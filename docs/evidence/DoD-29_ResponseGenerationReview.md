@@ -14,8 +14,8 @@ python -m pytest tests/unit/teams -q
 ## 실제 출력
 
 ```text
-43 passed, 1 warning in 1.40s
-8 passed in 2.77s
+43 passed in 1.25s
+10 passed in 0.12s
 ```
 
 ## 판정 근거
@@ -30,6 +30,7 @@ python -m pytest tests/unit/teams -q
 | 결정론 검사가 LLM(톤) 검사보다 먼저 | **통과** — `test_deterministic_review_runs_before_tone_llm` (`response.review_tone` 미호출 관측) |
 | 톤 실패는 재시도하지 않고 `warnings[]`만 | **통과** — `test_tone_only_failure_is_warning_without_retry` |
 | `accepted_case_types=[]` (Controller 자동 라우팅 대상 아님) | **통과** — `test_manifest_and_protocol` |
+| 톤 결정(규칙) → GEN 초안 → REV 검증 → 완료 (v8 §8-B 흐름 1단계) | **통과** — `decide_tone()`(`response_review_policy.py`)이 `case["sentiment"]`(`controller.py`가 채우는 `current_state["sentiment"]`)로 규칙 결정, GEN·톤 REV 양쪽에 같은 값 전달. `test_negative_sentiment_decides_empathetic_tone_before_generation`, `test_missing_sentiment_defaults_to_professional_tone` |
 
 ## ★검수 중 발견해 고친 결함 — 고객 원문에 REV 규칙을 잘못 적용
 
@@ -52,6 +53,22 @@ GEN 조차 시도하지 않고 즉시 `escalated` 로 보냈다(`preflight`).
 (`test_deterministic_review_runs_before_tone_llm` 이 이 순서를 직접 관측한다).
 이 결함을 유발했던 테스트(`test_deterministic_input_rejection_happens_before_llm`)도
 같은 이름의 테스트로 교체해 올바른 대상(생성된 초안)을 검사하도록 했다.
+
+## ★검수 중 발견해 고친 결함 — 톤 결정(규칙) 단계 자체가 없었다
+
+v8 §8-B 는 내부 흐름을 "**톤 결정(규칙)** → GEN 초안 → REV 검증 → 완료"로
+4단계로 명시한다. 그런데 최초 구현은 1단계가 통째로 없었다 —
+`response_review_policy.py` 에 `TONE_PROFILES`(`professional`/`empathetic`)
+선언은 있었지만 그중 어느 것을 쓸지 정하는 규칙이 없었고, `response_review.py`
+는 톤 REV LLM 호출에 `"professional"` 을 하드코딩해 항상 같은 프로파일을
+썼다. GEN 호출에는 톤 정보 자체가 전달되지 않았다.
+
+수정: `response_review_policy.py` 에 `decide_tone(sentiment)` 순수 함수를
+추가했다 — 이미 인라인 분류가 채워 둔 `case["sentiment"]`(`controller.py`가
+`current_state["sentiment"]`로 넘긴다)만 보고, `negative` 면 `empathetic`,
+그 외(분류 실패로 없는 경우 포함)는 기본값 `professional`을 규칙으로
+고른다. `execute()` 시작부에서 한 번 결정해 GEN 프롬프트 컨텍스트와 톤 REV
+호출 양쪽에 같은 값을 전달하고, `decisions[]`에도 남긴다.
 
 ## 한계
 

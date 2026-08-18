@@ -8,7 +8,7 @@ from typing import Any, Protocol
 from app.core.contracts import Evidence, NextAction, TeamManifest, TeamModule, TeamResult, TeamTask
 from app.core.verification import Facts, verify_proposal
 from app.modules.customer_ops.response_review_policy import (
-    FORBIDDEN_WORDS, PII_PATTERNS, RESPONSE_VERIFICATION_POLICY,
+    FORBIDDEN_WORDS, PII_PATTERNS, RESPONSE_VERIFICATION_POLICY, decide_tone,
 )
 
 
@@ -94,26 +94,29 @@ class ResponseGenerationReviewTeam:
             problems.extend(f"fact_mismatch:{m.field}" for m in mismatches)
         return problems
 
-    async def _generate(self, task: TeamTask, evidence: list[Evidence], retry: int) -> dict[str, Any]:
+    async def _generate(self, task: TeamTask, evidence: list[Evidence], retry: int, tone_profile: str) -> dict[str, Any]:
         if self.llm is None:
             return {"final_response_text": task.input_text, "status": "completed"}
         response = await self.llm.complete(
             "response.generate", task.input_text,
-            {"evidence": evidence, "context": task.context.model_dump(mode="json"), "retry_count": retry},
+            {"evidence": evidence, "context": task.context.model_dump(mode="json"),
+             "retry_count": retry, "tone_profile": tone_profile},
         )
         return self._decode(response) or {}
 
     async def execute(self, task: TeamTask) -> TeamResult:
         evidence = self._evidence(task)
         facts = self._facts(task)
+        # ★v8 §8-B 흐름의 1단계 — 톤은 LLM 이 아니라 규칙으로 먼저 정하고, GEN·REV 양쪽에 같은 값을 쓴다.
+        tone_profile = decide_tone(task.context.current_state.get("sentiment"))
         decisions: list[dict[str, Any]] = []
         for retry in range(4):
-            response = await self._generate(task, evidence, retry)
+            response = await self._generate(task, evidence, retry, tone_profile)
             text = response.get("final_response_text", response.get("answer", ""))
             text = text.strip() if isinstance(text, str) else ""
             claims = self._claims(response)
             failures = self._deterministic(text, claims, facts)
-            decision = {"retry_count": retry, "review_history": failures, "first_pass": retry == 0}
+            decision = {"retry_count": retry, "review_history": failures, "first_pass": retry == 0, "tone_profile": tone_profile}
             if "pii_detected" in failures:
                 decisions.append(decision)
                 return self._escalated(task, evidence, decisions, "pii_detected")
@@ -128,7 +131,7 @@ class ResponseGenerationReviewTeam:
             tone_ok = response.get("tone_ok")
             if self.llm is not None and tone_ok is None:
                 tone_result = self._decode(await self.llm.complete(
-                    "response.review_tone", text, {"tone_profile": "professional", "response": response}
+                    "response.review_tone", text, {"tone_profile": tone_profile, "response": response}
                 )) or {}
                 tone_ok = tone_result.get("tone_ok", True)
             if tone_ok is False:

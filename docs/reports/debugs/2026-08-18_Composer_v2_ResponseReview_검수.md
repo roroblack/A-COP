@@ -106,13 +106,57 @@ python -m pytest -q --ignore=tests/integration/rag
 테스트 실행 후 `var/` 디렉터리가 다시 생기지 않는 것을 확인했다
 (`ls var/` → `No such file or directory`).
 
+## 4. Response Review Team — 톤 결정(규칙) 단계가 통째로 없었다
+
+v8 §8-B 는 내부 흐름을 "**톤 결정(규칙)** → GEN 초안 → REV 검증 → 완료"로
+4단계 명시한다. 그런데 `response_review_policy.py` 는 `TONE_PROFILES`
+(`professional`/`empathetic`) 선언만 있고 그중 무엇을 쓸지 정하는 규칙이
+없었다. `response_review.py` 는 톤 REV LLM 호출에 `"professional"` 을
+하드코딩했고, GEN 호출에는 톤 정보 자체를 넘기지 않았다 — 1단계가 아예
+빠진 채로 3단계짜리 흐름이 돼 있었다.
+
+**수정**: `response_review_policy.py` 에 `decide_tone(sentiment)` 순수 함수를
+추가했다. 이미 인라인 분류가 채워 둔 `case["sentiment"]`(`controller.py`가
+`current_state["sentiment"]`로 넘긴다)만 보고 `negative` 면 `empathetic`,
+그 외(분류 실패로 없는 경우 포함, CLAUDE.md §1 "지어내지 않는다")는 기본값
+`professional`을 고른다. `execute()` 가 시작할 때 한 번 결정해 GEN 프롬프트
+컨텍스트와 톤 REV 호출 양쪽에 같은 값을 전달하고 `decisions[]`에도 남긴다.
+
+```powershell
+python -m pytest tests/unit/teams/test_response_review_team.py -q
+```
+```text
+10 passed in 0.12s
+```
+
+## 5. Composer JWT 만료/위조 — 문서는 테스트한다고 했는데 테스트가 없었다
+
+`docs/handoff/13` "테스트 계약" 절이 `tests/e2e/test_composer_write_channel.py`
+가 "인증 필요, **JWT 만료/위조**, 세 scope 분리, ..."를 검증한다고 명시하는데,
+실제 파일에는 만료·위조 시나리오 테스트가 없었다(문서-코드 불일치).
+구현(`composer_auth.py`)은 `jwt.decode()`가 `exp`/서명을 이미 검증하므로
+동작 자체는 맞았지만, 그 사실을 증명하는 회귀 테스트가 없어 나중에 검증
+로직이 실수로 느슨해져도 아무 테스트도 잡지 못하는 상태였다.
+
+**수정**: `test_expired_token_is_rejected`(TTL 이 지난 토큰), `test_forged_signature_is_rejected`
+(다른 secret 으로 서명한 토큰) 두 테스트를 추가했다.
+
+```powershell
+python -m pytest tests/e2e/test_composer_write_channel.py -q
+```
+```text
+8 passed in 3.25s
+```
+
 ## 종합
 
 ```powershell
-python -m pytest -q --ignore=tests/integration/rag   # 360 passed, 1 deselected (RAG 3건은 네트워크 차단, 무관)
-python -m scripts.verify_dod                          # evidence 29/29, 통과 25, 부분통과 4, 미착수 0, 테스트 364 passed
+python -m pytest -q --ignore=tests/integration/rag   # 364 passed, 1 deselected (RAG 3건은 네트워크 차단, 무관)
+python -m scripts.verify_dod                          # evidence 29/29, 통과 25, 부분통과 4, 미착수 0, 테스트 368 passed
 ```
 
-Composer v2 JWT 스트림은 결함 없음. Response Review Team 스트림은 preflight
-오진 1건(실제 운영 결함) + DoD 게이트 갱신 누락 1건 + audit 테스트 격리
-누락 1건, 총 3건을 고쳤다.
+Composer v2 JWT 스트림은 설계·구현 결함은 없었으나 문서(handoff/13)가
+약속한 JWT 만료/위조 테스트가 빠져 있었다(1건, 테스트 커버리지 갭).
+Response Review Team 스트림은 preflight 오진 1건(실제 운영 결함) + 톤
+결정 단계 누락 1건(v8 §8-B 흐름 4단계 중 1단계 자체가 없었음) + DoD 게이트
+갱신 누락 1건 + audit 테스트 격리 누락 1건, 총 4건을 고쳤다.

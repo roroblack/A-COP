@@ -14,9 +14,11 @@ class FakeLLM:
     def __init__(self, responses):
         self.responses = iter(responses)
         self.calls = []
+        self.contexts = []
 
     async def complete(self, prompt_key, input_text, context):
         self.calls.append(prompt_key)
+        self.contexts.append(context)
         return next(self.responses)
 
 
@@ -55,6 +57,25 @@ async def test_normal_generation_review_returns_contract_result() -> None:
     assert result.answer == "확인 후 안내드리겠습니다."
     assert result.evidence
     assert result.decisions[0]["retry_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_negative_sentiment_decides_empathetic_tone_before_generation() -> None:
+    """★v8 §8-B 내부 흐름의 1단계(톤 결정, 규칙) — LLM 이 아니라
+    `case["sentiment"]`(`controller.py`가 채우는 `current_state["sentiment"]`)
+    으로 결정하고, GEN·톤 REV 양쪽 호출에 같은 값이 전달되는지 본다."""
+    llm = FakeLLM([{"final_response_text": "확인 후 안내드리겠습니다.", "tone_ok": True}])
+    result = await ResponseGenerationReviewTeam(llm).execute(make_task(sentiment="negative"))
+    assert result.outcome == "completed"
+    assert result.decisions[0]["tone_profile"] == "empathetic"
+    assert llm.contexts[0]["tone_profile"] == "empathetic"
+
+
+@pytest.mark.asyncio
+async def test_missing_sentiment_defaults_to_professional_tone() -> None:
+    llm = FakeLLM([{"final_response_text": "확인 후 안내드리겠습니다.", "tone_ok": True}])
+    result = await ResponseGenerationReviewTeam(llm).execute(make_task())
+    assert result.decisions[0]["tone_profile"] == "professional"
 
 
 @pytest.mark.asyncio

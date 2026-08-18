@@ -6,8 +6,9 @@
   이게 지켜지는지가 이 파일의 핵심 검사 대상이다
   (`docs/reports/2026-08-17_S-COMPOSER-WRITE-CHANNEL_검토.md`).
 
-★검사하는 것: 인증·scope 분리, HTML 이 꺼져도 API 는 산다, validate 는 파일을
-  안 건드린다, 구현 안 된 참조는 거부한다, 동시 apply 는 1건만 이긴다(409).
+★검사하는 것: 인증·scope 분리, JWT 만료/위조 거부, HTML 이 꺼져도 API 는 산다,
+  validate 는 파일을 안 건드린다, 구현 안 된 참조는 거부한다, 동시 apply 는
+  1건만 이긴다(409). `docs/handoff/13` "테스트 계약" 절이 이 목록을 규정한다.
 """
 from __future__ import annotations
 
@@ -79,6 +80,39 @@ def test_wrong_scope_is_rejected(config_dir):
     client = _client(_declaration(config_dir))
     response = client.get("/composer/current", headers=_auth("ops:introspect"))
     assert response.status_code == 403
+
+
+def test_expired_token_is_rejected(config_dir):
+    """★`docs/handoff/13` "테스트 계약" 이 요구하는 JWT 만료 검사.
+
+    TTL 이 지난 토큰은 서명이 유효해도 401 이다 — `exp` 를 과거로 발급한다.
+    """
+    now = datetime.now(timezone.utc)
+    expired = jwt.encode(
+        {"sub": "test-actor", "aud": "final_project_sample", "scope": ["composer:read"],
+         "iat": now - timedelta(hours=2), "exp": now - timedelta(minutes=1), "jti": str(uuid4())},
+        get_settings().composer_jwt_secret, algorithm="HS256",
+    )
+    client = _client(_declaration(config_dir))
+    response = client.get("/composer/current", headers={"Authorization": f"Bearer {expired}"})
+    assert response.status_code == 401
+
+
+def test_forged_signature_is_rejected(config_dir):
+    """★`docs/handoff/13` "테스트 계약" 이 요구하는 JWT 위조 검사.
+
+    실제 signing secret 이 아닌 다른 값으로 서명한 토큰은 claim 이 유효해 보여도
+    거부된다 — signature 검증이 실제로 도는지 확인한다.
+    """
+    now = datetime.now(timezone.utc)
+    forged = jwt.encode(
+        {"sub": "attacker", "aud": "final_project_sample", "scope": ["composer:write"],
+         "iat": now, "exp": now + timedelta(minutes=30), "jti": str(uuid4())},
+        "not-the-real-composer-jwt-secret", algorithm="HS256",
+    )
+    client = _client(_declaration(config_dir))
+    response = client.get("/composer/current", headers={"Authorization": f"Bearer {forged}"})
+    assert response.status_code == 401
 
 
 def test_write_channel_survives_composer_ui_being_disabled(config_dir):
@@ -155,10 +189,20 @@ def test_concurrent_apply_one_wins_one_gets_409(config_dir):
     #   실측 재현: docs/reports/debugs/2026-08-17_동시_apply_테스트가_flaky했다.md
     payload_a = dict(current["config"])
     payload_a["teams"] = [dict(t) for t in current["config"]["teams"]]
+    payload_a["teams"].append({
+        "team_id": "demo_team",
+        "active": True,
+        "implementation_ref": "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam",
+    })
     payload_a["teams"][0]["active"] = not payload_a["teams"][0]["active"]
 
     payload_b = dict(current["config"])
     payload_b["teams"] = [dict(t) for t in current["config"]["teams"]]
+    payload_b["teams"].append({
+        "team_id": "demo_team",
+        "active": True,
+        "implementation_ref": "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam",
+    })
     payload_b["teams"][1]["active"] = not payload_b["teams"][1]["active"]
 
     results: list = [None, None]
