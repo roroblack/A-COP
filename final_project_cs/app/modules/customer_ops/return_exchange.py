@@ -18,6 +18,9 @@ from app.core.idempotency import idempotency_key
 from app.tools.read_tools import ReadToolbox, ToolLoopExceeded
 
 
+EXCHANGE_REASON_CODES = frozenset({"size_mismatch", "color_mismatch", "wrong_option"})
+
+
 class ReturnExchangeTeam:
     manifest = TeamManifest(
         team_id="return_exchange", display_name="Return/Exchange Team", contract_name="a_cop.team_task",
@@ -35,7 +38,7 @@ class ReturnExchangeTeam:
 
     async def _llm_answer(self, task: TeamTask, evidence: list[Evidence]) -> str | None:
         context = {"evidence": evidence, "context": task.context.model_dump(mode="json")}
-        response = await self.llm.complete("return_exchange.answer", task.input_text, context)
+        response = await self.llm.complete("return_exchange.answer", task.input_text, context, run_id=task.run_id)
         answer = self._answer_from_response(response)
         if answer is not None:
             return answer
@@ -43,6 +46,7 @@ class ReturnExchangeTeam:
             "return_exchange.answer.repair", task.input_text,
             {**context, "invalid_response": response,
              "repair_instruction": "Return a JSON object with a non-empty string answer field only."},
+            run_id=task.run_id,
         )
         return self._answer_from_response(repaired)
 
@@ -93,22 +97,35 @@ class ReturnExchangeTeam:
         if pending and order:
             latest = pending[0]
             request_id = str(task.context.current_state.get("request_id") or task.case_id)
+            is_exchange = latest.get("reason_code") in EXCHANGE_REASON_CODES
+            action_type = "exchange.request" if is_exchange else "return.accept"
+            classification = (
+                "exchange_requested" if is_exchange
+                else ("return_quantity_exceeds_order" if over_requested else "return_requested")
+            )
+            if is_exchange:
+                evidence.append(Evidence(
+                    evidence_id="policy:exchange_stock_unverified", source_type="policy",
+                    source_id="doc_15#재고 확인의 선행",
+                    claim="이 시스템은 실시간 재고 데이터가 없어 교환 대상 옵션의 재고를 자동으로 확인하지 못한다 — 승인자가 재고를 직접 확인해야 한다",
+                    value={}, confidence=1.0,
+                    observed_at=evidence[0].observed_at if evidence
+                    else __import__("datetime").datetime.now(__import__("datetime").UTC)))
             proposal = ActionProposal(
-                action_type="return.accept",
+                action_type=action_type,
                 # ★필드 이름이 verification_policy.CUSTOMER_OPS_POLICY 의 quantities 규칙과
                 #   일치해야 Controller 가 주문 수량 상한을 대조할 수 있다.
                 arguments={"order_id": str(order["order_id"]), "return_quantity": latest.get("quantity")},
                 idempotency_key=idempotency_key(tenant_id=task.context.tenant_id, request_id=request_id,
-                                                action_type="return.accept", business_subject=str(task.case_id)),
-                approval_required=True, risk_level="high" if over_requested else "medium",
+                                                action_type=action_type, business_subject=str(task.case_id)),
+                approval_required=True, risk_level="high" if (is_exchange or over_requested) else "medium",
                 rationale_evidence_ids=[e.evidence_id for e in evidence],
             )
             return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id,
                               outcome="waiting", confidence=0.85, evidence=evidence,
                               next_action=NextAction.WAIT_FOR_APPROVAL, wait_reason="human_approval",
                               action_proposals=[proposal],
-                              decisions=[{"classification": "return_quantity_exceeds_order" if over_requested
-                                         else "return_requested"}])
+                              decisions=[{"classification": classification}])
 
         answer = "주문과 반품 요청 이력을 확인했고 정책 근거에 따라 절차를 안내합니다."
         if self.llm is not None:

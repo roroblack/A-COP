@@ -204,7 +204,6 @@ NAV = (
     ("/ui/approvals", "Approvals"),
     ("/ui/voc", "VOC"),
     ("/ui/admin", "Admin"),
-    ("/ui/composer", "Composer"),
 )
 
 #: ★라이트/다크를 모두 정의한다. 색은 토큰으로만 쓰고 컴포넌트에 하드코딩하지 않는다.

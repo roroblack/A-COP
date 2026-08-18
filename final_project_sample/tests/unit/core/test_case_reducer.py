@@ -19,7 +19,7 @@ CLASSIFIED_PAYLOAD = {
     "issue_code": "post_cancel_charge",
     "sentiment": "negative",
 }
-ROUTED_PAYLOAD = {"owner_team_id": "billing_subscription", "capability": "billing.investigate"}
+ROUTED_PAYLOAD = {"owner_team_id": "demo_team", "capability": "demo.investigate"}
 
 
 def new_case() -> CaseProjection:
@@ -45,7 +45,7 @@ def test_happy_path_to_running() -> None:
     assert case.intent == "billing"
     assert case.issue_code == "post_cancel_charge"
     assert case.sentiment == "negative"
-    assert case.owner_team_id == "billing_subscription"
+    assert case.owner_team_id == "demo_team"
 
 
 def test_illegal_transition_is_rejected() -> None:

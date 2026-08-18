@@ -1,13 +1,14 @@
-# 팀원 개인 작업물 — 이 저장소(SKN32_FINAL)의 산출물이 아니다
+# 팀원 개인 작업물 — 이 저장소(A-COP)의 산출물이 아니다
 team_branch/
-personal/
+program/personal/
 
 # 백업/레거시/아카이브 — 과거 버전 보존용, 현재 산출물 아님
-research/_backup/
-plan/archive/
-briefing/archive/
+program/research/_backup/
+program/plan/archive/
+program/briefing/archive/
 legacy/
 .tmp/
+.pytest-tmp/
 
 # 파이썬
 __pycache__/

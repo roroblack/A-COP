@@ -19,6 +19,24 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PROJECT_CONFIG = Path(
     os.environ.get("ACOP_PROJECT_CONFIG") or (REPO_ROOT / "config" / "project.yaml"))
 
+# HTTP Composer candidates may select only implementations explicitly known to
+# this application.  The canonical loader remains intentionally unchanged for
+# trusted local file editing paths.
+#
+# ★버그사냥 2026-08-18 — 이전 판은 두 항목을 문자열 조각을 이어붙여
+#   ("Billing" + "Sub" + "scriptionTeam") 만들었다. 도메인 클래스명을 그대로
+#   쓰면 `tests/architecture/test_basement_is_domain_free.py` 가 부분
+#   문자열("subscription"/"entitlement")로 잡아내는데, 조각을 나눠서 그
+#   검사를 피해 간 것이다 — 검사를 우회한 것이지 basement 순수성을 지킨
+#   게 아니다. 두 Team 이 `examples/`로 옮겨져(더 이상 production Team이
+#   아님) `app/modules/customer_ops`에서 import 자체가 안 되므로, 이 참조는
+#   지금 시점엔 죽은 항목이기도 하다 — 삭제로 두 문제(우회·죽은 참조)를
+#   한 번에 없앤다.
+KNOWN_IMPLEMENTATION_REFS = frozenset({
+    "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam",
+    "app.modules.placeholder:PlaceholderTeam",
+})
+
 
 class ProjectConfigError(RuntimeError):
     """The project declaration is missing or does not satisfy its schema."""
@@ -178,5 +196,5 @@ def load_project_config(path: str | Path | None = None) -> ProjectConfig:
 
 __all__ = [
     "DEFAULT_PROJECT_CONFIG", "ModuleConfig", "PortConfig", "ProjectConfig",
-    "ProjectConfigError", "TeamConfig", "load_project_config",
+    "ProjectConfigError", "TeamConfig", "KNOWN_IMPLEMENTATION_REFS", "load_project_config",
 ]

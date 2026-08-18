@@ -1,4 +1,3 @@
-from .billing import BillingSubscriptionTeam
-from .technical import TechnicalEntitlementTeam
+"""Production customer-operations Team modules."""
 
-__all__ = ["BillingSubscriptionTeam", "TechnicalEntitlementTeam"]
+__all__ = []

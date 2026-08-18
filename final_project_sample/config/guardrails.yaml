@@ -95,6 +95,7 @@ feedback_analytics:
 
 # ── 보안 · scope (v5 §12) ───────────────────────────────────────────
 security:
+  composer_jwt_ttl_minutes: 30
   scopes:
     - case:read
     - case:write
@@ -108,6 +109,8 @@ security:
     # ★릴리스 이후 외부 콘솔이 구성을 **쓰는** scope. ops:introspect(읽기)와 분리한다 —
     #   조회 권한만으로 모듈을 켜고 끌 수 있으면 안 된다.
     - composer:write
+    - composer:read
+    - composer:validate
   # ★MCP 에는 mcp:read 외 어떤 scope 도 부여하지 않는다
   mcp_allowed_scopes:
     - mcp:read

@@ -10,6 +10,7 @@ from app.composition import build_registry
 from app.core.contracts import ContextPack, TeamTask
 from app.core.settings import get_guardrails, get_settings
 from app.infrastructure.db.session import get_connection
+from app.modules.customer_ops.read_tools import build_read_tool_functions
 from app.tools.read_tools import ReadToolbox
 
 
@@ -43,7 +44,8 @@ def main() -> None:
         deadline_at=datetime.now(UTC) + timedelta(
             seconds=get_guardrails().get("reliability.team_timeout_seconds")),
     )
-    team = build_registry(tools=ReadToolbox(get_connection)).get(team_id).module
+    team = build_registry(tools=ReadToolbox(tool_functions=build_read_tool_functions(
+        get_connection), connection_factory=get_connection)).get(team_id).module
     result = asyncio.run(team.execute(task))
 
     # ★v7 은 "배치가 이 Team 의 실행 형태" 라고 했다 — 실행 경로가 Team 을 거치라는

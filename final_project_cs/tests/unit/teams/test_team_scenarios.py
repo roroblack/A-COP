@@ -52,7 +52,7 @@ async def test_return_request_proposes_action_without_mutation():
     """★시나리오2 — 반품 요청이 있으면 제안까지만 만든다. 수량 상한 판단은 team 몫이 아니다."""
     context = pack("return_exchange")
     tools = FakeTools({"read.order": {"order_id": "o1", "order_no": "ORD-1", "total_cents": 50000, "item_count": 3, "status": "delivered"},
-                       "read.return": [{"return_id": "r1", "order_id": "o1", "reason_code": "size_mismatch", "quantity": 5, "status": "requested"}],
+                       "read.return": [{"return_id": "r1", "order_id": "o1", "reason_code": "defective", "quantity": 5, "status": "requested"}],
                        "read.policy": policy()})
     result = await ReturnExchangeTeam(tools).execute(task("return_exchange", "return.diagnose", context, ReturnExchangeTeam.manifest.allowed_tools))
     assert result.outcome == "waiting" and result.next_action is NextAction.WAIT_FOR_APPROVAL
@@ -60,6 +60,56 @@ async def test_return_request_proposes_action_without_mutation():
     assert result.action_proposals[0].arguments == {"order_id": "o1", "return_quantity": 5}
     # ★team 은 수량 초과를 관측만 한다 — 차단은 Controller 몫이다(DoD-24·25)
     assert result.decisions[-1]["classification"] == "return_quantity_exceeds_order"
+
+
+@pytest.mark.asyncio
+async def test_order_cancel_before_shipment_waits_for_approval():
+    context = pack("order_shipping")
+    context.current_state["issue_code"] = "order_change_or_cancel"
+    tools = FakeTools({"read.order": {"order_id": "o1", "status": "paid"},
+                       "read.shipment": [], "read.policy": policy()})
+    result = await OrderShippingTeam(tools).execute(
+        task("order_shipping", "order.investigate", context, OrderShippingTeam.manifest.allowed_tools))
+    assert result.action_proposals[0].action_type == "order.cancel"
+    assert result.next_action is NextAction.WAIT_FOR_APPROVAL
+
+
+@pytest.mark.asyncio
+async def test_order_cancel_after_delivery_does_not_propose_cancel():
+    context = pack("order_shipping")
+    context.current_state["issue_code"] = "order_change_or_cancel"
+    tools = FakeTools({"read.order": {"order_id": "o1", "status": "delivered"},
+                       "read.shipment": [], "read.policy": policy()})
+    result = await OrderShippingTeam(tools).execute(
+        task("order_shipping", "order.investigate", context, OrderShippingTeam.manifest.allowed_tools))
+    assert result.action_proposals == []
+    assert result.outcome == "completed"
+
+
+@pytest.mark.asyncio
+async def test_exchange_request_requires_stock_verification_approval():
+    context = pack("return_exchange")
+    tools = FakeTools({"read.order": {"order_id": "o1", "item_count": 3, "status": "delivered"},
+                       "read.return": [{"return_id": "r1", "order_id": "o1", "reason_code": "size_mismatch",
+                                         "quantity": 1, "status": "requested"}],
+                       "read.policy": policy()})
+    result = await ReturnExchangeTeam(tools).execute(
+        task("return_exchange", "return.diagnose", context, ReturnExchangeTeam.manifest.allowed_tools))
+    assert result.action_proposals[0].action_type == "exchange.request"
+    assert result.action_proposals[0].risk_level == "high"
+    assert any(e.source_id == "doc_15#재고 확인의 선행" for e in result.evidence)
+
+
+@pytest.mark.asyncio
+async def test_defective_return_still_accepts_return():
+    context = pack("return_exchange")
+    tools = FakeTools({"read.order": {"order_id": "o1", "item_count": 3, "status": "delivered"},
+                       "read.return": [{"return_id": "r1", "order_id": "o1", "reason_code": "defective",
+                                         "quantity": 1, "status": "requested"}],
+                       "read.policy": policy()})
+    result = await ReturnExchangeTeam(tools).execute(
+        task("return_exchange", "return.diagnose", context, ReturnExchangeTeam.manifest.allowed_tools))
+    assert result.action_proposals[0].action_type == "return.accept"
 
 
 @pytest.mark.asyncio

@@ -36,7 +36,7 @@ def _page(title: str, body: str, *, current: str = "", lede: str = "") -> HTMLRe
 
 
 def _legacy_page(title: str, body: str) -> HTMLResponse:
-    nav = "<nav><a href='/ui/cases'>Cases</a><a href='/ui/approvals'>Approvals</a><a href='/ui/voc'>VOC</a><a href='/ui/admin'>Admin</a><a href='/ui/composer'>Composer</a></nav>"
+    nav = "<nav><a href='/ui/cases'>Cases</a><a href='/ui/approvals'>Approvals</a><a href='/ui/voc'>VOC</a><a href='/ui/admin'>Admin</a></nav>"
     return HTMLResponse(f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>{_safe(title)}</title><style>body{{font-family:system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#172033;background:#f7f8fb}}nav{{display:flex;gap:1rem;margin-bottom:2rem}}a{{color:#155eef}}.card{{background:white;border:1px solid #dfe3eb;border-radius:12px;padding:1rem;margin:.8rem 0;box-shadow:0 2px 8px #1822300d}}table{{width:100%;border-collapse:collapse;background:white}}th,td{{text-align:left;padding:.7rem;border-bottom:1px solid #e7eaf0;vertical-align:top}}th{{font-size:.8rem;color:#5c667a}}code,pre{{white-space:pre-wrap;word-break:break-word}}.muted{{color:#667085}}.badge{{display:inline-block;background:#eef4ff;color:#174ea6;border-radius:99px;padding:.2rem .6rem;font-size:.8rem}}button{{padding:.5rem .8rem;border:0;border-radius:7px;background:#155eef;color:white;cursor:pointer}}button:disabled{{background:#aab2c0;cursor:not-allowed}}.danger{{background:#b42318}}.evidence{{border-left:3px solid #12b76a;padding-left:.7rem;margin:.5rem 0}}</style></head><body>{nav}<h1>{_safe(title)}</h1>{body}</body></html>")
 
 

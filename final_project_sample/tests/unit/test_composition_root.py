@@ -23,9 +23,9 @@ class ExtraTeam:
 
 
 def test_composition_registers_builtin_teams_and_allows_extension():
-    registry = build_registry(tools=ReadToolbox(lambda: None), llm=object())
+    registry = build_registry(tools=ReadToolbox(), llm=object())
     assert {manifest.team_id for manifest in registry.manifests()} == {
-        "billing_subscription", "technical_entitlement", "feedback_analytics"
+        "feedback_analytics"
     }
 
     registry.register(ExtraTeam())
@@ -33,7 +33,7 @@ def test_composition_registers_builtin_teams_and_allows_extension():
 
 
 def test_feedback_team_does_not_claim_case_routing():
-    registry = build_registry(tools=ReadToolbox(lambda: None), llm=object())
+    registry = build_registry(tools=ReadToolbox(), llm=object())
 
     feedback = next(team for team in registry.manifests() if team.team_id == "feedback_analytics")
     assert feedback.accepted_case_types == []

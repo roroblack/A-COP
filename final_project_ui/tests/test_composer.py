@@ -1,0 +1,134 @@
+"""Composer v2 어댑터 — 모킹하지 않고 최소 HTTP 서버로 계약을 실측한다."""
+from __future__ import annotations
+
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+
+import pytest
+
+from console.composer import apply_candidate, read_current, validate_candidate
+
+
+@pytest.fixture()
+def composer_server():
+    servers = []
+
+    def start(script: dict, *, token_status: int = 200, issuer_secret: str = "issuer-secret") -> str:
+        class Handler(BaseHTTPRequestHandler):
+            def _json(self, status: int, payload: dict):
+                data = json.dumps(payload).encode()
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def _body(self):
+                length = int(self.headers.get("Content-Length", 0))
+                return json.loads(self.rfile.read(length).decode()) if length else None
+
+            def do_POST(self):
+                body = self._body()
+                if self.path == "/auth/token":
+                    if self.headers.get("Authorization") != f"Bearer {issuer_secret}":
+                        return self._json(token_status if token_status != 200 else 401,
+                                          {"error": {"message": "issuer rejected"}})
+                    if token_status != 200:
+                        return self._json(token_status, {"error": {"message": "scope rejected"}})
+                    scope = body["scope"][0]
+                    return self._json(200, {"access_token": f"access-{scope}", "token_type": "bearer", "expires_in": 900})
+                self._handle_composer(body)
+
+            def do_GET(self):
+                self._handle_composer(None)
+
+            def _handle_composer(self, body):
+                entry = script.get(self.path)
+                if entry is None:
+                    return self._json(404, {})
+                status, payload, expected_token = entry
+                if expected_token and self.headers.get("Authorization") != f"Bearer {expected_token}":
+                    return self._json(401, {"error": {"message": "bad access token"}})
+                return self._json(status, payload)
+
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        servers.append(server)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        return f"http://127.0.0.1:{server.server_port}/composer"
+
+    yield start
+    for server in servers:
+        server.shutdown()
+        server.server_close()
+
+
+def test_no_url_is_not_a_failure():
+    result = read_current(None, "issuer-secret")
+    assert result.status == "연결 안 함"
+
+
+def test_current_issues_minimal_read_scope(composer_server):
+    url = composer_server({"/composer/current": (200, {"revision": "abc"}, "access-composer:read")})
+    result = read_current(url, "issuer-secret")
+    assert result.status == "읽음" and result.value["revision"] == "abc"
+
+
+def test_validate_issues_validate_scope_and_promotes_invalid_result(composer_server):
+    url = composer_server({"/composer/validate": (200, {"valid": False, "errors": ["bad"]}, "access-composer:validate")})
+    result = validate_candidate(url, "issuer-secret", {"modules": {}})
+    assert result.status == "검증 실패" and result.errors == ("bad",)
+
+
+def test_apply_issues_write_scope(composer_server):
+    url = composer_server({"/composer/apply": (200, {"revision": "new", "applied": True}, "access-composer:write")})
+    result = apply_candidate(url, "issuer-secret", {}, base_revision="old")
+    assert result.status == "적용됨" and result.value["revision"] == "new"
+
+
+def test_token_issuance_401_is_distinct(composer_server):
+    result = read_current(composer_server({}, token_status=401), "wrong-secret")
+    assert result.status == "토큰 발급 실패" and "HTTP 401" in result.detail
+
+
+def test_token_issuance_403_is_distinct(composer_server):
+    result = validate_candidate(composer_server({}, token_status=403), "issuer-secret", {})
+    assert result.status == "토큰 발급 실패" and "HTTP 403" in result.detail
+
+
+def test_token_issuance_422_is_distinct(composer_server):
+    result = apply_candidate(composer_server({}, token_status=422), "issuer-secret", {}, base_revision="r")
+    assert result.status == "토큰 발급 실패" and "HTTP 422" in result.detail
+
+
+def test_missing_issuer_secret_does_not_call_composer(composer_server):
+    result = read_current(composer_server({}), None)
+    assert result.status == "토큰 발급 실패"
+
+
+def test_composer_401_and_403_remain_auth_failures(composer_server):
+    for status in (401, 403):
+        url = composer_server({"/composer/current": (status, {"error": {"message": "denied"}}, "access-composer:read")})
+        assert read_current(url, "issuer-secret").status == "인증 실패"
+
+
+def test_apply_conflict_and_validation_errors(composer_server):
+    conflict = composer_server({"/composer/apply": (409, {"error": {"message": "stale", "current_revision": "new"}}, "access-composer:write")})
+    assert apply_candidate(conflict, "issuer-secret", {}, base_revision="old").status == "충돌"
+    invalid = composer_server({"/composer/apply": (422, {"error": {"message": "invalid"}}, "access-composer:write")})
+    assert apply_candidate(invalid, "issuer-secret", {}, base_revision="old").status == "검증 실패"
+
+
+def test_refused_connection_during_token_issuance_is_distinct():
+    result = apply_candidate("http://127.0.0.1:1/composer", "issuer", {}, base_revision="r")
+    assert result.status == "토큰 발급 실패"
+
+
+def test_composer_module_does_not_import_target_models():
+    lines = Path("console/composer.py").read_text(encoding="utf-8").splitlines()
+    imports = [x for x in lines if x.strip().startswith(("import ", "from "))]
+    assert not any("project_config" in x.lower() or "app.core" in x or "app.application" in x for x in imports)

@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.application.controller import ControllerError
 from app.core.contracts import InvalidTransition, StateConflict
 from app.core.idempotency import idempotency_key
 from app.core.transition import transition_case
@@ -35,7 +36,13 @@ class MessageRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     request_id: str
     message: str = Field(min_length=1)
-    expected_version: int | None = None
+    # ★버그사냥 2026-08-17 (라운드 04·06·08) — 이 필드가 없었다. 서버는 message
+    #   원문을 해시해 "resume_token_hash" 라고 이름만 붙였을 뿐, 실제 발급된
+    #   토큰(24h TTL·일회성, CaseService.new_resume_token())과는 전혀 대조하지
+    #   않았다 — case:write scope 만 있으면 진짜 토큰 없이도 대기 Case 를
+    #   재개시킬 수 있었다. 이제 진짜 토큰을 받아 Controller.resume() 으로
+    #   검증한다(docs/handoff/03 §1-4).
+    token: str = Field(min_length=1)
 
 
 class ApprovalRequest(BaseModel):
@@ -79,13 +86,23 @@ def build_router(classifier: Classifier | None = None, controller: Any | None = 
                 case_id = repository.create_case(conn, tenant_id=tenant, customer_id=request.customer_id, subject=request.message, state_json={"request_id": request.request_id})
                 transition_case(conn, tenant_id=tenant, case_id=case_id, expected_version=0, event_type=EventType.CREATED,
                                 payload={"channel": request.channel, "message": request.message}, actor_type="api", actor_id=principal.key_id)
+                # ★버그사냥 2026-08-18 (라운드 08) — try 가 classifier() 뿐 아니라
+                #   뒤이은 CLASSIFIED transition_case() 호출까지 감싸고 있었다.
+                #   그 결과 전이 자체의 버그(StateConflict/InvalidTransition)도
+                #   전부 "classification_failed" 로 뭉개졌다 — 상태 충돌을 분류
+                #   실패로 보고하면 원인을 못 찾는다(CLAUDE.md §3). classifier
+                #   호출만 감싼다 — CLASSIFIED 전이 자체의 실패는 있는 그대로
+                #   드러낸다(test_create_does_not_relabel_a_transition_bug_as_classification_failure).
                 try:
                     result = classifier(masked(request.message)) if classifier else None
                     if not result or not all(k in result for k in ("intent", "issue_code", "sentiment")):
                         raise ValueError("classifier unavailable")
+                except Exception:
+                    result = None
+                if result is not None:
                     transition_case(conn, tenant_id=tenant, case_id=case_id, expected_version=1, event_type=EventType.CLASSIFIED,
                                     payload=result, actor_type="api", actor_id=principal.key_id)
-                except Exception:
+                else:
                     transition_case(conn, tenant_id=tenant, case_id=case_id, expected_version=1, event_type=EventType.CLASSIFICATION_FAILED,
                                     payload={"failure_code": "classification_failed"}, actor_type="api", actor_id=principal.key_id)
                 repository.create_action_request(conn, tenant_id=tenant, case_id=case_id, action_type="case.create",
@@ -115,14 +132,29 @@ def build_router(classifier: Classifier | None = None, controller: Any | None = 
 
     @router.post("/v1/cases/{case_id}/messages")
     def message(case_id: UUID, request: MessageRequest, principal: Principal = Depends(require_scope("case:write"))):
+        # ★버그사냥 2026-08-17 (라운드 04·06·08) — 예전엔 이 핸들러가 직접
+        #   VALID_INPUT 을 발행했다. message 원문을 해시해 "resume_token_hash"
+        #   라고 이름만 붙였을 뿐 실제 발급 토큰과 대조하지 않았다 — 진짜 검증
+        #   로직(CaseService.validate_resume(): hash·만료·일회성)은
+        #   Controller.resume() 안에만 있었는데 이 REST 경로가 그걸 안 거쳤다.
+        #   이제 Controller.resume() 을 그대로 거친다 — 그 메서드가 검증부터
+        #   재실행까지 전부 끝낸다(내부에서 run_case() 를 부른다. 여기서 또
+        #   부르면 이미 resolved 된 Case 에 완료 이벤트를 두 번 적용하려다
+        #   InvalidTransition 이 난다 — 실제로 테스트에서 재현해 확인했다).
+        if controller is None:
+            raise _error(500, "misconfigured", "controller not configured for resume")
         with get_connection() as conn:
-            case = _case_or_404(conn, principal, case_id)
-            try:
-                with conn.transaction():
-                    transition_case(conn, tenant_id=principal.tenant_id, case_id=case_id, expected_version=request.expected_version if request.expected_version is not None else case["version"], event_type=EventType.VALID_INPUT,
-                                    payload={"resume_token_hash": hashlib.sha256(request.message.encode()).hexdigest()}, actor_type="api", actor_id=principal.key_id)
-            except StateConflict as exc: raise _error(409, "state_conflict", "state conflict") from exc
-            except InvalidTransition as exc: raise _error(422, "invalid_transition", "invalid state transition") from exc
+            _case_or_404(conn, principal, case_id)
+        try:
+            outcome = controller.resume(tenant_id=principal.tenant_id, case_id=case_id, token=request.token,
+                                        actor_id=principal.key_id, event_id=request.request_id)
+            if inspect.isawaitable(outcome):
+                outcome = asyncio.run(outcome)
+        except ControllerError as exc:
+            raise _error(401, "invalid_resume_token", str(exc)) from exc
+        except StateConflict as exc: raise _error(409, "state_conflict", "state conflict") from exc
+        except InvalidTransition as exc: raise _error(422, "invalid_transition", "invalid state transition") from exc
+        with get_connection() as conn:
             return _view(repository.get_case(conn, tenant_id=principal.tenant_id, case_id=case_id))
 
     @router.post("/v1/cases/{case_id}/actions/{action_id}/approve")
@@ -132,21 +164,36 @@ def build_router(classifier: Classifier | None = None, controller: Any | None = 
             case = _case_or_404(conn, principal, case_id)
             idem = idempotency_key(tenant_id=principal.tenant_id, request_id=request.approver_id, action_type="action.approve", business_subject=f"{action_id}:{request.decision}")
 
-            # ★v7 §9-E — 검증은 두 번이다. 여기가 두 번째, **실행 직전 재검증**이다.
-            #   제안 생성 때 맞았어도 사람이 승인 버튼을 누르는 사이에
-            #   잔액·구독 상태가 바뀔 수 있다.
+            # ★버그사냥 2026-08-17 (라운드 01, 처리는 라운드 08) — v7 §9-E 는
+            #   재검증을 두 번 하라고 한다(제안 생성 때 + 실행 직전). 재검증과
+            #   실제 승인 커밋 사이에 창이 있어, 그 사이 다른 요청이 참조된
+            #   payment/subscription 을 바꿔도 못 잡을 수 있다는 게 원래 finding
+            #   이었다.
             #
-            # ★승인 트랜잭션 **밖**에서 한다. 안에서 하고 409 를 던졌더니
-            #   방금 쓴 escalated 이벤트가 예외와 함께 **롤백돼 사라졌다** —
-            #   "조용히 무시하지 않는다" 가 그대로 깨졌다. 거부 기록은 남아야 한다.
-            # ★존재 확인이 먼저다. 없는 action 에 재검증을 돌리면
-            #   404 여야 할 요청이 엉뚱한 상태 전이를 시도한다
-            #   (routing 상태 Case 에 escalated 를 쓰려다 상태기계에 걸렸다).
+            #   ★시도했다가 되돌린 것 — 재검증과 승인 write 를 하나의
+            #   `with conn.transaction():` 로 합치고 그 **안에서** `conn.commit()`
+            #   을 부르려 했다. psycopg3 는 이걸 명시적으로 금지한다
+            #   ("Explicit commit() forbidden within a Transaction context" —
+            #   직접 재현해 확인). 그래서 실패 경로(escalate)는 원래처럼 **자기
+            #   만의 트랜잭션**을 쓰고, 그 블록이 정상 종료(=커밋)된 뒤에
+            #   raise 한다 — 이 커넥션은 그 앞의 `_case_or_404()` 조회 때문에
+            #   이미 ambient 트랜잭션이 열려 있어, `with conn.transaction():`
+            #   가 진짜 최상위 커밋이 아니라 savepoint 로 동작한다. 그래서
+            #   escalate 뒤에도 명시적 `conn.commit()` 이 필요하다(이것도
+            #   직접 재현해 확인 — 없으면 예외 전파 시 escalate 기록이 롤백된다).
+            #
+            #   ★그래도 좁힌 것 — 재검증을 승인 write 직전, **같은 함수 호출
+            #   시퀀스 안에서 곧바로** 한다(사람이 승인 버튼을 누른 뒤 이
+            #   핸들러가 도는 동안은 원래도 사람이 기다리는 구간이 아니다).
+            #   완전한 원자성(다른 트랜잭션이 끼어들 수 없음을 보장)은 참조
+            #   행에 대한 row lock 이 있어야 하는데, 그건 이 수정의 범위 밖이다
+            #   — 별도로 다룰 항목으로 남긴다(아래 리포트 참조).
             with conn.cursor() as cur:
-                cur.execute("SELECT 1 FROM action_requests WHERE action_id=%s AND tenant_id=%s AND case_id=%s",
-                            (action_id, principal.tenant_id, case_id))
-                if cur.fetchone() is None:
-                    raise _error(404, "not_found", "resource not found")
+                cur.execute("SELECT action_id FROM action_requests WHERE action_id=%s AND tenant_id=%s AND case_id=%s", (action_id, principal.tenant_id, case_id))
+                if cur.fetchone() is None: raise _error(404, "not_found", "resource not found")
+                cur.execute("SELECT action_id FROM action_requests WHERE tenant_id=%s AND idempotency_key=%s", (principal.tenant_id, idem))
+                if cur.fetchone() is not None:
+                    return _view(case)
 
             # ★재검증으로 escalated 를 쓸 수 있는 상태는 waiting_approval 뿐이다.
             #   다른 상태의 승인 요청은 아래 전이에서 상태기계가 판단한다.

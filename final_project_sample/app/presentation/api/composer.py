@@ -15,15 +15,18 @@
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+import json
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.application.composer_service import RevisionConflict, apply_candidate, read_current, validate_candidate
 from app.core.project_config import DEFAULT_PROJECT_CONFIG, ProjectConfigError
-from app.presentation.security import require_scope
+from app.presentation.composer_auth import require_composer_scope
 
 router = APIRouter(prefix="/composer", tags=["composer-write"])
 
@@ -36,6 +39,17 @@ def _path(request: Request) -> Path:
     return Path(selected)
 
 
+def _audit_path(request: Request) -> Path:
+    """audit JSONL 경로. ★`_path()` 와 같은 이유로 주입 가능해야 한다 —
+    아니면 pytest 를 돌릴 때마다 실제 `var/audit/composer_events.jsonl` 에
+    테스트용 가짜 apply 이벤트가 쌓인다(버그사냥 2026-08-18. 감사 로그는
+    "누가 언제 무엇을 적용했는지" 를 남기는 것인데, 테스트 실행이 매번
+    그 기록을 오염시키면 감사로서의 가치가 없다)."""
+    default = Path(__file__).resolve().parents[3] / "var" / "audit" / "composer_events.jsonl"
+    selected = getattr(request.app.state, "composer_audit_path", default)
+    return Path(selected)
+
+
 class CandidatePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
     config: dict[str, Any]
@@ -45,6 +59,7 @@ class ApplyPayload(CandidatePayload):
     #: ★적용 직전에 서버가 다시 확인한다. 이게 없으면 "마지막에 쓴 사람이 이긴다" 가
     #:   조용히 일어난다 — 남이 그 사이 바꾼 걸 알아채지 못하고 덮어쓴다.
     base_revision: str
+    reason: str = Field(min_length=1)
 
 
 def _error(status: int, code: str, message: str, **extra: Any) -> HTTPException:
@@ -52,7 +67,7 @@ def _error(status: int, code: str, message: str, **extra: Any) -> HTTPException:
 
 
 @router.get("/current", tags=["composer-write"])
-def current(request: Request, _principal=Depends(require_scope("composer:write"))) -> dict[str, Any]:
+def current(request: Request, _principal=Depends(require_composer_scope("composer:read"))) -> dict[str, Any]:
     """지금 파일의 revision·내용. apply 를 보내기 전 base_revision 을 여기서 얻는다."""
     config = read_current(_path(request))
     return {"revision": config.revision, "config": config.model_dump(mode="json", exclude={"revision"})}
@@ -60,7 +75,7 @@ def current(request: Request, _principal=Depends(require_scope("composer:write")
 
 @router.post("/validate")
 def validate(payload: CandidatePayload, request: Request,
-            _principal=Depends(require_scope("composer:write"))) -> dict[str, Any]:
+            _principal=Depends(require_composer_scope("composer:validate"))) -> dict[str, Any]:
     """후보를 검증만 한다. **파일을 바꾸지 않는다.**
 
     ★활성 Team 의 `implementation_ref` 를 실제로 import 해서 검증한다
@@ -68,7 +83,7 @@ def validate(payload: CandidatePayload, request: Request,
       모듈만 로드할 수 있다 — 원격에서 새 코드를 주입하는 경로가 아니다.
       임의 문자열을 보내도 `importlib.import_module` 이 없는 모듈이면 그냥 실패한다.
     """
-    result = validate_candidate(payload.config, path=_path(request))
+    result = validate_candidate(payload.config, path=_path(request), enforce_registry=True)
     if not result.valid:
         return {"valid": False, "errors": result.errors}
     return {"valid": True, "errors": [], "revision": result.config.revision}
@@ -76,10 +91,12 @@ def validate(payload: CandidatePayload, request: Request,
 
 @router.post("/apply")
 def apply(payload: ApplyPayload, request: Request,
-         _principal=Depends(require_scope("composer:write"))) -> dict[str, Any]:
+         _principal=Depends(require_composer_scope("composer:write"))) -> dict[str, Any]:
     """검증 통과 + revision 일치 시에만 **원자적으로** 쓴다."""
     try:
-        applied = apply_candidate(payload.config, base_revision=payload.base_revision, path=_path(request))
+        target = _path(request)
+        previous = read_current(target)
+        applied = apply_candidate(payload.config, base_revision=payload.base_revision, path=target, enforce_registry=True)
     except RevisionConflict as exc:
         # ★409 다. 400 이 아니다 — 요청 자체는 유효했고, 그 사이 상태가 바뀐 것이다.
         raise _error(409, "revision_conflict",
@@ -87,4 +104,44 @@ def apply(payload: ApplyPayload, request: Request,
                      current_revision=exc.current_revision) from exc
     except ProjectConfigError as exc:
         raise _error(422, "invalid_declaration", str(exc)) from exc
+    event = {
+        "event": "composer.apply", "actor": _principal["sub"], "subject": str(target),
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "previous_revision": previous.revision, "revision": applied.revision,
+        "changed_fields": _changed_fields(previous.model_dump(mode="json", exclude={"revision"}), applied.model_dump(mode="json", exclude={"revision"})),
+        "reason": payload.reason, "correlation_id": str(uuid4()),
+    }
+    try:
+        _append_audit(event, _audit_path(request))
+    except OSError as exc:
+        raise _error(500, "audit_failure", "config was applied but audit recording failed") from exc
     return {"revision": applied.revision, "applied": True}
+
+
+def _changed_fields(previous: Any, current: Any, prefix: str = "") -> list[str]:
+    if isinstance(previous, dict) and isinstance(current, dict):
+        fields: list[str] = []
+        for key in sorted(set(previous) | set(current)):
+            path = f"{prefix}.{key}" if prefix else key
+            if key not in previous or key not in current:
+                fields.append(path)
+            else:
+                fields.extend(_changed_fields(previous[key], current[key], path))
+        return fields
+    if isinstance(previous, list) and isinstance(current, list):
+        fields: list[str] = []
+        for index in range(max(len(previous), len(current))):
+            path = f"{prefix}[{index}]"
+            if index >= len(previous) or index >= len(current):
+                fields.append(path)
+            else:
+                fields.extend(_changed_fields(previous[index], current[index], path))
+        return fields
+    return [prefix] if previous != current else []
+
+
+def _append_audit(event: dict[str, Any], audit_path: Path) -> None:
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    with audit_path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
+        stream.flush()

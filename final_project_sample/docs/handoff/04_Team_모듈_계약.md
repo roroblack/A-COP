@@ -60,7 +60,35 @@ manifest = TeamManifest(
 | write | ★**실권한 변경 없음**. proposal 과 evidence 만 반환 |
 | 대표 시나리오 | **Free/Pro 권한 동기화 오류** — entitlement·incident·정책 비교 후 해결 절차 제시 |
 
-## 3. prompt 등록 규칙
+## 3. Response Generation & Review Team (DoD-29)
+
+```python
+manifest = TeamManifest(
+    team_id='response_generation_review',
+    display_name='Response Generation & Review Team',
+    contract_name='a_cop.team_task',
+    supported_contract_versions=['1.0'],
+    capabilities=['response.generate_review'],
+    accepted_case_types=[],
+    required_context=['case_state', 'policy', 'db_facts', 'history'],
+    allowed_tools=['read.policy'],
+    knowledge_scope=['response_review'],
+    max_steps=4, active=True, implementation_revision='...')
+```
+
+| 항목 | 내용 |
+|---|---|
+| 책임 | 모든 Case의 최종 응답 문장을 생성하고 검토하는 횡단 관심사 |
+| 흐름 | 톤 결정 규칙 → GEN 초안 → 결정론 REV → LLM 톤 REV → 완료 |
+| 결정론 REV | 금칙어, PII, `refund_amount`·`policy_ref` 사실 대조. `app/core/verification.py`의 범용 엔진과 도메인 정책 선언을 재사용 |
+| 재시도 | 결정론 실패는 최초 시도 뒤 최대 3회 재시도. PII는 재시도 없이 즉시 `escalated` |
+| 톤 실패 | 재시도하지 않고 `warnings[]`에 기록 |
+| 출력 매핑 | `final_response_text`→`answer`, `status`→`outcome`, 재시도/이력→`decisions[]`, 반려 사유→`warnings[]`, escalation→`outcome='escalated'` + `next_action=escalate` |
+| 라우팅 | `accepted_case_types=[]`; Controller 자동 배선은 이 범위에 포함하지 않음 |
+
+도메인 금칙어·PII 정규식·톤 프로파일은 `response_review_policy.py`가 소유한다. Team은 manifest와 `async execute(task) -> TeamResult`만 제공하며 side effect를 실행하지 않는다.
+
+## 4. prompt 등록 규칙
 
 - 프롬프트는 파일(`prompts/<team>/<key>.v<N>.md`)로 두고 **`prompts` 테이블에 `sha256` 과 함께 등록**한다.
 - `llm_calls.prompt_id` 가 FK 로 걸린다 — **어떤 프롬프트가 만든 답인지 추적 가능해야 한다**(v5 §8).

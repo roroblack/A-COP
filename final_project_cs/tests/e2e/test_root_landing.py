@@ -48,27 +48,20 @@ def workdir():
 
 
 def test_root_redirects_to_cases_when_ops_ui_is_on(workdir):
-    client = _client(_write(workdir, ops_ui=True, composer_ui=True))
+    client = _client(_write(workdir, ops_ui=True))
     response = client.get("/", follow_redirects=False)
     assert response.status_code == 307
     assert response.headers["location"] == "/ui/cases"
 
 
-def test_root_falls_back_to_composer_when_ops_ui_is_off(workdir):
-    client = _client(_write(workdir, ops_ui=False, composer_ui=True))
-    response = client.get("/", follow_redirects=False)
-    assert response.status_code == 307
-    assert response.headers["location"] == "/ui/composer"
-
-
 def test_root_stays_404_when_every_ui_module_is_off(workdir):
     """★없는 화면으로 보내지 않는다."""
-    client = _client(_write(workdir, ops_ui=False, composer_ui=False))
+    client = _client(_write(workdir, ops_ui=False))
     assert client.get("/", follow_redirects=False).status_code == 404
 
 
 def test_root_actually_lands_on_a_real_page(workdir):
-    client = _client(_write(workdir, ops_ui=True, composer_ui=True))
+    client = _client(_write(workdir, ops_ui=True))
     landed = client.get("/")  # follow_redirects 기본 True
     assert landed.status_code == 200
     assert "Case 목록" in landed.text

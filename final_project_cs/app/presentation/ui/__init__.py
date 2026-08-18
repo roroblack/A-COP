@@ -9,7 +9,6 @@ from fastapi.responses import RedirectResponse
 
 from app.core.project_config import DEFAULT_PROJECT_CONFIG, ProjectConfig, load_project_config
 from app.presentation.ui.routes import router
-from app.presentation.ui.composer import router as composer_router
 
 
 def mount_ui(app: FastAPI, config: ProjectConfig | None = None) -> FastAPI:
@@ -17,8 +16,12 @@ def mount_ui(app: FastAPI, config: ProjectConfig | None = None) -> FastAPI:
 
     The composition root validates that enabled modules have implementations;
     this boundary performs the corresponding conditional route registration.
-    ``app.state.project_config_path`` remains the test/injection seam used by
-    the Composer UI.
+
+    ★Composer(module/Team/Port 편집)는 여기 없다. `/ui/composer`는 인증이 전혀
+      없는 채로 이 앱(고객 접근 가능 포트)에 물려 있었다 — 실측(2026-08-18)으로
+      확인. 같은 기능은 이제 `final_project_ui`(별도 프로그램)가 대상의 인증된
+      `/composer/*` API(scope 필요)로만 제공한다. 자세한 경위는
+      `docs/handoff/09_Composer_GUI_계약.md` 상단 주석 참고.
     """
     if config is None:
         selected = getattr(app.state, "project_config_path", DEFAULT_PROJECT_CONFIG)
@@ -27,9 +30,6 @@ def mount_ui(app: FastAPI, config: ProjectConfig | None = None) -> FastAPI:
     if config.module_enabled("ops_ui"):
         app.include_router(router)
         landing = "/ui/cases"
-    if config.module_enabled("composer_ui"):
-        app.include_router(composer_router)
-        landing = landing or "/ui/composer"
 
     # ★루트가 404 였다. 개발 서버를 띄우면 브라우저가 `/` 로 열리는데
     #   빈 404 페이지가 떠서 "서버가 안 떴나" 로 읽힌다.

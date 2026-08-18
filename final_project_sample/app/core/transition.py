@@ -78,11 +78,14 @@ _INSERT_EVENT = """
     RETURNING event_id
 """
 
-# UNIQUE(topic, dedupe_key) 가 중복 발행을 막는다 (v5 §8, DoD 12).
+# UNIQUE(tenant_id, topic, dedupe_key) 가 중복 발행을 막는다 (v5 §8, DoD 12).
+# ★버그사냥 2026-08-17 (라운드 01, 처리는 라운드 08) — 예전엔 tenant_id 가
+#   빠져 있어 서로 다른 tenant 가 같은 (topic, dedupe_key) 를 쓰면 뒤의 것이
+#   조용히 버려질 수 있었다. migrations/005 로 제약을 넓혔다.
 _INSERT_OUTBOX = """
     INSERT INTO outbox (tenant_id, topic, dedupe_key, payload_json)
     VALUES (%(tenant_id)s, %(topic)s, %(dedupe_key)s, %(payload_json)s)
-    ON CONFLICT (topic, dedupe_key) DO NOTHING
+    ON CONFLICT (tenant_id, topic, dedupe_key) DO NOTHING
     RETURNING message_id
 """
 

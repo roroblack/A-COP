@@ -33,6 +33,14 @@ transition 도중 예외를 주입해 롤백되면 **`case_events` 와 `outbox` 
 (`outbox_topic_dedupe_key_key`). `transition_case` 는 `ON CONFLICT DO NOTHING` 으로
 insert 하고 **실제 insert 된 message_id 만** `published` 에 담는다 — 중복이면 빈 리스트다.
 
+> 2026-08-17: 버그사냥 01(당시 tenant_id 미포함 확인)·08(실제 반영)에서
+> `UNIQUE(tenant_id, topic, dedupe_key)` 로 넓혔다 —
+> `migrations/005_outbox_dedupe_key_tenant_scoped.sql`, 제약명은
+> `outbox_tenant_topic_dedupe_key_key` 로 바뀌었다. 서로 다른 tenant 가
+> 같은 `(topic, dedupe_key)` 를 써도 서로의 메시지를 지우지 않는다. 이
+> 근거의 판정(중복 전달 차단)은 안 바뀐다 — 같은 tenant 안에서의 dedupe 는
+> 그대로다. 상세: `docs/reports/debugs/2026-08-17_버그사냥_08_미해결3건_처리.md`.
+
 ## 근거 3 — worker claim 과 dead-letter
 
 - claim: `SELECT ... FOR UPDATE SKIP LOCKED` (정적 확인 1곳)

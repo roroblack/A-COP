@@ -75,17 +75,14 @@ python -m scripts.publish_public --push   # 실제 배포
 - [x] 배포 후 워킹 트리 복구 확인
 - [ ] ★**배포용 선언으로 바꾸지 않았다** — 아래 §4-1
 
-### 4-1. 배포 전 선언 변경 (아직 안 함)
+### 4-1. 배포 전 선언 변경
 
-`config/project.yaml` 은 지금 **제작용**이다:
-
-```yaml
-composer_ui:
-  enabled: true      # ← 배포 산출물에서는 false
-```
-
-- [ ] `composer_ui: false` 로 바꾸고 `/ui/composer` 404 확인
-- [ ] 재기동 후 나머지 화면 정상 확인
+- [x] ★**`composer_ui` 자체를 제거함(2026-08-18)** — 토글이 아니라 삭제다.
+      `/ui/composer`가 인증 없이 이 앱(고객 접근 가능 포트)에 물려 있던 것을
+      실측으로 확인, `app/presentation/ui/composer.py`·라우터 마운트·모듈 선언을
+      전부 없앴다(`docs/handoff/09`). 같은 기능은 `final_project_ui`의 인증된
+      `/composer/*` 호출로만 제공한다.
+- [x] `/ui/composer` 404 확인(경로 자체가 없다)
 
 ---
 

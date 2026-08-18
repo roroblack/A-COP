@@ -37,10 +37,14 @@ def test_profile_reads_connections_from_the_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("CONSOLE_DATABASE_URL", "postgresql://u@h/db")
     monkeypatch.setenv("CONSOLE_INTROSPECTION_URL", "http://127.0.0.1:9/introspection")
     monkeypatch.setenv("CONSOLE_INTROSPECTION_TOKEN", "sekret")
+    monkeypatch.setenv("CONSOLE_COMPOSER_URL", "http://127.0.0.1:9/composer")
+    monkeypatch.setenv("CONSOLE_COMPOSER_ISSUER_SECRET", "issuer-secret")
     profile = profile_for(tmp_path)
     assert profile.database_url == "postgresql://u@h/db"
     assert profile.introspection_url.endswith("/introspection")
     assert profile.introspection_token == "sekret"
+    assert profile.composer_url.endswith("/composer")
+    assert profile.composer_issuer_secret == "issuer-secret"
 
 
 def test_profile_without_a_token_has_none_not_empty_string(monkeypatch, tmp_path):

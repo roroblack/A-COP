@@ -37,8 +37,8 @@ def _json(value: Any) -> str:
 
 def _page(title: str, body: str, *, current: str = "", lede: str = "",
           nav: Any = None, brand: str = "고객 지원") -> HTMLResponse:
-    """★기본 brand 는 '고객 지원' 이다 — 이 파일의 화면 대부분이 고객사 것이기 때문이다.
-    개발 콘솔 화면은 `nav=theme.CONSOLE_NAV, brand='개발 콘솔'` 을 명시한다."""
+    """★기본 brand 는 '고객 지원' 이다 — 이 파일의 화면 전부가 고객사 것이기 때문이다.
+    개발 콘솔 화면(Composer 포함)은 이 저장소에 없다 — final_project_ui가 맡는다."""
     return HTMLResponse(theme.page(title, body, current=current, lede=lede,
                                    nav=nav, brand=brand))
 

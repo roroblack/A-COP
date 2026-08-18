@@ -31,7 +31,7 @@ class OutboxBrokerAdapter:
                             f"tenant_id mismatch: payload claims {payload.get('tenant_id')!r} "
                             f"but case belongs to {case_tenant_id!r}")
                     cur.execute("INSERT INTO outbox(tenant_id,topic,dedupe_key,payload_json) VALUES(%s,%s,%s,%s) "
-                                "ON CONFLICT(topic,dedupe_key) DO NOTHING RETURNING message_id", (tenant_id, topic, dedupe_key, Json(payload)))
+                                "ON CONFLICT(tenant_id,topic,dedupe_key) DO NOTHING RETURNING message_id", (tenant_id, topic, dedupe_key, Json(payload)))
                     inserted = cur.fetchone()
         return str(inserted[0]) if inserted else dedupe_key
 

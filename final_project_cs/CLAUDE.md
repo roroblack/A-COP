@@ -5,8 +5,8 @@
 **Billing/Subscription** 과 **Technical Entitlement** 업무를 **Agent Team** 이 처리하는
 AI 연동형 고객운영 플랫폼이다. 개인 AI(ChatGPT·Claude·Gemini)가 REST/MCP 로 접속한다.
 
-기준선 문서: `../plan/A-COP_구현계획서_v8.md` (**읽기 전용 · 수정 금지**)
-v5~v7 등 이전 버전은 `../plan/archive/`에 보존본으로 있으며 수정하지 않는다. ★**DoD 는 18 → 29 항목이다**(v8 §27).
+기준선 문서: `../program/plan/A-COP_구현계획서_v8.md` (**읽기 전용 · 수정 금지**)
+v5~v7 등 이전 버전은 `../program/plan/archive/`에 보존본으로 있으며 수정하지 않는다. ★**DoD 는 18 → 29 항목이다**(v8 §27).
 
 ## 응답 언어
 
@@ -136,12 +136,13 @@ eval/reports/  run_id + seed + model + prompt snapshot 을 파일명·메타에 
 | Context Broker | **완료** — 12,000 토큰 tiktoken **실측** 절삭, 섹션별 예산·제거 순서, `degraded`/`omissions` 강제 |
 | RAG 적재·검색 | **완료** (2026-08-17) — `knowledge_documents` 25 · `knowledge_chunks` **306** · 1536d, DB 직접 조회로 확인. 시나리오 질의(배송완료 미수령 → doc_01, 반품 수량 초과 → doc_14)가 top_k=8 안에서 검색됨, scope 필터·tenant 격리 동작. `tests/integration/rag` 4건 — 이전 세션은 옛 구독/청구 도메인 질의로 하드코딩돼 있어 붉었다, 쇼핑몰 시나리오로 재작성 |
 | Agent Team | **완료** — Billing/Technical 2종. manifest 계약 일치, LLM 주입 가능, **Core 격리 위반 0**(AST 검사) |
+| ★**프롬프트 감사추적 배선** | **완료** (2026-08-18) — `prompts`/`llm_calls` 가 설계만 있고 실 런타임에 배선 안 돼 있던 결함(`docs/reports/debugs/2026-08-17_2340_프롬프트_감사추적_미연결.md`)을 구현. `register_prompt_files()` 키 계산 수정(부모 디렉터리 포함)·advisory lock 기반 active 유일성, `OpenAITeamLLM` 이 활성 프롬프트를 조회해 쓰고 Controller 업무 트랜잭션과 분리된 트랜잭션으로 `llm_calls`(prompt_id·run_id·tokens·latency) 기록, 활성 프롬프트 없으면 fail-closed. 프롬프트 콘텐츠 4건(order_shipping/return_exchange 각 answer·repair)은 Claude 직접 작성. 옛 도메인 프롬프트 12개는 `legacy/final_project_sample/prompts/` 로 이동. 신규 테스트 6건, `scripts/register_prompts.py` 신규. ★실 OpenAI 호출이 실제로 도는 시나리오의 `llm_calls` 종단 적재는 미확인(결정론적 proposal 분기만 실측함) — `docs/reports/2026-08-18_S-PROMPT-AUDIT-WIRING_리포트.md` |
 | Feedback Analytics | **완료** — 인라인 분류(실패 시 `classification_failed`+escalated) + 일일 배치. 급증식은 v6 §7-A 그대로. ★(2026-08-17) **이 세션 최고 심각도 결함 발견·수정**: `feedback.py::INTENTS` 가 옛 구독 어휘(`billing`/`technical`)로 남아 있었는데 이 함수가 **운영 REST API 의 기본 classifier** 였다 — 쇼핑몰 Case 는 전부 분류 실패로 떨어졌을 것. `order`/`shipping`/`return`/`exchange`/`other` 로 교체(Team `accepted_case_types` 와 일치하도록 설계), 실 LLM 호출로 `composition.build_classifier()` 종단 확인. 재발 방지로 `INTENTS ⊇ 모든 Team.accepted_case_types` 불변조건 테스트 추가. `docs/evidence/PROD-CLASSIFIER-DOMAIN-MISMATCH_수정.md`. ★그 다음 실 REST API e2e 라이브 테스트(`tests/live/test_feedback_classifier_live_e2e.py`)로 수동 확인을 재실행 가능한 회귀 테스트로 전환 — 발주 계약의 잘못된 가정(`controller=None` 이 controller 실행을 막는다는 오해) 2건을 실행하며 직접 발견·수정. `docs/evidence/LIVE-CLASSIFIER-E2E_검증.md` |
 | Controller · WAIT/RESUME · Outbox | **완료** — 통합테스트 8종. ★`resuming→completed` 를 상태기계가 런타임 거부해 **진짜 결함을 잡았다** → [디버그](docs/reports/debugs/2026-08-12_2230_Controller가_resuming에서_resumed를_건너뛴다.md) |
 | 운영 UI | **완료** — `/ui/{cases,approvals,voc,trace}` 4개 화면 200 확인. VOC 데이터 없을 때 "없음"을 정직하게 표시. ★(2026-08-17) 실 브라우저로 승인 버튼을 여러 번 눌러 결함 2건 발견·수정 — `verification_policy.py` 가 표시용 `evidence` 필드를 거부해 승인이 409로 막힘, 승인 감사 기록이 대기 큐에 유령 항목으로 남음. 둘 다 수정, 회귀 테스트 추가 — `docs/reports/2026-08-17_2255_DoD-18_브라우저재검증_결함2건_리포트.md` |
 | 평가 하네스 | **완료** — golden **60** / holdout **20**, runner 3종, judge rubric, bootstrap/McNemar. ★(2026-08-17) `eval/runners/common.py` 가 삭제된 옛 모듈(`billing.py`/`technical.py`)을 import 하고 있어 라이브 경로(`--provider openai`)가 깨져 있던 것을 발견·수정 — pytest 가 이 모듈을 안 돌려서 안 잡혔다. `docs/evidence/EVAL-RUNNER-IMPORT-FIX.md` |
 | A2A / Graph (신계획서) | **완료** — `TeamExecutorPort`·`LocalTeamExecutor`·`A2ATeamExecutor`·Agent Card·`GraphStorePort`·`SqlGraphAdapter`(재귀 CTE) **7/7**. Controller 가 Port 경유(`LOCAL`↔`A2A` 교체점) |
-| 모듈화 · Composer GUI | **완료** — `config/project.yaml` 이 조립의 단일 입력. 모듈 7 / 컴포넌트 9 / Port 6 (`docs/handoff/08`). `/ui/composer` 는 `composer_ui` 토글로 404↔200. ★GUI 자신도 끌 수 있다 |
+| 모듈화 · Composer GUI | `config/project.yaml` 이 조립의 단일 입력. ★**`/ui/composer` 는 폐기됨(2026-08-18)** — 인증이 전혀 없이 고객 접근 가능한 이 앱에 물려 있던 것을 실측으로 확인, 삭제했다. 같은 기능은 별도 프로그램 `final_project_ui`가 인증된 `/composer/*` API로만 제공한다(`docs/handoff/09` 상단 참고) |
 | 평가 실행 | ★**무효화됨 (2026-08-17)** — 아래 3군×180행=540관측 수치는 **옛 구독·청구 도메인**(golden/holdout 이 영어·billing/technical 이던 시절)에서 측정한 값이다. 코퍼스와 golden/holdout 이 전부 쇼핑몰 도메인으로 교체됐으므로 이 수치는 새 도메인을 대표하지 않는다. 재측정 전까지 참고용으로만 남긴다: A 0/180 · B 6/180 · Proposed 40/180, grounding 0.00 / 2.22 / 3.98(옛 도메인 기준). 재측정 명령은 `docs/reports/2026-08-17_1540_RAG적재_평가데이터셋_재작성_리포트.md` §5 |
 | ablation | ★**같은 이유로 무효화됨** — 5종 모두 옛 도메인 기준. RAG·Context Broker 제거 시 grounding 3.98→0.00 이었다는 **방향성**(RAG 가 있고 없고의 차이)은 메커니즘이 안 바뀌었으므로 여전히 참고 가치가 있으나, 새 도메인에서 재측정하지 않은 수치를 근거로 쓰지 않는다 |
 | judge 검증 | **부분** — 540행 전량에서 **근거 없이 grounding 점수를 받은 행 0건**(`eval/check_judge.py`, 0 아니면 exit 1). ★**사람 라벨 20건은 여전히 미측정** — 기계 검사는 agreement 를 대신하지 못한다 |
@@ -151,7 +152,7 @@ eval/reports/  run_id + seed + model + prompt snapshot 을 파일명·메타에 
 | 개발 서버 | **완료** — `.claude/launch.json` 의 `acop-ui`(8041, `--reload`). `/` → `/ui/cases` 307 |
 | 릴리스 체크리스트 | **완료** — `docs/release_checklist.md`. ★판정은 **RC 아님** |
 | ★**할루시네이션 방어** (v7 §9-E) | **완료** — 제안의 식별자·금액을 **DB 와 대조**해 실행 전 차단. 검증 2회(제안 시점 + 승인 직전). 거부 시 `escalated` + 실패필드·**hash** 감사. `app/core/verification.py`(순수) + `proposal_guard.py`(재조회) |
-| **테스트 총계** | **297 passed · skipped 0 · failed 0** (2026-08-17. `-m "not live"` 로 실 LLM 호출 테스트 2건 기본 제외 — `test_llm_live.py` + `test_feedback_classifier_live_e2e.py`. `-m live` 로 두 건 모두 별도 실행해 통과 확인. 295→297 은 승인 대기 큐 유령 항목 결함의 회귀 테스트 2건 추가) |
+| **테스트 총계** | **304 passed · skipped 0 · failed 0** (2026-08-18. `-m "not live"` 로 실 LLM 호출 테스트 2건 기본 제외 — `test_llm_live.py` + `test_feedback_classifier_live_e2e.py`. `-m live` 로 두 건 모두 별도 실행해 통과 확인. 297→304 는 프롬프트 감사추적 배선의 신규 테스트 6건 추가) |
 | **DoD (v8 §27, 1~28항목 평가됨)** | **evidence 28/28 · 통과 24 · 부분통과 4 · 미착수 0.** ★#6(정책 25건·300~400 chunk)이 미착수→통과로 이동. 남은 부분통과 = 15(judge agreement) · 17(파일시스템 gate 재현) · 23(consumer 1종뿐) · 28(파인튜닝·방어지표). **29번(Response Generation & Review 검증)은 v8에서 신설된 항목으로 이 구현에서는 아직 평가되지 않았다.** |
 | **M1·M2·M3 게이트** | **전부 도달**. ★단 **RC 는 아니다** — judge 가 사람과 얼마나 맞는지 모르는 상태로 내보낼 수 없다 |
 
@@ -205,7 +206,7 @@ python -m eval.stats.mcnemar --input eval/reports/pairs.jsonl
 ## 7. 문서
 
 - 프로세스 규칙: `RULE.md` (**작업 전 필독**)
-- 기준선 계획: `../A-COP_구현계획서_v6.md` (읽기 전용)
+- 기준선 계획: `../program/plan/A-COP_구현계획서_v8.md` (읽기 전용, v6은 `../program/plan/archive/`의 보존본)
 - 실행계획: `docs/plans/`
 - 계약: `docs/handoff/`
 - 리포트: `docs/reports/` · 결함: `docs/reports/debugs/`

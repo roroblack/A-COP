@@ -3,8 +3,8 @@
 ★개발 서버를 띄우면 브라우저가 `/` 로 열린다. 거기가 404 면
   "서버가 안 떴나" 로 읽힌다 — 실제로 그렇게 읽혔다.
 
-★UI 모듈은 둘뿐이다 — `ops_ui`(고객사 대시보드) · `composer_ui`(구성기).
-  "개발 콘솔" 은 이 저장소에 없다. `final_project_ui` 가 별도 프로그램으로 read-only 붙는다.
+★UI 모듈은 하나다 — `ops_ui`(고객사 대시보드).
+  "개발 콘솔"·Composer 는 이 저장소에 없다. `final_project_ui` 가 별도 프로그램으로 붙는다.
 
 ★단, UI 모듈이 전부 꺼져 있으면 리다이렉트를 만들지 않는다.
   없는 화면으로 보내면 404 를 한 번 더 거쳐서 만나게 될 뿐이다.
@@ -51,27 +51,20 @@ def workdir():
 
 
 def test_root_redirects_to_cases_when_ops_ui_is_on(workdir):
-    client = _client(_write(workdir, ops_ui=True, composer_ui=True))
+    client = _client(_write(workdir, ops_ui=True))
     response = client.get("/", follow_redirects=False)
     assert response.status_code == 307
     assert response.headers["location"] == "/ops/cases"
 
 
-def test_root_falls_back_to_composer_when_ops_ui_is_off(workdir):
-    client = _client(_write(workdir, ops_ui=False, composer_ui=True))
-    response = client.get("/", follow_redirects=False)
-    assert response.status_code == 307
-    assert response.headers["location"] == "/ui/composer"
-
-
 def test_root_stays_404_when_every_ui_module_is_off(workdir):
     """★없는 화면으로 보내지 않는다."""
-    client = _client(_write(workdir, ops_ui=False, composer_ui=False))
+    client = _client(_write(workdir, ops_ui=False))
     assert client.get("/", follow_redirects=False).status_code == 404
 
 
 def test_root_actually_lands_on_a_real_page(workdir):
-    client = _client(_write(workdir, ops_ui=True, composer_ui=True))
+    client = _client(_write(workdir, ops_ui=True))
     landed = client.get("/")  # follow_redirects 기본 True
     assert landed.status_code == 200
     assert "Case 목록" in landed.text

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from typing import Any, Protocol
+from uuid import UUID
 
 from app.core.contracts import ActionProposal, Evidence, NextAction, TeamManifest, TeamModule, TeamResult, TeamTask
 from app.core.idempotency import idempotency_key
@@ -14,7 +15,7 @@ from app.tools.read_tools import ReadToolbox, ToolLoopExceeded
 
 
 class LLM(Protocol):
-    async def complete(self, prompt_key: str, input_text: str, context: dict[str, Any]) -> dict[str, Any]: ...
+    async def complete(self, prompt_key: str, input_text: str, context: dict[str, Any], *, run_id: UUID | None = None) -> dict[str, Any]: ...
 
 
 class OrderShippingTeam:
@@ -44,7 +45,7 @@ class OrderShippingTeam:
 
     async def _llm_answer(self, task: TeamTask, evidence: list[Evidence]) -> str | None:
         context = {"evidence": evidence, "context": task.context.model_dump(mode="json")}
-        response = await self.llm.complete("order_shipping.answer", task.input_text, context)
+        response = await self.llm.complete("order_shipping.answer", task.input_text, context, run_id=task.run_id)
         answer = self._answer_from_response(response)
         if answer is not None:
             return answer
@@ -52,6 +53,7 @@ class OrderShippingTeam:
             "order_shipping.answer.repair", task.input_text,
             {**context, "invalid_response": response,
              "repair_instruction": "Return a JSON object with a non-empty string answer field only."},
+            run_id=task.run_id,
         )
         return self._answer_from_response(repaired)
 
@@ -92,12 +94,34 @@ class OrderShippingTeam:
                               outcome="escalated", confidence=0.0, evidence=evidence,
                               next_action=NextAction.ESCALATE, failure_code="policy_not_found")
 
+        request_id = str(task.context.current_state.get("request_id") or task.case_id)
+        issue_code = task.context.current_state.get("issue_code")
+        order_status = (order or {}).get("status")
+        if issue_code == "order_change_or_cancel" and order:
+            if order_status in ("placed", "paid"):
+                proposal = ActionProposal(
+                    action_type="order.cancel",
+                    arguments={"order_id": str(order["order_id"])},
+                    idempotency_key=idempotency_key(
+                        tenant_id=task.context.tenant_id, request_id=request_id,
+                        action_type="order.cancel", business_subject=str(task.case_id)),
+                    approval_required=True, risk_level="medium",
+                    rationale_evidence_ids=[e.evidence_id for e in evidence],
+                )
+                return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=self.manifest.team_id,
+                                  outcome="waiting", confidence=0.85, evidence=evidence,
+                                  next_action=NextAction.WAIT_FOR_APPROVAL, wait_reason="human_approval",
+                                  action_proposals=[proposal],
+                                  decisions=[{"classification": "cancel_before_shipment"}])
+            if order_status in ("shipped", "delivered"):
+                # 출고 후 취소는 반품 절차이므로 임의 접수하지 않고 기존 정책/LLM 경로로 넘긴다.
+                pass
+
         # ★시나리오1 — 배송이 완료로 찍혔는데(운송장 표시) 고객이 못 받았다는 문의가 왔다.
         #   DB 만으로는 "고객이 못 받았다" 를 알 수 없다 — 그건 문의 내용이다.
         #   여기서는 **배송 완료 표시가 있다는 사실**까지만 확인하고, 조사·환불은 제안까지만 한다.
         delivered = any(s.get("status") == "delivered" for s in shipments)
         if delivered and order:
-            request_id = str(task.context.current_state.get("request_id") or task.case_id)
             proposal = ActionProposal(
                 action_type="refund.request",
                 # ★필드 이름이 verification_policy.CUSTOMER_OPS_POLICY 의 선언과 일치해야

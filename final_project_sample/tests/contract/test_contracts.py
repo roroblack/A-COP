@@ -36,13 +36,13 @@ def make_evidence(evidence_id: str = "ev_1") -> Evidence:
     )
 
 
-def make_pack(case_id=None, team_id="billing_subscription", **overrides) -> ContextPack:
+def make_pack(case_id=None, team_id="contract_fixture", **overrides) -> ContextPack:
     payload = {
         "pack_id": uuid4(),
         "case_id": case_id or uuid4(),
         "team_id": team_id,
         "tenant_id": "demo",
-        "knowledge_scope": ["billing"],
+        "knowledge_scope": ["contract"],
         "current_state": {"status": "running"},
         "estimated_input_tokens": 5000,
     }
@@ -54,7 +54,7 @@ def make_result(**overrides) -> TeamResult:
     payload = {
         "task_id": uuid4(),
         "run_id": uuid4(),
-        "team_id": "billing_subscription",
+        "team_id": "contract_fixture",
         "outcome": "completed",
         "confidence": 0.8,
         "next_action": NextAction.RESPOND,
@@ -215,8 +215,8 @@ def _task(**overrides) -> TeamTask:
         "task_id": uuid4(),
         "run_id": uuid4(),
         "case_id": case_id,
-        "team_id": "billing_subscription",
-        "capability": "billing.investigate",
+        "team_id": "contract_fixture",
+        "capability": "contract.investigate",
         "case_version": 3,
         "input_text": "해지했는데 결제가 됐어요",
         "context": make_pack(case_id=case_id),

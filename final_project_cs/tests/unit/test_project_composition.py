@@ -20,7 +20,6 @@ def _config(*, teams=None, graph_enabled=True, graph_port="sql", broker="outbox"
         "vector_rag": {"enabled": True}, "graph_store": {"enabled": graph_enabled},
         "a2a_executor": {"enabled": False}, "mcp": {"enabled": True},
         "voc": {"enabled": True}, "ops_ui": {"enabled": True},
-        "composer_ui": {"enabled": False},
     }
     modules.update(module_overrides or {})
     return ProjectConfig.model_validate({
@@ -78,9 +77,15 @@ def test_enabled_module_without_known_implementation_is_rejected():
         build_registry(config=config, tools=_tools(), llm=object())
 
 
-def test_enabled_composer_ui_has_a_registered_implementation():
+def test_composer_ui_is_no_longer_a_registered_module():
+    """★실측(2026-08-18): `/ui/composer`에 인증이 전혀 없었다 — 고객 접근 가능한
+    이 앱에 인증 없는 module/Team/Port 편집 화면이 물려 있었다. 같은 기능은 이제
+    `final_project_ui`가 대상의 인증된 `/composer/*` API로만 제공한다
+    (`docs/handoff/09_Composer_GUI_계약.md`). 이 테스트는 그 모듈이 이 저장소에서
+    다시 조립 가능한 것으로 등록되면 실패한다 — 회귀를 잡는다."""
     config = _config(module_overrides={"composer_ui": {"enabled": True}})
-    build_registry(config=config, tools=_tools(), llm=object())
+    with pytest.raises(CompositionError, match="enabled module has no implementation"):
+        build_registry(config=config, tools=_tools(), llm=object())
 
 
 def test_duplicate_capability_is_rejected():

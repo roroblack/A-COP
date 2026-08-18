@@ -7,6 +7,7 @@ from app.introspection import snapshot
 from app.presentation.api.cases import build_router
 from app.presentation.api.outbox import build_router as build_outbox_router
 from app.presentation.api.composer import router as composer_write_router
+from app.presentation.composer_auth import router as composer_auth_router
 from app.presentation.security import require_scope
 from app.presentation.ui import mount_ui
 
@@ -56,6 +57,7 @@ def create_app(controller=None, classifier=None) -> FastAPI:
     #   항상 등록된다. scope 로만 잠근다. HTML 페이지가 꺼져도 이 API 는 살아 있어야
     #   `final_project_ui` 가 나중에 다시 붙어 모듈을 켜고 끌 수 있다.
     app.include_router(composer_write_router)
+    app.include_router(composer_auth_router)
 
     return app
 

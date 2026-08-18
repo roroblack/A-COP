@@ -207,16 +207,8 @@ TENANT_NAV = (
     ("/ops/voc", "VOC"),
 )
 
-#: 개발 콘솔 — 우리가 **제작 플랫폼 자체** 를 굴린다
-CONSOLE_NAV = (
-    ("/ui/", "대시보드"),
-    ("/ui/composer", "Composer"),
-    ("/ui/quality", "Quality"),
-    ("/ui/experiments", "Experiments"),
-    ("/ui/admin", "Admin"),
-)
-
-#: 기본은 고객사 쪽이다 — 납품되는 제품이 그쪽이기 때문이다
+#: ★"개발 콘솔"(대시보드·Composer·Quality·Experiments·Admin)은 전부 이 저장소
+#:   밖으로 나갔다(`final_project_ui`, 별도 프로그램). 이 앱엔 고객사 화면만 남는다.
 NAV = TENANT_NAV
 
 #: ★라이트/다크를 모두 정의한다. 색은 토큰으로만 쓰고 컴포넌트에 하드코딩하지 않는다.

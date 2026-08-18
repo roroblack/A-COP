@@ -20,40 +20,37 @@ def _config(*, teams=None, graph_enabled=True, graph_port="sql", broker="outbox"
         "vector_rag": {"enabled": True}, "graph_store": {"enabled": graph_enabled},
         "a2a_executor": {"enabled": False}, "mcp": {"enabled": True},
         "voc": {"enabled": True}, "ops_ui": {"enabled": True},
-        "composer_ui": {"enabled": False},
     }
     modules.update(module_overrides or {})
     return ProjectConfig.model_validate({
         "modules": modules,
         "ports": {"team_executor": "local", "message_broker": broker, "graph_store": graph_port},
         "teams": teams or [
-            {"team_id": "billing_subscription", "active": True,
-             "implementation_ref": "app.modules.customer_ops:BillingSubscriptionTeam"},
-            {"team_id": "technical_entitlement", "active": True,
-             "implementation_ref": "app.modules.customer_ops:TechnicalEntitlementTeam"},
+            {"team_id": "feedback_analytics", "active": True,
+             "implementation_ref": "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam"},
         ],
     })
 
 
 def _tools():
-    return ReadToolbox(lambda: None)
+    return ReadToolbox()
 
 
 def test_declaration_controls_active_routing_and_keeps_inactive_manifest():
     config = _config(teams=[
-        {"team_id": "billing_subscription", "active": True,
-         "implementation_ref": "app.modules.customer_ops:BillingSubscriptionTeam"},
-        {"team_id": "technical_entitlement", "active": False,
-         "implementation_ref": "app.modules.customer_ops:TechnicalEntitlementTeam"},
+        {"team_id": "feedback_analytics", "active": True,
+         "implementation_ref": "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam"},
+        {"team_id": "disabled_fixture", "active": False,
+         "implementation_ref": "tests.unit.test_composition_root:ExtraTeam"},
     ])
     registry = build_registry(config=config, tools=_tools(), llm=object())
 
     assert {manifest.team_id for manifest in registry.manifests()} == {
-        "billing_subscription", "technical_entitlement"
+        "feedback_analytics", "disabled_fixture"
     }
-    assert registry.get("technical_entitlement").manifest.active is False
+    assert registry.get("disabled_fixture").manifest.active is False
     with pytest.raises(RegistryError, match="exactly one active team"):
-        registry.resolve(case_type="technical")
+        registry.resolve(case_type="demo")
 
 
 def test_duplicate_team_id_is_rejected():
@@ -78,17 +75,22 @@ def test_enabled_module_without_known_implementation_is_rejected():
         build_registry(config=config, tools=_tools(), llm=object())
 
 
-def test_enabled_composer_ui_has_a_registered_implementation():
+def test_composer_ui_is_no_longer_a_registered_module():
+    """★실측(2026-08-18): `/ui/composer`에 인증이 없었다 — 고객 접근 가능한 이 앱에
+    인증 없는 module/Team/Port 편집 화면이 물려 있었다. 삭제했다. 같은 기능은
+    `final_project_ui`가 인증된 `/composer/*` API로만 제공한다
+    (`docs/handoff/09_Composer_GUI_계약.md`). 회귀 방지용."""
     config = _config(module_overrides={"composer_ui": {"enabled": True}})
-    build_registry(config=config, tools=_tools(), llm=object())
+    with pytest.raises(CompositionError, match="enabled module has no implementation"):
+        build_registry(config=config, tools=_tools(), llm=object())
 
 
 def test_duplicate_capability_is_rejected():
     config = _config(teams=[
         {"team_id": "one", "active": True,
-         "implementation_ref": "app.modules.customer_ops:BillingSubscriptionTeam"},
+         "implementation_ref": "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam"},
         {"team_id": "two", "active": True,
-         "implementation_ref": "app.modules.customer_ops:BillingSubscriptionTeam"},
+         "implementation_ref": "app.modules.customer_ops.feedback_team:FeedbackAnalyticsTeam"},
     ])
     with pytest.raises(CompositionError, match="duplicate capability"):
         build_registry(config=config, tools=_tools(), llm=object())
@@ -155,5 +157,5 @@ def test_load_project_config_does_not_import_inactive_implementation():
 def test_load_project_config_accepts_normal_declaration():
     config = load_project_config(Path("config") / "project.yaml")
     assert {team.team_id for team in config.teams} == {
-        "billing_subscription", "technical_entitlement", "feedback_analytics"
+        "feedback_analytics"
     }

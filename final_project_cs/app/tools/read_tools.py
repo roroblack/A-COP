@@ -115,22 +115,66 @@ class ReadToolbox:
         return functions[name](ToolContext.from_pack(context), **arguments)
 
 
-def register_prompt_files(conn: Any, prompt_root: str = "prompts", model_family: str = "unknown") -> list[UUID]:
-    """Register versioned prompt files with content hashes and return IDs."""
+ALLOWED_PROMPT_KEYS = frozenset({
+    "order_shipping.answer", "order_shipping.answer.repair",
+    "return_exchange.answer", "return_exchange.answer.repair",
+})
+
+
+def register_prompt_files(
+    conn: Any, prompt_root: str = "prompts", model_family: str = "unknown"
+) -> tuple[list[UUID], list[str]]:
+    """Register and activate the supported versioned prompt files atomically."""
     import hashlib
     from pathlib import Path
-    from app.infrastructure.db.repository import create_prompt
 
     root = Path(prompt_root)
     ids: list[UUID] = []
+    skipped: list[str] = []
+    candidates: list[tuple[Any, str, str, str, str]] = []
     for path in sorted(root.glob("*/**/*.v*.md")):
-        text = path.read_text(encoding="utf-8")
         stem, version = path.name.rsplit(".v", 1)
         version = version.removesuffix(".md")
-        key = stem
+        key = f"{path.parent.name}.{stem}"
+        if key not in ALLOWED_PROMPT_KEYS:
+            skipped.append(str(path))
+            continue
+        text = path.read_text(encoding="utf-8")
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-        ids.append(create_prompt(conn, prompt_key=key, version=version, template=text, sha256=digest, model_family=model_family))
-    return ids
+        candidates.append((path, key, version, text, digest))
+
+    with conn.transaction():
+        with conn.cursor() as cur:
+            for path, key, version, text, digest in candidates:
+                cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (key,))
+                cur.execute(
+                    "SELECT prompt_id, version, sha256 FROM prompts "
+                    "WHERE prompt_key=%s AND (sha256=%s OR version=%s)",
+                    (key, digest, version),
+                )
+                rows = cur.fetchall()
+                same_hash = next((row for row in rows if row[2] == digest), None)
+                same_version = next((row for row in rows if row[1] == version), None)
+                if same_version is not None and same_version[2] != digest:
+                    raise ValueError(
+                        f"prompt version collision for {key} v{version}: content differs"
+                    )
+                if same_hash is not None:
+                    prompt_id = same_hash[0]
+                else:
+                    cur.execute(
+                        "INSERT INTO prompts (prompt_key, version, template, sha256, model_family, active) "
+                        "VALUES (%s,%s,%s,%s,%s,false) RETURNING prompt_id",
+                        (key, version, text, digest, model_family),
+                    )
+                    prompt_id = cur.fetchone()[0]
+                cur.execute("UPDATE prompts SET active=false WHERE prompt_key=%s", (key,))
+                cur.execute("UPDATE prompts SET active=true WHERE prompt_id=%s", (prompt_id,))
+                cur.execute("SELECT count(*) FROM prompts WHERE prompt_key=%s AND active=true", (key,))
+                if cur.fetchone()[0] != 1:
+                    raise RuntimeError(f"expected exactly one active prompt for {key}")
+                ids.append(prompt_id)
+    return ids, skipped
 
 
 register_prompts = register_prompt_files

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 import app.core.settings as settings_module
 from app.application.case_service import CaseService, ResumeTokenError
-from app.application.controller import Controller
+from app.application.controller import Controller, ControllerError
 from app.core.contracts import ActionProposal, ContextPack, Evidence, NextAction, StateConflict, TeamManifest, TeamResult
 from app.core.idempotency import idempotency_key
 from app.core.registry import RegistryError, TeamRegistry
@@ -72,6 +72,27 @@ class RepeatApprovalTeam(FakeTeam):
         return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=task.team_id, outcome="waiting",
                           confidence=1, evidence=evidence, next_action=NextAction.WAIT_FOR_APPROVAL,
                           wait_reason="human_approval", action_proposals=[proposal])
+
+
+class WaitForInputTeam(FakeTeam):
+    """★버그사냥 2026-08-17 (라운드 04·06·08) — WAIT_FOR_INPUT/Controller.resume()
+    경로는 이 세션 전까지 어떤 테스트에도 없었다. 첫 호출은 고객 추가 입력을
+    기다리고, 재개되면(두 번째 호출) 완료한다."""
+    manifest = FakeTeam.manifest.model_copy(update={
+        "team_id": "fake_wait_input", "display_name": "Fake Wait Input",
+    })
+
+    async def execute(self, task):
+        self.calls += 1
+        if self.calls == 1:
+            return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=task.team_id, outcome="waiting",
+                              confidence=1, next_action=NextAction.WAIT_FOR_INPUT, wait_reason="customer_input",
+                              required_input_schema={"type": "object", "properties": {"answer": {"type": "string"}}})
+        evidence = [Evidence(evidence_id="wait-input:e2e", source_type="db", source_id="fake",
+                             claim="deterministic fixture", value={"ok": True}, confidence=1,
+                             observed_at=datetime.now(UTC))]
+        return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=task.team_id, outcome="completed",
+                          confidence=1, answer="resolved after resume", evidence=evidence, next_action=NextAction.RESPOND)
 
 
 class DemoTeam(FakeTeam):
@@ -184,6 +205,66 @@ def test_e2e_cancelled_customer_post_charge_approval_flow(db, monkeypatch):
         assert [(e["event_type"], e["aggregate_version"]) for e in get_case_events(check, tenant_id=tenant, case_id=case_id)] == [
             ("created", 1), ("classified", 2), ("routed", 3), ("approval_required", 4), ("approved", 5),
             ("resumed", 6), ("completed", 7)]
+
+
+def test_e2e_resume_completes_with_the_real_token(db):
+    """★버그사냥 2026-08-17 (라운드 04·06·08) — Controller.resume() 은 이 세션
+    전까지 어떤 테스트에도 없이 죽어 있었다. 실제 발급된 토큰으로 끝까지
+    (waiting_input -> resuming -> running -> resolved) 완주하는지 처음으로 증명한다.
+    """
+    conn, tenant = db
+    case_id, _ = seed_case(conn, tenant)
+    team = WaitForInputTeam()
+    controller = Controller(TeamRegistry([team]), policy_search=fake_policy, context_broker=FakeContextBroker())
+    first = asyncio.run(controller.run_case(tenant_id=tenant, case_id=case_id))
+    assert first["status"] == "waiting_input"
+    real_token = first["resume_token"]
+    assert real_token
+
+    # ★resume() 자신이 내부에서 run_case() 까지 부른다(controller.py:280) — 검증
+    #   부터 재실행·완료까지 한 호출로 끝난다. 여기서 또 run_case() 를 부르면
+    #   이미 resolved 된 Case 에 완료 이벤트가 두 번 적용돼 InvalidTransition
+    #   이 난다 — 실제로 이 자리에서 그렇게 재현됐다.
+    outcome = asyncio.run(controller.resume(tenant_id=tenant, case_id=case_id, token=real_token, event_id="req-1"))
+    assert outcome.get("idempotent") is not True
+    assert outcome["status"] == "resolved"
+    with get_connection() as check:
+        assert [(e["event_type"], e["aggregate_version"]) for e in get_case_events(check, tenant_id=tenant, case_id=case_id)] == [
+            ("created", 1), ("classified", 2), ("routed", 3), ("missing_input", 4),
+            ("valid_input", 5), ("resumed", 6), ("completed", 7)]
+
+
+def test_resume_with_the_wrong_token_is_rejected_and_escalates(db):
+    """★가짜 토큰(고객 메시지 원문의 해시 같은 것)으로는 재개할 수 없다 —
+    라운드 04·06 이 찾은 원래 결함이 바로 이걸 검증 안 했다는 것이었다."""
+    conn, tenant = db
+    case_id, _ = seed_case(conn, tenant)
+    team = WaitForInputTeam()
+    controller = Controller(TeamRegistry([team]), policy_search=fake_policy, context_broker=FakeContextBroker())
+    first = asyncio.run(controller.run_case(tenant_id=tenant, case_id=case_id))
+    assert first["status"] == "waiting_input"
+
+    with pytest.raises(ControllerError):
+        asyncio.run(controller.resume(tenant_id=tenant, case_id=case_id, token="not-the-real-token", event_id="req-1"))
+    with get_connection() as check:
+        assert case_versions(check, tenant, case_id)[0] == "escalated"
+
+
+def test_resume_token_cannot_be_reused(db):
+    conn, tenant = db
+    case_id, _ = seed_case(conn, tenant)
+    team = WaitForInputTeam()
+    controller = Controller(TeamRegistry([team]), policy_search=fake_policy, context_broker=FakeContextBroker())
+    first = asyncio.run(controller.run_case(tenant_id=tenant, case_id=case_id))
+    real_token = first["resume_token"]
+
+    asyncio.run(controller.resume(tenant_id=tenant, case_id=case_id, token=real_token, event_id="req-1"))
+    # ★같은 event_id 재시도는 idempotent 로 조용히 통과한다(재실행 아님).
+    replay = asyncio.run(controller.resume(tenant_id=tenant, case_id=case_id, token=real_token, event_id="req-1"))
+    assert replay.get("idempotent") is True
+    # ★다른 event_id 로 같은 토큰을 다시 쓰면(진짜 재사용 시도) 거부된다.
+    with pytest.raises(ControllerError):
+        asyncio.run(controller.resume(tenant_id=tenant, case_id=case_id, token=real_token, event_id="req-2"))
 
 
 def test_approval_rerun_does_not_create_action_request_again(db):
@@ -339,7 +420,7 @@ def test_resume_token_is_single_use_expiring_and_hashed(db):
 
 
 def test_loop_guard_rejects_same_tool_and_arguments(db):
-    toolbox = ReadToolbox(get_connection, policy_search=lambda *_: [])
+    toolbox = ReadToolbox({"read.policy": lambda scope, *, query, **_: []})
     context = type("Context", (), {"tenant_id": "test", "case_id": uuid4(), "knowledge_scope": ["billing"],
                                     "current_state": {"customer_id": str(uuid4())}})()
     seen = set()

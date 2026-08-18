@@ -1,5 +1,16 @@
 # 09 — Composer GUI 계약 (제작 단계 구성기)
 
+> ★**폐기됨 (2026-08-18).** `/ui/composer`는 인증이 전혀 없는 채로 이 앱(고객
+> 접근 가능 포트)에 물려 있었다 — 실측으로 확인. `app/presentation/ui/composer.py`
+> 삭제, `mount_ui()`에서 라우터 제거, `config/project.yaml`의 `composer_ui` 모듈
+> 제거 완료. 같은 기능(모듈·Team·Port 편집)은 이제 별도 프로그램
+> `final_project_ui`가 대상의 **인증된** `/composer/current`·`/validate`·`/apply`
+> API(`composer:write` scope 필요, 계약: `13_Composer_쓰기채널_계약.md`)로만
+> 제공한다. 이 문서의 나머지는 옛 설계 기록으로 남긴다 — 되살리지 않는다.
+
+---
+
+
 > 운영 화면(`/ui/{cases,approvals,voc,admin}`)과 **목적이 다르다.**
 > 운영 화면은 *돌아가는 시스템을 본다.* Composer 는 *무엇을 조립할지 정한다.*
 

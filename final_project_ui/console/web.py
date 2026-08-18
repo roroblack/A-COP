@@ -13,9 +13,10 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse
 
+from console import composer as composer_client
 from console.db import read_agent_runs, read_trace
 from console.discovery import discover, inspect_path
 from console.live import read_introspection
@@ -64,6 +65,43 @@ tbody tr:last-child td{border-bottom:0}
 .note{border:1px solid currentColor;border-radius:8px;padding:.5rem .75rem;margin:.5rem 0;font-size:.88rem}
 .n-warn{color:var(--warn)}.n-bad{color:var(--bad)}.n-info{color:var(--dim)}
 .empty{text-align:center;color:var(--dim);padding:2.5rem 1rem;border:1px dashed var(--line);border-radius:12px}
+/* ── composer 폼 ── */
+.card--fold{padding:0}
+.card--fold>summary{list-style:none;cursor:pointer;padding:1rem 1.15rem;display:flex;
+ align-items:baseline;gap:.6rem;flex-wrap:wrap}
+.card--fold>summary::-webkit-details-marker{display:none}
+.card--fold>summary::after{content:"▾";color:var(--dim);margin-left:auto}
+.card--fold:not([open])>summary::after{content:"▸"}
+.card--fold>summary h2{margin:0}
+.card--fold>.body{padding:0 1.15rem 1.1rem}
+.card--fold>summary .sub{color:var(--dim);font-size:.82rem}
+.choice{display:flex;align-items:center;gap:.5rem;padding:.5rem .65rem;border:1px solid var(--line);
+ border-radius:8px;background:var(--bg);margin:.35rem 0}
+.choice input{accent-color:var(--accent)}
+input,select,textarea{font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--line);
+ border-radius:7px;padding:.45rem .6rem}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+button{font:inherit;font-weight:600;font-size:.88rem;padding:.5rem 1.05rem;border:1px solid transparent;
+ border-radius:8px;background:var(--accent);color:#fff;cursor:pointer}
+button:hover{opacity:.92}
+button.ghost{background:transparent;color:var(--bad);border-color:var(--bad)}
+/* 구조도 — 실행 순서 레일 */
+.flow{list-style:none;margin:0;padding:0 0 0 1.5rem;position:relative}
+.flow::before{content:"";position:absolute;left:10px;top:.8rem;bottom:.8rem;width:2px;background:var(--line)}
+.stage{position:relative;margin-bottom:1rem}
+.stage__n{position:absolute;left:-1.5rem;top:.2rem;width:22px;height:22px;border-radius:50%;
+ background:var(--accent);color:#fff;font-size:.72rem;font-weight:700;display:grid;place-items:center}
+.stage>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:.6rem}
+.stage>summary::-webkit-details-marker{display:none}
+.stage__title{margin:0;font-size:.92rem}
+.stage__tally{font-size:.74rem;color:var(--dim)}
+.stage__note{margin:.15rem 0 .4rem;color:var(--dim);font-size:.8rem}
+.nodes{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.4rem}
+.node{border-radius:8px;padding:.4rem .65rem;border:1px solid var(--line);background:var(--bg);
+ font-size:.82rem}
+.node--module{border-left:3px dashed var(--ok)}
+.node--component{border-left:3px solid var(--accent)}
+.node--off{opacity:.5;text-decoration:line-through}
 """
 
 
@@ -99,7 +137,206 @@ def table(headers: list[str], rows: list[str], empty: str = "없음") -> str:
     return f"<div class='scroll'><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>"
 
 
+def collapsible_card(title: str, body: str, *, subtitle: str = "", open_: bool = True) -> str:
+    sub = f"<span class='sub'>{esc(subtitle)}</span>" if subtitle else ""
+    return (f"<details class='card card--fold'{' open' if open_ else ''}>"
+            f"<summary><h2>{esc(title)}</h2>{sub}</summary>"
+            f"<div class='body'>{body}</div></details>")
+
+
+def _node(name: str, *, kind: str, enabled: bool | None, hint: str = "") -> str:
+    off = " node--off" if enabled is False else ""
+    badge = {"module": "모듈", "component": "고정"}.get(kind, kind)
+    state = "" if enabled is None else (" · 켜짐" if enabled else " · 꺼짐")
+    hint_html = f" <span class='dim'>— {esc(hint)}</span>" if hint else ""
+    return f"<li class='node node--{kind}{off}'>{esc(name)} <span class='dim'>({badge}{state})</span>{hint_html}</li>"
+
+
+def flow(stages: list[dict[str, Any]]) -> str:
+    """실행 순서 구조도. ★목록·설명은 이 콘솔이 다시 쓴 것이다 — 대상 코드를
+    가져오지 않는다(`CLAUDE.md` §0.2). 켜짐/꺼짐 상태만 지금 config 값을 그대로 반영한다."""
+    rows = []
+    for stage in stages:
+        nodes = "".join(_node(n["name"], kind=n["kind"], enabled=n.get("enabled"), hint=n.get("hint", ""))
+                        for n in stage["nodes"])
+        note = f"<p class='stage__note'>{esc(stage['note'])}</p>" if stage.get("note") else ""
+        rows.append(f"<li class='stage'><span class='stage__n'>{esc(stage['n'])}</span>"
+                    f"<details class='stage' open><summary><h3 class='stage__title'>{esc(stage['title'])}</h3>"
+                    f"<span class='stage__tally'>{len(stage['nodes'])}개</span></summary>"
+                    f"{note}<ul class='nodes'>{nodes}</ul></details></li>")
+    return f"<ul class='flow'>{''.join(rows)}</ul>"
+
+
+#: ★고정 인프라 — 모듈 토글 대상이 아니다. `docs/backup/composer_ui_원본_2026-08-18/`의
+#:   원본 설명을 참고해 이 콘솔이 다시 썼다. 대상 코드가 바뀌면 이 목록은 갱신이 필요할 수
+#:   있다 — 실시간으로 검증되지 않는 참고 정보임을 화면에 밝힌다.
+COMPONENTS = (
+    ("Case lifecycle", "상태 변경의 단일 진입점"),
+    ("Contract models", "Team 계약(TeamTask/TeamResult 등)"),
+    ("Team Registry", "capability 해석과 라우팅"),
+    ("Context Broker", "컨텍스트 예산과 degraded 신호"),
+    ("DB repository / session", "Source of Truth"),
+    ("Outbox publisher", "트랜잭션과 이벤트 발행"),
+    ("Controller", "전체 실행 루프"),
+)
+
+
+def _structure_stages(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    """지금 config 값으로 그리는 실행 순서 구조도.
+
+    ★정적 그림이 아니라 **지금 읽은 config의 투영**이다 — 꺼진 모듈은 꺼진 채로 그려진다.
+    """
+    def on(name: str) -> bool:
+        m = cfg.get("modules", {}).get(name)
+        return bool(m and m.get("enabled"))
+
+    teams = cfg.get("teams", [])
+    active = [t for t in teams if t.get("active")]
+    executor = cfg.get("ports", {}).get("team_executor", "모름")
+    team_nodes = [{"name": t.get("team_id"), "kind": "module", "enabled": t.get("active"),
+                  "hint": "라우팅됨" if t.get("active") else "등록만 됨"} for t in teams] or \
+        [{"name": "Team 없음", "kind": "component", "enabled": False}]
+
+    return [
+        {"n": "1", "title": "입력", "note": "요청이 들어온다",
+         "nodes": [{"name": "REST API", "kind": "component"},
+                   {"name": "mcp", "kind": "module", "enabled": on("mcp"), "hint": "개인 AI 접속 · read-only"}]},
+        {"n": "2", "title": "Case 생성 · 상태 전이", "note": "단일 진입점을 통해서만 상태가 바뀐다",
+         "nodes": [{"name": "transition_case()", "kind": "component"},
+                   {"name": "Contract models", "kind": "component"}]},
+        {"n": "3", "title": "분류",
+         "nodes": [{"name": "인라인 분류", "kind": "component"},
+                   {"name": "voc", "kind": "module", "enabled": on("voc"), "hint": "일일 집계 · 급증 탐지"}]},
+        {"n": "4", "title": "컨텍스트 조립",
+         "nodes": [{"name": "Context Broker", "kind": "component"},
+                   {"name": "vector_rag", "kind": "module", "enabled": on("vector_rag"), "hint": "정책 검색"},
+                   {"name": "graph_store", "kind": "module", "enabled": on("graph_store"), "hint": "관계 조회"}]},
+        {"n": "5", "title": "라우팅", "nodes": [{"name": "Team Registry", "kind": "component"}]},
+        {"n": "6", "title": "실행", "note": f"현재 team_executor = {executor}",
+         "nodes": [{"name": "TeamExecutorPort", "kind": "component"},
+                   {"name": "a2a_executor", "kind": "module", "enabled": on("a2a_executor"),
+                    "hint": "원격 Team 실행"}]},
+        {"n": "7", "title": "Agent Team", "note": f"지금 {len(active)}/{len(teams)}개 라우팅",
+         "nodes": team_nodes},
+        {"n": "8", "title": "제안 · 승인",
+         "nodes": [{"name": "Controller", "kind": "component"},
+                   {"name": "Human Approval", "kind": "component"}]},
+        {"n": "9", "title": "발행", "nodes": [{"name": "Outbox", "kind": "component"}]},
+    ]
+
+
 JUDGEMENT_KIND = {"통과": "ok", "부분통과": "warn", "미통과": "bad", "미착수": "idle"}
+
+
+def _config_from_form(form: dict, module_names: list[str], port_names: list[str],
+                      team_count: int) -> dict[str, Any]:
+    """제출된 폼을 대상이 기대하는 raw dict 모양으로 되돌린다.
+
+    ★필드 이름(`module_*`·`port_*`·`team_id_N`)만 안다 — 값의 **허용 범위**는
+      모른다(어떤 port 값이 유효한지는 대상의 스키마다). 그래서 select 가 아니라
+      text input 이다 — 잘못된 값은 validate 가 걸러 준다, 여기서 미리 막지 않는다.
+    """
+    modules = {name: {"enabled": form.get(f"module_{name}") == "on"} for name in module_names}
+    ports = {name: str(form.get(f"port_{name}", "")) for name in port_names}
+    teams = []
+    for index in range(team_count):
+        team_id = str(form.get(f"team_id_{index}", "")).strip()
+        if not team_id and f"team_id_{index}" not in form:
+            continue
+        ref = str(form.get(f"implementation_ref_{index}", "")).strip()
+        teams.append({"team_id": team_id, "active": form.get(f"active_{index}") == "on",
+                      "implementation_ref": ref})
+    return {"modules": modules, "ports": ports, "teams": teams}
+
+
+def _composer_body(target: Path, current: "composer_client.ComposerResult", *,
+                   config: dict[str, Any] | None = None) -> str:
+    """★대상의 인증된 쓰기 채널만 부른다(`CLAUDE.md` §0.3 예외) — 여기서 직접 안 쓴다.
+
+    ★모듈·Team·Port 를 구조화된 폼으로 편집한다 — 대상의 원래 `/ui/composer` 화면과
+      같은 편집 기능이다(체크박스·행 추가/제거). 다만 대상의 `PortConfig` 타입힌트를
+      가져와 select 의 선택지를 만들지는 않는다 — 그건 스키마를 복제하는 것이고
+      `CLAUDE.md` §0.2 가 금지한다. port 는 현재 값을 보여주는 text input 이고,
+      틀린 값이면 validate 가 잡는다.
+
+    ★`reason`은 대상의 audit 계약이 요구하는 최소 근거다. basement 대상(예:
+      final_project_sample)에 적용할 때는 실제 운영 변경이 아니라 **구조설계 테스트
+      목적**임을 이 칸에 적는 것을 권장한다 — 코드로 대상을 구분하지 않는다,
+      운영자가 매번 밝힌다.
+    """
+    import json as _json
+
+    back = f"<p><a href='/project?path={esc(str(target))}'>← 프로젝트로</a></p>"
+    if not current.ok:
+        return note(current.detail or current.status, "warn" if current.status == "연결 안 함" else "bad") + back
+
+    revision = current.value.get("revision", "")
+    cfg = config if config is not None else current.value.get("config", {})
+    modules = cfg.get("modules", {})
+    ports = cfg.get("ports", {})
+    teams = cfg.get("teams", [])
+
+    intro = note(
+        "이 폼은 대상의 인증된 Composer API(/composer/current, /validate, /apply)만 호출합니다 — "
+        "여기서 대상 파일을 직접 쓰지 않습니다. 적용은 대상이 revision 이 일치할 때만 원자적으로 반영합니다.",
+        "info")
+
+    module_rows = "".join(
+        f"<label class='choice'><input type='checkbox' name='module_{esc(name)}' "
+        f"{'checked' if (item or {}).get('enabled') else ''}> {esc(name)}</label>"
+        for name, item in modules.items())
+
+    port_rows = "".join(
+        f"<p><label>{esc(name)} "
+        f"<input name='port_{esc(name)}' value='{esc(value)}' style='width:16rem'></label></p>"
+        for name, value in ports.items())
+
+    team_rows = "".join(
+        f"<tr><td><input name='team_id_{i}' value='{esc(t.get('team_id'))}'></td>"
+        f"<td><input name='implementation_ref_{i}' value='{esc(t.get('implementation_ref'))}' size='42'></td>"
+        f"<td><input type='checkbox' name='active_{i}' {'checked' if t.get('active') else ''}></td>"
+        f"<td><button type='submit' name='remove_team' value='{i}'>제거</button></td></tr>"
+        for i, t in enumerate(teams))
+
+    raw = _json.dumps(cfg, ensure_ascii=False, indent=2)
+    raw_view = f"<details><summary>원본 JSON (대조용)</summary><pre class='mono'>{esc(raw)}</pre></details>"
+
+    active_n = sum(1 for t in teams if t.get("active"))
+    on_n = sum(1 for m in modules.values() if (m or {}).get("enabled"))
+
+    form = f"""
+    <form method='post' action='/composer'>
+      <input type='hidden' name='path' value='{esc(str(target))}'>
+      <input type='hidden' name='base_revision' value='{esc(revision)}'>
+      <div class='stat'><span>REVISION</span><b class='mono'>{esc(revision)}</b></div>
+
+      {collapsible_card("모듈", module_rows or note("모듈이 없습니다.", "info"),
+                        subtitle=f"{on_n}/{len(modules)}종 켜짐")}
+
+      {collapsible_card("Port", port_rows or note("Port가 없습니다.", "info"), subtitle=f"{len(ports)}종")}
+
+      {collapsible_card("Team",
+          table(["team_id", "implementation_ref", "active", ""], [team_rows], empty="Team이 없습니다.")
+          + "<p><button type='submit' name='add_team' value='1'>Team 추가</button></p>",
+          subtitle=f"{len(teams)}개 등록 · {active_n}개 라우팅")}
+
+      <p><input name='reason' placeholder='사유 — 예: 모듈 구조 설계 테스트' style='width:100%;padding:.5rem'></p>
+      <p>
+        <button type='submit' name='action' value='validate'>검증</button>
+        &nbsp;
+        <button type='submit' name='action' value='apply'>적용</button>
+      </p>
+    </form>"""
+
+    component_rows = "".join(f"<li><b>{esc(n)}</b> — {esc(r)}. 여기서 끌 수 없습니다.</li>" for n, r in COMPONENTS)
+    structure = collapsible_card(
+        "구조 — 실행 순서", flow(_structure_stages(cfg)),
+        subtitle="지금 읽은 config의 투영입니다. 꺼진 모듈은 꺼진 채로 표시됩니다")
+    components = collapsible_card(
+        "컴포넌트 (읽기 전용)", f"<ul>{component_rows}</ul>",
+        subtitle=f"{len(COMPONENTS)}종 — 참고용, 실시간 검증 안 됨", open_=False)
+
+    return intro + form + structure + components + raw_view + back
 
 
 def create_app() -> FastAPI:
@@ -175,8 +412,6 @@ def create_app() -> FastAPI:
             blocked = note(f"판정을 읽지 못했습니다 — {judgements.error}", "warn")
         else:
             counts = judgement_counts(items)
-            display_items = [i for i in items if i.judgement != "?듦낵"] + [
-                i for i in items if i.judgement == "?듦낵"]
             stuck = [i for i in items if i.judgement != "통과"]
             rows = [f"<tr><td class='mono'>{esc(i.id)}</td>"
                     f"<td>{pill(i.judgement, JUDGEMENT_KIND.get(i.judgement, 'bad'))}</td>"
@@ -297,7 +532,8 @@ def create_app() -> FastAPI:
                 + state_card
                 + "<div class='card'><h2>실행 이력</h2>" + run_history + "</div>"
                 + f"<div class='card'><h2>연결</h2>{connections}</div>"
-                + f"<p><a href='/'>← 프로젝트 목록</a></p>")
+                + f"<p><a href='/composer?path={esc(str(target))}'>구성 조립(Composer) →</a>"
+                + f" &nbsp;·&nbsp; <a href='/'>← 프로젝트 목록</a></p>")
         return page(found.name, body, lede=str(target))
 
     @app.get("/run", response_class=HTMLResponse)
@@ -332,6 +568,76 @@ def create_app() -> FastAPI:
 
         back = f"<p><a href='/project?path={esc(str(target))}'>실행 이력으로 돌아가기</a></p>"
         return page("실행 추적", "".join(sections) + back, lede=f"{target} · {run_id}")
+
+    @app.get("/composer", response_class=HTMLResponse)
+    def composer_form(path: str = Query(default="")) -> HTMLResponse:
+        target = Path(path) if path else Path(DEFAULT_ROOT)
+        profile = profile_for(target)
+        current = composer_client.read_current(profile.composer_url, profile.composer_issuer_secret)
+        return page("구성 조립(Composer)", _composer_body(target, current), lede=str(target))
+
+    @app.post("/composer", response_class=HTMLResponse)
+    async def composer_submit(request: Request) -> HTMLResponse:
+        form = await request.form()
+        target = Path(str(form.get("path", "")))
+        profile = profile_for(target)
+        current = composer_client.read_current(profile.composer_url, profile.composer_issuer_secret)
+        if not current.ok:
+            return page("구성 조립(Composer)", _composer_body(target, current), lede=str(target))
+
+        base_config = current.value.get("config", {})
+        module_names = list(base_config.get("modules", {}))
+        port_names = list(base_config.get("ports", {}))
+        indexes = [int(key.removeprefix("team_id_")) for key in form
+                  if key.startswith("team_id_") and key.removeprefix("team_id_").isdigit()]
+        team_count = max(indexes, default=len(base_config.get("teams", [])) - 1) + 1
+        candidate = _config_from_form(form, module_names, port_names, team_count)
+
+        # ★행 추가/제거는 대상에 보내지 않는다 — 화면만 다시 그린다(원본 화면과 같은 패턴)
+        if form.get("remove_team") is not None:
+            index = int(form["remove_team"])
+            if 0 <= index < len(candidate["teams"]):
+                candidate["teams"].pop(index)
+            return page("구성 조립(Composer)", _composer_body(target, current, config=candidate), lede=str(target))
+        if form.get("add_team") is not None:
+            candidate["teams"].append({"team_id": "new_team", "active": False, "implementation_ref": ""})
+            return page("구성 조립(Composer)",
+                        note("새 Team을 추가했습니다. 검증 전에는 저장되지 않습니다.", "info")
+                        + _composer_body(target, current, config=candidate),
+                        lede=str(target))
+
+        action = str(form.get("action", ""))
+        reason = str(form.get("reason", ""))
+        if action == "validate":
+            outcome = composer_client.validate_candidate(profile.composer_url, profile.composer_issuer_secret, candidate)
+        elif action == "apply":
+            if not reason.strip():
+                # ★reason 없이 적용하지 않는다 — 대상 계약(§ audit)이 요구하는 최소한의 근거다
+                return page("구성 조립(Composer)",
+                            note("적용하려면 사유(reason)를 적어야 합니다.", "bad")
+                            + _composer_body(target, current, config=candidate), lede=str(target))
+            outcome = composer_client.apply_candidate(profile.composer_url, profile.composer_issuer_secret, candidate,
+                                                       base_revision=str(form.get("base_revision", "")))
+        else:
+            return page("구성 조립(Composer)",
+                        note(f"알 수 없는 동작: {action}", "bad") + _composer_body(target, current, config=candidate),
+                        lede=str(target))
+
+        kind = "ok" if outcome.ok else ("warn" if outcome.status in ("연결 안 함", "충돌") else "bad")
+        detail = outcome.detail or outcome.status
+        if outcome.status == "적용됨":
+            detail = f"적용됨 — 새 revision {outcome.value.get('revision')}"
+        elif outcome.status == "검증됨":
+            detail = f"검증 통과 — revision {outcome.value.get('revision')}"
+        elif outcome.status == "검증 실패":
+            detail = "검증 실패: " + "; ".join(outcome.errors) if outcome.errors else "검증 실패"
+        result_note = note(detail, kind)
+
+        # ★적용 성공 후에는 대상의 최신 상태(새 revision)를 다시 읽어 보여준다
+        refreshed = composer_client.read_current(profile.composer_url, profile.composer_issuer_secret) \
+            if outcome.status == "적용됨" else current
+        return page("구성 조립(Composer)", result_note + _composer_body(target, refreshed, config=candidate),
+                    lede=str(target))
 
     return app
 

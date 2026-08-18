@@ -49,7 +49,7 @@ class CompositionError(RuntimeError):
 # that the other UI is available.
 _MODULE_IMPLEMENTATIONS = frozenset({
     "vector_rag", "graph_store", "a2a_executor", "mcp", "voc",
-    "ops_ui", "composer_ui",
+    "ops_ui",
 })
 
 
@@ -170,7 +170,7 @@ def build_controller(*, registry: TeamRegistry | None = None,
     """Assemble the application Controller and inject every concrete adapter."""
     config = load_project_config(config_path)
     _validate_modules(config)
-    llm = llm if llm is not None else OpenAITeamLLM()
+    llm = llm if llm is not None else OpenAITeamLLM(connection_factory=get_connection)
     registry = registry or build_registry(tools=tools, llm=llm, config=config)
     team_executor = team_executor or build_team_executor(registry, config=config)
     verification_policy, fact_queries = build_verification(config=config)
