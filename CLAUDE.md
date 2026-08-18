@@ -52,7 +52,27 @@ CS 제작 플랫폼의 **개발 콘솔**을 제품에서 떼어낸 별도 프로
 | DB (접속 정보를 줄 때) | 실행 이력 |
 | introspection 응답 (대상이 떠 있을 때) | 조립 실측 |
 
-### 0.3 없는 것을 지어내지 않는다
+★**예외 — 대상이 내놓는 인증된 Composer 쓰기 API는 호출할 수 있다.**
+`/composer/current`·`/composer/validate`·`/composer/apply`(계약: 대상 저장소
+`docs/handoff/13_Composer_쓰기채널_계약.md` v2)는 모듈·Team·Port 구성을 바꾸는
+유일한 경로이고, 릴리스 후에도 항상 살아있다. 이 예외는 "대상 파일을 직접 쓰지
+않는다"는 원칙을 깨지 않는다 — 쓰기 자체는 대상 프로세스 안에서, 대상의 Core
+계약으로 검증한 뒤 실행되고, 여기서는 그 API를 호출할 뿐이다. 이 예외로도 대상
+파일·DB·Python 모듈을 직접 읽거나 수정하거나 import하지 않는다.
+구현: [`console/composer.py`](console/composer.py) — raw dict만 주고받는다
+(`ProjectConfig` import 없음, 아키텍처 테스트로 강제).
+
+인증은 계약 v2 — VPN/SSH 터널 + 실행 시 발급하는 단명 JWT, `composer:read`/
+`composer:validate`/`composer:write` scope 분리, 대상의
+`var/audit/composer_events.jsonl` append-only audit.
+★**실측(2026-08-18): `final_project_sample`은 이제 v2다** — 다른 세션이 그 사이
+`app/presentation/composer_auth.py`(`POST /auth/token`, HMAC JWT, TTL 15~60분)를
+구현했다(`docs/reports/2026-08-18_P11_Composer_쓰기채널.md` 후반부 실측 기록).
+`CONSOLE_COMPOSER_ISSUER_SECRET`에는 `/auth/token` 발급자 전용 비밀키를 넣는다.
+`console/composer.py`가 동작별 최소 scope로 매번 단명 JWT를 발급받아 실제 요청에 사용한다.
+대상이 아직 v1(고정 토큰)뿐인 다른 프로젝트는 이 v2 어댑터의 지원 범위가 아니다.
+
+### 0.4 없는 것을 지어내지 않는다
 
 못 읽었으면 **`missing`·`모름`** 이라고 적는다. `0` 으로 채우지 않는다 —
 화면의 `0` 은 "정상" 으로 읽힌다.
@@ -66,7 +86,7 @@ CS 제작 플랫폼의 **개발 콘솔**을 제품에서 떼어낸 별도 프로
 - 대상이 내는 introspection 에는 `contract_version` 이 있다.
   **모르는 버전이면 모른다고 말한다** — 추측해서 그리지 않는다
 - 대상의 파일 형식이 바뀌면 **여기서 먼저 깨져야 한다.** 조용히 빈 화면이 되면 안 된다
-- 대상을 **쓰지 않는다.** 이 프로그램은 read-only 다
+- 대상을 **직접** 쓰지 않는다. 이 프로그램은 read-only 다 — 단, §0.3의 인증된 Composer API 호출은 예외다
 
 ## 2. 코드 원칙
 
