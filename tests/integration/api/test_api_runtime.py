@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.core.settings as settings_module
+from app.infrastructure.db.repository import get_case
 from app.infrastructure.db.session import get_connection
 from app.presentation import security
 from app.presentation.api.app import create_app
@@ -38,6 +39,14 @@ def api_fixture(monkeypatch):
                 with conn.cursor() as cur:
                     cur.execute("DELETE FROM action_approvals WHERE action_id IN (SELECT action_id FROM action_requests WHERE tenant_id=%s)", (tenant,))
                     cur.execute("DELETE FROM action_requests WHERE tenant_id=%s", (tenant,))
+                    # ★버그사냥 2026-08-17 (라운드 08) — 이 fixture 는 지금까지
+                    #   controller 가 사실상 None 이라 agent_runs 가 생긴 적이
+                    #   없었다(레거시 test seam). resume() 을 실제로 태우는
+                    #   테스트를 추가하면서 처음 걸렸다: agent_runs 를 안 지우면
+                    #   customer_cases 삭제가 FK 위반으로 실패한다.
+                    cur.execute("DELETE FROM team_tasks WHERE run_id IN (SELECT run_id FROM agent_runs WHERE tenant_id=%s)", (tenant,))
+                    cur.execute("DELETE FROM llm_calls WHERE run_id IN (SELECT run_id FROM agent_runs WHERE tenant_id=%s)", (tenant,))
+                    cur.execute("DELETE FROM agent_runs WHERE tenant_id=%s", (tenant,))
                     cur.execute("DELETE FROM case_events WHERE tenant_id=%s", (tenant,))
                     cur.execute("DELETE FROM outbox WHERE tenant_id=%s", (tenant,))
                     cur.execute("DELETE FROM incidents WHERE tenant_id=%s", (tenant,))
@@ -218,15 +227,99 @@ def test_create_escalates_when_injected_classifier_fails(api_fixture):
         assert cur.fetchall() == [("created", None), ("classification_failed", "classification_failed")]
 
 
-def test_state_conflict_is_rendered_as_409(api_fixture):
-    case_id = create_case(api_fixture, "conflict")
-    response = api_fixture["client"].post(
+def _put_case_in_waiting_input(api_fixture, case_id: UUID) -> str:
+    """★버그사냥 2026-08-17 (라운드 04·06·08) — 이 REST 계층 테스트를 위해
+    실제 발급 토큰을 가진 waiting_input Case 를 직접 만든다. `api_fixture` 는
+    테스트 전용 classifier 를 주입해 `create_app()` 이 실제 controller 를
+    라우팅에 안 쓴다("legacy test seam" — controller 를 명시로 안 넘기고
+    classifier 모듈도 app.composition 이 아니면 runtime_controller=None) —
+    그래서 create_case() 뒤 Case 는 'routing' 에 멈춰 있다. ROUTED 까지
+    직접 밀어준 뒤, 지금 프로덕션 Team(billing/technical) 은 WAIT_FOR_INPUT
+    을 내지 않으므로 raw 로 같은 경로(Controller._event_for_result 의
+    MISSING_INPUT 분기)를 재현한다."""
+    from app.application.case_service import CaseService
+    from app.core.transition import transition_case
+    from app.domain.events import EventType
+
+    service = CaseService()
+    token = service.new_resume_token()
+    metadata = service.resume_metadata(token, "customer_input")
+    with get_connection() as conn:
+        with conn.transaction():
+            case = get_case(conn, tenant_id=api_fixture["tenant"], case_id=case_id)
+            transition_case(conn, tenant_id=api_fixture["tenant"], case_id=case_id, expected_version=case["version"],
+                            event_type=EventType.ROUTED,
+                            payload={"owner_team_id": "billing_subscription", "capability": "billing.investigate"},
+                            actor_type="test")
+            transition_case(conn, tenant_id=api_fixture["tenant"], case_id=case_id, expected_version=case["version"] + 1,
+                            event_type=EventType.MISSING_INPUT,
+                            payload={"required_input_schema": {"type": "object"}, "state_patch": metadata},
+                            actor_type="test")
+    return token
+
+
+def _client_with_resume_capable_controller(api_fixture) -> TestClient:
+    """★api_fixture 의 기본 앱은 controller=None("legacy test seam" —
+    controller 를 명시로 안 넘기고 classifier 모듈도 app.composition 이
+    아니면 runtime_controller=None) 이라 /messages 가 500 misconfigured 를
+    낸다. resume() 을 실제로 태우려면 controller 를 명시적으로 주입해야
+    한다 — 프로덕션과 같은 실제 Controller 를 쓰되, registry 만 이 테스트의
+    owner_team_id 와 맞는 최소 fake Team 하나로 채운다."""
+    from app.application.controller import Controller
+    from app.core.contracts import Evidence, NextAction, TeamManifest, TeamResult
+    from app.core.registry import TeamRegistry
+    from datetime import UTC, datetime
+
+    class ResumableTeam:
+        manifest = TeamManifest(
+            team_id="billing_subscription", display_name="Test Billing", contract_name="a_cop.team_task",
+            supported_contract_versions=["1.0"], capabilities=["billing.investigate"],
+            accepted_case_types=["billing"], required_context=["case_state", "policy", "db_facts", "history"],
+            allowed_tools=[], knowledge_scope=["billing"], implementation_revision="test",
+        )
+
+        async def execute(self, task):
+            evidence = [Evidence(evidence_id="rest:resume", source_type="db", source_id="fake",
+                                 claim="deterministic fixture", value={"ok": True}, confidence=1,
+                                 observed_at=datetime.now(UTC))]
+            return TeamResult(task_id=task.task_id, run_id=task.run_id, team_id=task.team_id, outcome="completed",
+                              confidence=1, answer="resolved after resume", evidence=evidence, next_action=NextAction.RESPOND)
+
+    controller = Controller(TeamRegistry([ResumableTeam()]), policy_search=lambda *_: [])
+    app = create_app(controller=controller, classifier=lambda _m: {"intent": "billing", "issue_code": "payment_failed", "sentiment": "negative"})
+    return TestClient(app)
+
+
+def test_messages_endpoint_requires_the_real_resume_token(api_fixture):
+    """★버그사냥 2026-08-17 (라운드 04·06·08) — REST 계층에서 진짜 토큰
+    검증을 확인한다. 가짜 토큰은 401, 진짜 토큰은 재개·완료까지 이어진다."""
+    case_id = create_case(api_fixture, "resume-wrong-token")
+    real_token = _put_case_in_waiting_input(api_fixture, case_id)
+    client = _client_with_resume_capable_controller(api_fixture)
+
+    wrong = client.post(
         f"/v1/cases/{case_id}/messages",
         headers={"Authorization": api_fixture["token"]("case:write")},
-        json={"request_id": "conflict-message", "message": "follow up", "expected_version": 0},
+        json={"request_id": "resume-attempt", "message": "follow up", "token": "not-the-real-token"},
     )
-    assert response.status_code == 409
-    assert response.json()["error"]["code"] == "state_conflict"
+    assert wrong.status_code == 401
+    assert wrong.json()["error"]["code"] == "invalid_resume_token"
+    with get_connection() as conn:
+        assert get_case(conn, tenant_id=api_fixture["tenant"], case_id=case_id)["status"] == "escalated"
+
+
+def test_messages_endpoint_accepts_the_real_resume_token(api_fixture):
+    case_id = create_case(api_fixture, "resume-real-token")
+    real_token = _put_case_in_waiting_input(api_fixture, case_id)
+    client = _client_with_resume_capable_controller(api_fixture)
+
+    response = client.post(
+        f"/v1/cases/{case_id}/messages",
+        headers={"Authorization": api_fixture["token"]("case:write")},
+        json={"request_id": "resume-attempt", "message": "follow up", "token": real_token},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "resolved"
 
 
 @pytest.mark.parametrize("tool", [_mcp_cases, _mcp_detail, _mcp_open])

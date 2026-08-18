@@ -8,7 +8,7 @@ from typing import Any, Callable
 from uuid import UUID, uuid4
 
 from app.core.context import ContextBroker, ContextInputs
-from app.core.contracts import CaseStatus, NextAction, TeamTask, TeamResult, RESUME_NODE_FOR_WAIT, StateConflict
+from app.core.contracts import CaseStatus, InvalidTransition, NextAction, TeamTask, TeamResult, RESUME_NODE_FOR_WAIT, StateConflict
 from app.core.idempotency import idempotency_key, request_id_for_case
 from app.core.registry import TeamRegistry, RegistryError
 from app.core.settings import get_guardrails
@@ -265,9 +265,26 @@ class Controller:
                 if self.case_service.validate_resume(case, token, event_id=event_id) == "idempotent":
                     return {"case_id": str(case_id), "status": case["status"], "version": case["version"], "idempotent": True}
             except ResumeTokenError as exc:
-                with conn.transaction():
-                    transition_case(conn, tenant_id=tenant_id, case_id=case_id, expected_version=case["version"], event_type=EventType.WAIT_EXPIRED,
-                                    payload={"wait_reason": (case.get("state_json") or {}).get("wait_reason", "customer_input")}, actor_type="controller", actor_id=actor_id)
+                # ★버그사냥 2026-08-17 (라운드 08) — 여기서 raise 하면 그 예외가
+                #   바깥 `with self.connection_factory() as conn:` 밖으로 나가면서
+                #   커넥션 컨텍스트가 **롤백**한다. 안쪽 `conn.transaction()` 이
+                #   커밋한 것처럼 보이지만 실은 같은 트랜잭션의 savepoint 라
+                #   같이 롤백된다 — WAIT_EXPIRED 로 escalate 했다는 게 조용히
+                #   사라졌다(직접 재현 확인: 실패한 resume 뒤에도 Case 가
+                #   `waiting_input` 에 그대로 남아 있었다). 명시적으로 커밋한다.
+                #
+                #   ★또 하나 — 이미 완료(resolved 등)된 Case 에 뒤늦게(만료·재사용)
+                #   토큰이 들어오면 WAITING_* 상태가 아니라서 WAIT_EXPIRED 자체가
+                #   전이표에 없는 조합이라 InvalidTransition 이 난다(직접 재현
+                #   확인). 그런 경우엔 escalate 를 시도하지 않는다 — 이미 끝난
+                #   일을 다시 실패로 덮어씌우지 않는다. 원래 에러(토큰 문제)만 낸다.
+                try:
+                    with conn.transaction():
+                        transition_case(conn, tenant_id=tenant_id, case_id=case_id, expected_version=case["version"], event_type=EventType.WAIT_EXPIRED,
+                                        payload={"wait_reason": (case.get("state_json") or {}).get("wait_reason", "customer_input")}, actor_type="controller", actor_id=actor_id)
+                    conn.commit()
+                except InvalidTransition:
+                    pass
                 raise ControllerError(str(exc)) from exc
             with conn.transaction():
                 wait_reason = (case.get("state_json") or {}).get("wait_reason", "customer_input")

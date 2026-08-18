@@ -22,6 +22,7 @@ from uuid import uuid4
 
 import pytest
 
+from app.infrastructure.db.repository import create_case
 from app.infrastructure.db.session import get_connection
 from app.infrastructure.messaging.outbox import OutboxBrokerAdapter
 from app.infrastructure.messaging.worker import OutboxWorker
@@ -80,6 +81,41 @@ def test_scoped_worker_ignores_other_tenants_even_when_theirs_is_older(db):  # n
             assert [r[0] for r in cur.fetchall()] == ["pending"]
     finally:
         _remove_foreign()
+
+
+def test_dedupe_key_collision_across_tenants_does_not_drop_a_message(db):  # noqa: F811
+    """★버그사냥 2026-08-17 (라운드 01, 처리는 라운드 08) — UNIQUE(topic, dedupe_key)
+    가 tenant_id 를 안 가르던 시절엔, 서로 다른 tenant 가 같은 (topic, dedupe_key)
+    를 쓰면 뒤의 것이 ON CONFLICT DO NOTHING 으로 조용히 버려질 수 있었다.
+    migrations/005 로 tenant_id 를 제약에 더했다 - 이제 같은 값이어도 서로
+    다른 tenant 면 둘 다 살아남는다."""
+    conn, tenant_a = db
+    tenant_b = "zz_dedupe_collision_" + uuid4().hex
+    case_a, _ = seed_case(conn, tenant_a)
+    with conn.transaction(), conn.cursor() as cur:
+        cur.execute("INSERT INTO tenants (tenant_id,name) VALUES (%s,'dedupe collision test')", (tenant_b,))
+        cur.execute("INSERT INTO customers (tenant_id,external_id) VALUES (%s,%s) RETURNING customer_id",
+                    (tenant_b, uuid4().hex))
+        customer_b = cur.fetchone()[0]
+    case_b = create_case(conn, tenant_id=tenant_b, customer_id=customer_b, subject="dedupe collision test")
+
+    same_key = "collision-" + uuid4().hex  # ★두 tenant 가 똑같은 (topic, dedupe_key) 를 쓴다
+    adapter = OutboxBrokerAdapter(lambda: get_connection())
+    try:
+        asyncio.run(adapter.publish("test.collision", {"tenant_id": tenant_a, "case_id": str(case_a)}, same_key))
+        asyncio.run(adapter.publish("test.collision", {"tenant_id": tenant_b, "case_id": str(case_b)}, same_key))
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT tenant_id FROM outbox WHERE topic='test.collision' AND dedupe_key=%s ORDER BY tenant_id",
+                        (same_key,))
+            rows = sorted(r[0] for r in cur.fetchall())
+        assert rows == sorted([tenant_a, tenant_b]), "tenant 하나의 메시지가 조용히 버려졌다"
+    finally:
+        with conn.transaction(), conn.cursor() as cur:
+            cur.execute("DELETE FROM outbox WHERE tenant_id=%s", (tenant_b,))
+            cur.execute("DELETE FROM customer_cases WHERE tenant_id=%s", (tenant_b,))
+            cur.execute("DELETE FROM customers WHERE tenant_id=%s", (tenant_b,))
+            cur.execute("DELETE FROM tenants WHERE tenant_id=%s", (tenant_b,))
 
 
 def test_publish_rejects_payload_tenant_that_does_not_own_the_case(db):  # noqa: F811

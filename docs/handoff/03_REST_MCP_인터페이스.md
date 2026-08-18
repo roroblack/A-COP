@@ -86,9 +86,23 @@
 
 ### 1-4. `POST /v1/cases/{case_id}/messages`
 
-- 용도: 고객 추가 정보 제출 → `waiting_input` → `resuming`
-- ★resume token 은 **hash 만 저장**. 24h TTL, **일회성**, 동일 `event_id` 재처리 idempotent.
-- TTL 만료 요청은 자동 진행이 아니라 **`escalated` + 운영자 알림**.
+요청: `{"request_id":"req_01","message":"환불 계좌는 국민은행입니다","token":"<발급받은 resume token>"}`
+
+- 용도: 고객 추가 정보 제출 → `waiting_input` → 검증 통과 시 재실행까지 한 번에 끝난다
+- ★**버그사냥 2026-08-17 (라운드 04·06·08) — `token` 필드는 실제로 검증한다.**
+  이전엔 `message` 원문을 해시해 `resume_token_hash` 라고 이름만 붙였을 뿐, Case 가
+  `waiting_input` 이 될 때 실제 발급된 토큰(`resume_token`, 원래 요청의 API 응답
+  또는 별도 채널로 전달됨)과 대조하지 않았다 — `case:write` scope 만 있으면
+  진짜 토큰 없이도 대기 Case 를 재개시킬 수 있었다. 지금은 `Controller.resume()`
+  이 `token` 을 hash·만료·일회성 전부 검증한 뒤에만 진행한다
+  (`docs/reports/debugs/2026-08-17_버그사냥_08_미해결3건_처리.md`).
+- resume token 은 **hash 만 저장**. 24h TTL, **일회성**, 동일 `request_id`
+  (내부적으로 `event_id`) 재처리는 idempotent — 같은 응답을 그대로 돌려주고
+  다시 실행하지 않는다.
+- 틀린 토큰·만료된 토큰·이미 쓴 토큰은 **`401 invalid_resume_token`** 이고,
+  그 Case 는 `escalated` 로 전환된다(사람이 확인해야 한다 — 자동 재시도 없음).
+- `expected_version` 필드는 더 이상 없다 — `Controller.resume()` 이 매번 최신
+  버전을 스스로 다시 읽어 처리하므로 클라이언트가 버전을 추측해 넘길 필요가 없다.
 
 ### 1-5. `POST /v1/cases/{case_id}/actions/{action_id}/approve`
 
