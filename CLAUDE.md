@@ -204,7 +204,7 @@ python -m eval.stats.mcnemar --input eval/reports/pairs.jsonl
 ## 7. 문서
 
 - 프로세스 규칙: `RULE.md` (**작업 전 필독**)
-- 기준선 계획: `../A-COP_구현계획서_v6.md` (읽기 전용)
+- 기준선 계획: `../plan/A-COP_구현계획서_v8.md` (읽기 전용, v6은 `../plan/archive/`의 보존본)
 - 실행계획: `docs/plans/`
 - 계약: `docs/handoff/`
 - 리포트: `docs/reports/` · 결함: `docs/reports/debugs/`
