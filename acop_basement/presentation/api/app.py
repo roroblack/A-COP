@@ -17,11 +17,17 @@ from acop_basement.presentation.ui import mount_ui
 
 
 def create_app(controller=None, classifier=None, composer_write_router=None, composer_auth_router=None) -> FastAPI:
-    from app import composition  # 지연 import — product 쪽 조립 루트, basement 모듈 로드 시점엔 필요 없다
     injected_controller = controller is not None
+    # ★"지연 import"는 함수 안에 두는 것만으로는 안 된다 — controller·classifier를
+    #   둘 다 주입받은 호출(예: cs 가 자기 도메인 조립을 직접 넘기는 경우)까지
+    #   무조건 `app.composition`을 요구하면 acop_basement 단독 설치 계약이
+    #   깨진다(2026-08-19 버그헌팅 라운드9에서 재현 확인). 실제로 필요할 때만
+    #   import 한다.
     if classifier is None:
+        from app import composition
         classifier = composition.build_classifier()
     if controller is None:
+        from app import composition
         controller = composition.build_controller()
     app = FastAPI(title="A-COP S-API")
     # A classifier-only override is the legacy test seam.  Explicit controller
