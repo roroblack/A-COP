@@ -5,8 +5,8 @@
 **Billing/Subscription** 과 **Technical Entitlement** 업무를 **Agent Team** 이 처리하는
 AI 연동형 고객운영 플랫폼이다. 개인 AI(ChatGPT·Claude·Gemini)가 REST/MCP 로 접속한다.
 
-기준선 문서: `../plan/A-COP_구현계획서_v8.md` (**읽기 전용 · 수정 금지**)
-v5·v6·v7 등 이전 버전은 `../plan/archive/`의 보존본이며 수정하지 않는다. ★**DoD 는 1 → 29 항목이다**(v8 §27).
+기준선 문서: `../program/plan/A-COP_구현계획서_v8.md` (**읽기 전용 · 수정 금지**)
+v5·v6·v7 등 이전 버전은 `../program/plan/archive/`의 보존본이며 수정하지 않는다. ★**DoD 는 1 → 29 항목이다**(v8 §27).
 
 ## 응답 언어
 
@@ -142,20 +142,20 @@ eval/reports/  run_id + seed + model + prompt snapshot 을 파일명·메타에 
 | 운영 UI | **완료** — `/ui/{cases,approvals,voc,trace}` 4개 화면 200 확인. VOC 데이터 없을 때 "없음"을 정직하게 표시 |
 | 평가 하네스 | **완료** — golden **60** / holdout **20**(보존), runner 3종, judge rubric, bootstrap/McNemar |
 | A2A / Graph (신계획서) | **완료** — `TeamExecutorPort`·`LocalTeamExecutor`·`A2ATeamExecutor`·Agent Card·`GraphStorePort`·`SqlGraphAdapter`(재귀 CTE) **7/7**. Controller 가 Port 경유(`LOCAL`↔`A2A` 교체점) |
-| 모듈화 · Composer GUI | **완료** — `config/project.yaml` 이 조립의 단일 입력. 모듈 7 / 컴포넌트 9 / Port 6 (`docs/handoff/08`). `/ui/composer` 는 `composer_ui` 토글로 404↔200. ★GUI 자신도 끌 수 있다 |
+| 모듈화 | **완료** — `config/project.yaml` 이 조립의 단일 입력. 모듈 6 / 컴포넌트 9 / Port 6 (`docs/handoff/08`). ★**`/ui/composer`(HTML GUI)는 폐기됨(2026-08-18)** — 인증 없이 고객 접근 가능한 이 앱에 물려 있던 것을 실측으로 확인, 제거했다. 같은 기능은 `final_project_ui`가 인증된 `/composer/*` API로 제공한다 |
 | 평가 실행 | **완료** — 3군 × 180행 = **540 관측.** A 0/180 · B 6/180 · **Proposed 40/180**, grounding 0.00 / 2.22 / **3.98**. ★결함 5건을 벗겨낸 뒤의 수치다(DoD-15) |
 | ablation | **완료** — 5종. ★RAG·Context Broker 제거 시 grounding **3.98→0.00**, 총점 13→5, degraded 60/60. 나머지 3종은 **이 지표로 차이 미관측** — "효과 없음"이 아니라 **지표가 재지 않는 것**이다(DoD-15) |
 | judge 검증 | **부분** — 540행 전량에서 **근거 없이 grounding 점수를 받은 행 0건**(`eval/check_judge.py`, 0 아니면 exit 1). ★**사람 라벨 20건은 여전히 미측정** — 기계 검사는 agreement 를 대신하지 못한다 |
 | 발표 시나리오 seed | **완료** — `scripts/seed_demo_cases.py`. case_id 를 `uuid5` 로 고정해 재실행해도 URL 이 안 죽는다. 시나리오1 은 `waiting_approval` 에서 멈춰 둔다(발표에서 사람이 누른다) |
 | 운영 UI 품질 | **완료** — 디자인 시스템(`app/presentation/ui/theme.py`), 상태별 의미색·다크모드·375px 가로밀림 0. ★JSON 덤프를 표·분포로. `unknown` 은 가장 센 위험색(돈이 나갔는지 모르는 상태) |
-| Composer GUI | **완료** — 모듈·Port·Team 추가/제거 · **컴포넌트 9 는 잠김**. 실행 순서 구조도가 **현재 선언을 따라간다**. 계약 `docs/handoff/09` |
+| ~~Composer GUI~~ | **폐기됨(2026-08-18)** — 모듈·Port·Team 편집 UI 자체는 `final_project_ui`로 이전됐다. 이 저장소엔 인증된 API만 남는다. 옛 계약 `docs/handoff/09`(폐기 표시됨) |
 | ★**개발 콘솔 분리** | **완료** (2026-08-17) — 조립 조회·DoD·평가 대시보드(`/ui/`·`/ui/quality`·`/ui/experiments`·`/ui/runs`·`/ui/admin`, `app/console/**`)를 **전부 지웠다.** 별도 프로그램 `final_project_ui` 가 read-only 로 그 역할을 한다. basement 에 남긴 건 `GET /introspection`(scope `ops:introspect`) 하나뿐 — 조립 상태를 JSON 으로 낸다. 계약 `docs/handoff/11`·`12` |
-| ★**Composer 쓰기 채널** | **완료** (2026-08-17) — `/ui/composer` HTML 폼은 `composer_ui` 토글로 릴리스 때 끈다. **그 다음엔 어떻게 쓰나** 라는 질문의 답: `POST /composer/validate`·`/composer/apply`(scope `composer:write`)를 **토글과 무관하게 항상 등록**해 뒀다. `composer_service.py` 가 검증·원자적 쓰기(`os.replace`)·`base_revision` 낙관적 동시성(불일치 시 `409 revision_conflict`)의 유일한 통로 — HTML 폼도 이제 이걸 부른다(예전엔 폼이 직접 파일 I/O 를 해서 고정 임시 파일명 충돌·revision 미확인 결함이 있었다). Codex 교차검증 `docs/reports/2026-08-17_S-COMPOSER-WRITE-CHANNEL_검토.md`, 계약 `docs/handoff/13` |
+| ★**Composer 쓰기 채널** | **완료** (2026-08-17) — `POST /composer/validate`·`/composer/apply`(scope `composer:write`)가 `composer_service.py`를 통해 검증·원자적 쓰기(`os.replace`)·`base_revision` 낙관적 동시성(불일치 시 `409 revision_conflict`)을 제공하는 **유일한** 쓰기 통로다. ★`/ui/composer` HTML 폼은 이후(2026-08-18) 인증 부재가 드러나 완전히 제거됐다 — 이제 이 API만 남는다. Codex 교차검증 `docs/reports/2026-08-17_S-COMPOSER-WRITE-CHANNEL_검토.md`, 계약 `docs/handoff/13` |
 | 개발 서버 | **완료** — `.claude/launch.json` 의 `acop-ui`(`--reload`). `/` → `/ops/cases` 307 |
 | 릴리스 체크리스트 | **완료** — `docs/release_checklist.md`. ★판정은 **RC 아님** |
 | ★**할루시네이션 방어** (v7 §9-E) | **완료** — 제안의 식별자·금액을 **DB 와 대조**해 실행 전 차단. 검증 2회(제안 시점 + 승인 직전). 거부 시 `escalated` + 실패필드·**hash** 감사. `app/core/verification.py`(순수) + `proposal_guard.py`(재조회) |
 | VOC Team | **완료** (v7 §0 변경 4) — `FeedbackAnalyticsTeam` 이 `run_daily_feedback()` 을 감싼다. `accepted_case_types=[]` 로 Controller 라우팅 격리. `scripts/run_daily_feedback.py` 는 Team 을 거치되 CLI 출력 계약은 그대로(DoD-10) |
-| ★**Composer 쓰기채널 v2** (`docs/handoff/13`) | **완료** (2026-08-18, Codex) — VPN/SSH 전제 + 단명 HMAC JWT(`/auth/token`, `app/presentation/composer_auth.py`), scope 3분화(`composer:read`/`validate`/`write`), `apply` 성공 시 `var/audit/composer_events.jsonl` append(actor·revision·changed_fields·reason), `implementation_ref` 는 registry ID(`KNOWN_IMPLEMENTATION_REFS`) 대조로만 HTTP 경로에서 통과(로컬 `/ui/composer` 는 기존 canonical loader 그대로). 설계·구현 결함은 없었으나, 계약 문서(handoff/13)가 약속한 **JWT 만료/위조 테스트가 실제로는 없어서** 추가했다(`test_expired_token_is_rejected`/`test_forged_signature_is_rejected`) |
+| ★**Composer 쓰기채널 v2** (`docs/handoff/13`) | **완료** (2026-08-18, Codex) — VPN/SSH 전제 + 단명 HMAC JWT(`/auth/token`, `app/presentation/composer_auth.py`), scope 3분화(`composer:read`/`validate`/`write`), `apply` 성공 시 `var/audit/composer_events.jsonl` append(actor·revision·changed_fields·reason), `implementation_ref` 는 registry ID(`KNOWN_IMPLEMENTATION_REFS`) 대조로만 HTTP 경로에서 통과. 설계·구현 결함은 없었으나, 계약 문서(handoff/13)가 약속한 **JWT 만료/위조 테스트가 실제로는 없어서** 추가했다(`test_expired_token_is_rejected`/`test_forged_signature_is_rejected`) |
 | ★**Response Generation & Review Team** (DoD-29, v8 §8-B) | **완료** (2026-08-18, Codex+Claude) — `app/modules/customer_ops/response_review.py`. **톤 결정(규칙, `decide_tone(sentiment)`) → GEN 초안 → 결정론 REV(금칙어·`refund_amount`/`policy_ref` 사실대조·PII, `app/core/verification.py` 재사용) → LLM 톤 REV → 완료**. 최대 3회 재시도, PII 는 즉시 escalate. `accepted_case_types=[]`(Controller 자동배선 범위 밖, `config/project.yaml` 미등록 — 사용자 판단 몫). ★검수 중 **실제 결함 2건 발견해 수정**: (1) 최초 구현이 REV 규칙(금칙어·PII)을 **생성된 응답이 아니라 고객 원문**(`task.input_text`=`case["subject"]`)에 먼저 적용해, 고객이 연락처만 적어도 응답 생성 시도 없이 escalate 시켰다 → preflight 제거. (2) v8 §8-B 흐름 1단계 "톤 결정(규칙)" 이 통째로 빠져 톤 REV 가 항상 `professional` 로 하드코딩돼 있었다 → `case["sentiment"]` 기반 규칙 추가. [디버그](docs/reports/debugs/2026-08-18_Composer_v2_ResponseReview_검수.md) |
 | **테스트 총계** | **368 passed · skipped 0 · failed 0** (2026-08-18, `python -m scripts.verify_dod` 재실행 확인 — Composer JWT 만료/위조 테스트 2건 + 톤 결정 규칙 테스트 2건 추가분 포함) |
 | ★**Docker · AWS 배포 모듈화** | **1단계 완료, 2단계는 초안(가정 명시, 확정 아님)** (둘 다 Codex, 2026-08-17). 1단계: `Dockerfile` + `docker/compose.yml`(conda `pgv` 경로 병행, 대체 아님) + 배포 계약 `docs/handoff/14`. 2단계: `infra/aws/`(Terraform 골격 — ECS Fargate·RDS+pgvector·Secrets Manager 가정) + `.github/workflows/deploy.yml`. ★이 기계엔 Docker·Terraform 둘 다 미설치라 build/run/validate/apply 전부 미검증 — 문법·정적 확인만 했다. AWS 컴퓨트·매니지드 서비스 교체·비밀 관리·CI/CD 는 **가정일 뿐 사용자 확답 전** — 확답 오면 `infra/aws/`만 갱신, 계획 `docs/plans/2026-08-17_Docker_AWS_배포_모듈화_계획.md` §2 |
@@ -212,7 +212,7 @@ python -m eval.stats.mcnemar --input eval/reports/pairs.jsonl
 ## 7. 문서
 
 - 프로세스 규칙: `RULE.md` (**작업 전 필독**)
-- 기준선 계획: `../plan/A-COP_구현계획서_v8.md` (읽기 전용, v6은 `../plan/archive/`의 보존본)
+- 기준선 계획: `../program/plan/A-COP_구현계획서_v8.md` (읽기 전용, v6은 `../program/plan/archive/`의 보존본)
 - 실행계획: `docs/plans/`
 - 계약: `docs/handoff/`
 - 리포트: `docs/reports/` · 결함: `docs/reports/debugs/`

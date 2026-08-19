@@ -1,8 +1,9 @@
 """`/composer/validate`, `/composer/apply` — 릴리스 이후에도 남는 쓰기 채널.
 
-★왜 필요한가 — `/ui/composer` HTML 폼은 `composer_ui` 모듈로 끌 수 있다(개발용).
-  이 두 엔드포인트는 그 토글과 무관하게 항상 등록된다 — HTML 페이지가 없어져도
-  `final_project_ui` 같은 외부 콘솔이 이 API 로 계속 모듈을 켜고 끈다.
+★왜 필요한가 — `/ui/composer` HTML 폼은 인증이 전혀 없어 삭제됐다(2026-08-18,
+  `docs/handoff/09_Composer_GUI_계약.md`). 이 두 엔드포인트는 그 HTML 페이지의
+  존재·토글과 무관하게 항상 등록된다 — `final_project_ui` 같은 외부 콘솔이
+  이 API 로 계속 모듈을 켜고 끈다.
   이게 지켜지는지가 이 파일의 핵심 검사 대상이다
   (`docs/reports/2026-08-17_S-COMPOSER-WRITE-CHANNEL_검토.md`).
 
@@ -20,8 +21,10 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from app.core.settings import get_settings
-from app.presentation.api.app import create_app
+from acop_basement.core.settings import get_settings
+from acop_basement.presentation.api.app import create_app
+from acop_composer.api import router as composer_write_router
+from acop_composer.auth import router as composer_auth_router
 import jwt
 from datetime import datetime, timedelta, timezone
 
@@ -38,10 +41,10 @@ def _auth(scope: str = "composer:write") -> dict[str, str]:
     return {"Authorization": f"Bearer {_token(scope)}"}
 
 
-def _declaration(tmp_path: Path, *, composer_ui_enabled: bool = True) -> Path:
+def _declaration(tmp_path: Path, *, ops_ui_enabled: bool = True) -> Path:
     source = Path("config/project.yaml")
     data = yaml.safe_load(source.read_text(encoding="utf-8"))
-    data["modules"]["composer_ui"]["enabled"] = composer_ui_enabled
+    data["modules"]["ops_ui"]["enabled"] = ops_ui_enabled
     path = tmp_path / "project.yaml"
     path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
     return path
@@ -60,7 +63,9 @@ def config_dir():
 
 
 def _client(path: Path) -> TestClient:
-    app = create_app()
+    # ★acop_composer 는 acop_basement 와 별도 패키지다(2026-08-19 구조
+    #   확정) — "관리용 빌드"만 이렇게 명시적으로 라우터를 주입한다.
+    app = create_app(composer_write_router=composer_write_router, composer_auth_router=composer_auth_router)
     # ★HTML 라우터(`app/presentation/ui/composer.py`)와 같은 관례 —
     #   실제 config/project.yaml 을 건드리지 않고 임시 선언으로 검사한다.
     app.state.project_config_path = path
@@ -115,33 +120,37 @@ def test_forged_signature_is_rejected(config_dir):
     assert response.status_code == 401
 
 
-def test_write_channel_survives_composer_ui_being_disabled(config_dir):
-    """★핵심 — HTML 폼(`composer_ui`)이 꺼져도 이 API 는 살아 있어야 한다.
+def test_write_channel_survives_every_html_ui_being_disabled(config_dir):
+    """★핵심 — HTML 화면이 전부 꺼져도(`/ui/composer`는 아예 없고, 주입한 선언은
+    `ops_ui`도 off) 이 API 는 살아 있어야 한다. `final_project_ui`는 이 JSON API 로만
+    모듈을 켜고 끈다 — HTML 화면의 존재 여부와 무관해야 이 채널을 만든 이유가 선다.
 
-    릴리스 때 `/ui/composer` 페이지를 떼어내도(모듈 토글 off), 외부 콘솔이
-    여전히 이 JSON API 로 모듈을 켜고 꺼야 한다. 이게 이 채널을 만든 이유다.
+    ★`/ops/cases` 는 여기서 확인하지 않는다 — `create_app()` 은 호출 시점의 기본
+    선언으로 라우트를 미리 구성하고, `project_config_path` 주입은 그 이후라 반영되지
+    않는다(이 파일의 `_client` 패턴 자체의 특성). `/ui/composer`는 애초에 라우터
+    자체가 없으므로 이 제약과 무관하게 항상 404 다.
     """
-    path = _declaration(config_dir, composer_ui_enabled=False)
+    path = _declaration(config_dir, ops_ui_enabled=False)
     client = _client(path)
 
-    # HTML 폼은 죽어 있다 (사실 확인 — 이 테스트의 전제)
+    # HTML 폼(/ui/composer)은 아예 없다 (사실 확인 — 이 테스트의 전제)
     assert client.get("/ui/composer").status_code == 404
 
     # 그런데도 JSON API 는 살아 있다
     current = client.get("/composer/current", headers=_auth("composer:read"))
     assert current.status_code == 200
     body = current.json()
-    assert body["config"]["modules"]["composer_ui"]["enabled"] is False
+    assert body["config"]["modules"]["ops_ui"]["enabled"] is False
 
-    body["config"]["modules"]["composer_ui"]["enabled"] = True
+    body["config"]["modules"]["ops_ui"]["enabled"] = True
     applied = client.post("/composer/apply", headers=_auth(), json={
-        "config": body["config"], "base_revision": body["revision"], "reason": "enable composer UI",
+        "config": body["config"], "base_revision": body["revision"], "reason": "re-enable ops UI",
     })
     assert applied.status_code == 200
     assert applied.json()["applied"] is True
 
     declaration = yaml.safe_load(path.read_text(encoding="utf-8"))
-    assert declaration["modules"]["composer_ui"]["enabled"] is True
+    assert declaration["modules"]["ops_ui"]["enabled"] is True
 
 
 def test_validate_does_not_write_the_file(config_dir):

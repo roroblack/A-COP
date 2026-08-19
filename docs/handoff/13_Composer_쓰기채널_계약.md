@@ -1,6 +1,6 @@
 # Composer 쓰기 채널 계약 v2
 
-`app.application.composer_service`(`read_current` / `validate_candidate` /
+`app.composer_staging.composer_service`(`read_current` / `validate_candidate` /
 `apply_candidate`)가 `config/project.yaml`(또는 주입된 대체 경로)을 검증·저장하는
 **유일한** 통로다. `GET /composer/current`, `POST /composer/validate`,
 `POST /composer/apply`가 이 서비스를 HTTP로 노출한다.
