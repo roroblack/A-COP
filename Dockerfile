@@ -10,4 +10,5 @@ COPY config/ ./config/
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.presentation.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Composer _WRITE_LOCK is process-local; keep one Uvicorn worker.
+CMD ["uvicorn", "app.presentation.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
