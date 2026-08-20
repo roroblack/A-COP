@@ -1,0 +1,9 @@
+{
+  "total_lines": 200000,
+  "malformed_removed": 0,
+  "rating3_removed": 0,
+  "empty_removed": 0,
+  "duplicate_removed": 92,
+  "written": 199908,
+  "arithmetic_check": true
+}

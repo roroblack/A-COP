@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://a-cop.local/schemas/courier_tracking/tracking_schema.json",
+  "title": "네이버 API 택배 배송 이력 조회 결과",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "courier",
+    "courier_code",
+    "tracking_number",
+    "status",
+    "item_name",
+    "estimate",
+    "level",
+    "complete",
+    "events",
+    "queried_at",
+    "error"
+  ],
+  "properties": {
+    "courier": {"type": "string", "minLength": 1},
+    "courier_code": {"type": "string"},
+    "tracking_number": {"type": "string", "minLength": 1},
+    "status": {
+      "type": "string",
+      "enum": ["in_transit", "complete", "no_history", "not_found", "error"]
+    },
+    "item_name": {"type": "string"},
+    "estimate": {"type": "string"},
+    "level": {"type": ["integer", "null"]},
+    "complete": {"type": "boolean"},
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "where", "timeString", "time", "level"],
+        "properties": {
+          "kind": {"type": "string"},
+          "where": {"type": "string"},
+          "timeString": {"type": "string"},
+          "time": {"type": ["integer", "null"]},
+          "level": {"type": ["integer", "null"]}
+        }
+      }
+    },
+    "queried_at": {"type": "string", "format": "date-time"},
+    "error": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "no_history",
+        "not_found",
+        "unsupported_courier",
+        "timeout",
+        "script_error",
+        "key_expired"
+      ]
+    }
+  }
+}

@@ -1,0 +1,557 @@
+[
+  {
+    "text": "택배사 선택",
+    "value": "택배사 선택",
+    "code": null
+  },
+  {
+    "text": "CJ대한통운",
+    "value": "CJ대한통운",
+    "code": "04"
+  },
+  {
+    "text": "우체국택배",
+    "value": "우체국택배",
+    "code": "01"
+  },
+  {
+    "text": "한진택배",
+    "value": "한진택배",
+    "code": "05"
+  },
+  {
+    "text": "롯데택배",
+    "value": "롯데택배",
+    "code": "08"
+  },
+  {
+    "text": "로젠택배",
+    "value": "로젠택배",
+    "code": "06"
+  },
+  {
+    "text": "홈픽",
+    "value": "홈픽",
+    "code": "54"
+  },
+  {
+    "text": "GS25편의점택배",
+    "value": "GS25편의점택배",
+    "code": "24"
+  },
+  {
+    "text": "CU 편의점택배",
+    "value": "CU 편의점택배",
+    "code": "46"
+  },
+  {
+    "text": "경동택배",
+    "value": "경동택배",
+    "code": "23"
+  },
+  {
+    "text": "대신택배",
+    "value": "대신택배",
+    "code": "22"
+  },
+  {
+    "text": "일양로지스",
+    "value": "일양로지스",
+    "code": "11"
+  },
+  {
+    "text": "합동택배",
+    "value": "합동택배",
+    "code": "32"
+  },
+  {
+    "text": "건영택배",
+    "value": "건영택배",
+    "code": "18"
+  },
+  {
+    "text": "천일택배",
+    "value": "천일택배",
+    "code": "17"
+  },
+  {
+    "text": "한진택배B2B",
+    "value": "한진택배B2B",
+    "code": "20"
+  },
+  {
+    "text": "한의사랑택배",
+    "value": "한의사랑택배",
+    "code": "16"
+  },
+  {
+    "text": "EMS",
+    "value": "EMS",
+    "code": "12"
+  },
+  {
+    "text": "TNT Express",
+    "value": "TNT Express",
+    "code": "25"
+  },
+  {
+    "text": "Fedex",
+    "value": "Fedex",
+    "code": "21"
+  },
+  {
+    "text": "LX판토스",
+    "value": "LX판토스",
+    "code": "37"
+  },
+  {
+    "text": "GSMNtoN",
+    "value": "GSMNtoN",
+    "code": "28"
+  },
+  {
+    "text": "ECMS Express",
+    "value": "ECMS Express",
+    "code": "38"
+  },
+  {
+    "text": "KGL네트웍스",
+    "value": "KGL네트웍스",
+    "code": "30"
+  },
+  {
+    "text": "우리택배(구호남택배)",
+    "value": "우리택배(구호남택배)",
+    "code": "45"
+  },
+  {
+    "text": "GSI Express",
+    "value": "GSI Express",
+    "code": "41"
+  },
+  {
+    "text": "SLX택배",
+    "value": "SLX택배",
+    "code": "44"
+  },
+  {
+    "text": "세방",
+    "value": "세방",
+    "code": "52"
+  },
+  {
+    "text": "YJS글로벌(영국)",
+    "value": "YJS글로벌(영국)",
+    "code": "60"
+  },
+  {
+    "text": "성원글로벌카고",
+    "value": "성원글로벌카고",
+    "code": "51"
+  },
+  {
+    "text": "홈이노베이션로지스",
+    "value": "홈이노베이션로지스",
+    "code": "62"
+  },
+  {
+    "text": "은하쉬핑",
+    "value": "은하쉬핑",
+    "code": "63"
+  },
+  {
+    "text": "Giant Network Group",
+    "value": "Giant Network Group",
+    "code": "66"
+  },
+  {
+    "text": "FLF퍼레버택배",
+    "value": "FLF퍼레버택배",
+    "code": "64"
+  },
+  {
+    "text": "농협택배",
+    "value": "농협택배",
+    "code": "53"
+  },
+  {
+    "text": "YJS글로벌(월드)",
+    "value": "YJS글로벌(월드)",
+    "code": "65"
+  },
+  {
+    "text": "대림통운",
+    "value": "대림통운",
+    "code": "69"
+  },
+  {
+    "text": "LOTOS CORPORATION",
+    "value": "LOTOS CORPORATION",
+    "code": "70"
+  },
+  {
+    "text": "애니트랙",
+    "value": "애니트랙",
+    "code": "43"
+  },
+  {
+    "text": "성훈물류",
+    "value": "성훈물류",
+    "code": "72"
+  },
+  {
+    "text": "IK물류",
+    "value": "IK물류",
+    "code": "71"
+  },
+  {
+    "text": "제니엘시스템",
+    "value": "제니엘시스템",
+    "code": "81"
+  },
+  {
+    "text": "스마트로지스",
+    "value": "스마트로지스",
+    "code": "84"
+  },
+  {
+    "text": "이투마스(ETOMARS)",
+    "value": "이투마스(ETOMARS)",
+    "code": "87"
+  },
+  {
+    "text": "풀앳홈",
+    "value": "풀앳홈",
+    "code": "85"
+  },
+  {
+    "text": "컬리넥스트마일",
+    "value": "컬리넥스트마일",
+    "code": "82"
+  },
+  {
+    "text": "두발히어로",
+    "value": "두발히어로",
+    "code": "89"
+  },
+  {
+    "text": "하이브시티",
+    "value": "하이브시티",
+    "code": "91"
+  },
+  {
+    "text": "카카오T당일배송",
+    "value": "카카오T당일배송",
+    "code": "94"
+  },
+  {
+    "text": "팬스타국제특송(PIEX)",
+    "value": "팬스타국제특송(PIEX)",
+    "code": "93"
+  },
+  {
+    "text": "지니고 당일배송",
+    "value": "지니고 당일배송",
+    "code": "92"
+  },
+  {
+    "text": "롯데글로벌로지스",
+    "value": "롯데글로벌로지스",
+    "code": "99"
+  },
+  {
+    "text": "나은물류",
+    "value": "나은물류",
+    "code": "100"
+  },
+  {
+    "text": "한샘서비스 택배",
+    "value": "한샘서비스 택배",
+    "code": "101"
+  },
+  {
+    "text": "SHIPNERGY",
+    "value": "SHIPNERGY",
+    "code": "102"
+  },
+  {
+    "text": "도도플렉스(dodoflex)",
+    "value": "도도플렉스(dodoflex)",
+    "code": "104"
+  },
+  {
+    "text": "브릿지로지스㈜",
+    "value": "브릿지로지스㈜",
+    "code": "105"
+  },
+  {
+    "text": "허브넷로지스틱스",
+    "value": "허브넷로지스틱스",
+    "code": "106"
+  },
+  {
+    "text": "MEXGLOBAL",
+    "value": "MEXGLOBAL",
+    "code": "108"
+  },
+  {
+    "text": "A.C.E EXPRESS INC",
+    "value": "A.C.E EXPRESS INC",
+    "code": "49"
+  },
+  {
+    "text": "썬더히어로",
+    "value": "썬더히어로",
+    "code": "113"
+  },
+  {
+    "text": "㈜캐나다쉬핑",
+    "value": "㈜캐나다쉬핑",
+    "code": "114"
+  },
+  {
+    "text": "부릉",
+    "value": "부릉",
+    "code": "110"
+  },
+  {
+    "text": "YUNDA EXPRESS",
+    "value": "YUNDA EXPRESS",
+    "code": "117"
+  },
+  {
+    "text": "발렉스 특수물류",
+    "value": "발렉스 특수물류",
+    "code": "120"
+  },
+  {
+    "text": "파테크해운항공",
+    "value": "파테크해운항공",
+    "code": "109"
+  },
+  {
+    "text": "핑퐁",
+    "value": "핑퐁",
+    "code": "119"
+  },
+  {
+    "text": "바바바(bababa)",
+    "value": "바바바(bababa)",
+    "code": "121"
+  },
+  {
+    "text": "BAIMA EXPRESS",
+    "value": "BAIMA EXPRESS",
+    "code": "122"
+  },
+  {
+    "text": "엔티엘피스",
+    "value": "엔티엘피스",
+    "code": "123"
+  },
+  {
+    "text": "LTL",
+    "value": "LTL",
+    "code": "124"
+  },
+  {
+    "text": "지케이글로벌",
+    "value": "지케이글로벌",
+    "code": "125"
+  },
+  {
+    "text": "판월드로지스틱㈜",
+    "value": "판월드로지스틱㈜",
+    "code": "128"
+  },
+  {
+    "text": "트랙스로지스",
+    "value": "트랙스로지스",
+    "code": "95"
+  },
+  {
+    "text": "로지스파트너",
+    "value": "로지스파트너",
+    "code": "130"
+  },
+  {
+    "text": "딜리래빗",
+    "value": "딜리래빗",
+    "code": "131"
+  },
+  {
+    "text": "지오피",
+    "value": "지오피",
+    "code": "132"
+  },
+  {
+    "text": "에이치케이홀딩스",
+    "value": "에이치케이홀딩스",
+    "code": "134"
+  },
+  {
+    "text": "HTNS",
+    "value": "HTNS",
+    "code": "135"
+  },
+  {
+    "text": "DHL",
+    "value": "DHL",
+    "code": "13"
+  },
+  {
+    "text": "라스트마일",
+    "value": "라스트마일",
+    "code": "138"
+  },
+  {
+    "text": "인터로지스",
+    "value": "인터로지스",
+    "code": "141"
+  },
+  {
+    "text": "탱고앤고",
+    "value": "탱고앤고",
+    "code": "142"
+  },
+  {
+    "text": "직구문",
+    "value": "직구문",
+    "code": "140"
+  },
+  {
+    "text": "투데이",
+    "value": "투데이",
+    "code": "143"
+  },
+  {
+    "text": "큐브플로우(CUBEFLOW)",
+    "value": "큐브플로우(CUBEFLOW)",
+    "code": "144"
+  },
+  {
+    "text": "국제로지스틱(KSE)",
+    "value": "국제로지스틱(KSE)",
+    "code": "146"
+  },
+  {
+    "text": "에스더쉬핑",
+    "value": "에스더쉬핑",
+    "code": "147"
+  },
+  {
+    "text": "ARGO",
+    "value": "ARGO",
+    "code": "148"
+  },
+  {
+    "text": "골드스넵스",
+    "value": "골드스넵스",
+    "code": "149"
+  },
+  {
+    "text": "GNG(자이언트)",
+    "value": "GNG(자이언트)",
+    "code": "151"
+  },
+  {
+    "text": "(주)엠티인터내셔널",
+    "value": "(주)엠티인터내셔널",
+    "code": "152"
+  },
+  {
+    "text": "(주)이지로지스틱",
+    "value": "(주)이지로지스틱",
+    "code": "153"
+  },
+  {
+    "text": "KT EXPRESS",
+    "value": "KT EXPRESS",
+    "code": "154"
+  },
+  {
+    "text": "hy",
+    "value": "hy",
+    "code": "155"
+  },
+  {
+    "text": "반얀로지스틱스",
+    "value": "반얀로지스틱스",
+    "code": "157"
+  },
+  {
+    "text": "프리즘코리아",
+    "value": "프리즘코리아",
+    "code": "160"
+  },
+  {
+    "text": "딜리박스",
+    "value": "딜리박스",
+    "code": "167"
+  },
+  {
+    "text": "자하",
+    "value": "자하",
+    "code": "168"
+  },
+  {
+    "text": "서림물류",
+    "value": "서림물류",
+    "code": "165"
+  },
+  {
+    "text": "위니온",
+    "value": "위니온",
+    "code": "163"
+  },
+  {
+    "text": "올인닷컴",
+    "value": "올인닷컴",
+    "code": "171"
+  },
+  {
+    "text": "물류대장(택배)",
+    "value": "물류대장(택배)",
+    "code": "173"
+  },
+  {
+    "text": "SLO(모든)",
+    "value": "SLO(모든)",
+    "code": "179"
+  },
+  {
+    "text": "지씨에스",
+    "value": "지씨에스",
+    "code": "182"
+  },
+  {
+    "text": "바로스",
+    "value": "바로스",
+    "code": "183"
+  },
+  {
+    "text": "레터스",
+    "value": "레터스",
+    "code": "186"
+  },
+  {
+    "text": "세븐일레븐 착한택배",
+    "value": "세븐일레븐 착한택배",
+    "code": "189"
+  },
+  {
+    "text": "물류대장(설치)",
+    "value": "물류대장(설치)",
+    "code": "190"
+  },
+  {
+    "text": "컨트롤로지스",
+    "value": "컨트롤로지스",
+    "code": "195"
+  },
+  {
+    "text": "BoxN(박스엔)",
+    "value": "BoxN(박스엔)",
+    "code": "191"
+  }
+]

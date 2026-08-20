@@ -1,0 +1,34 @@
+{
+  "source_files": {
+    "raw/olist_order_reviews(original).csv": {"rows_csv_parsed": 40950},
+    "raw/olist_order_reviews_(en-translated).csv": {"rows_csv_parsed": 41725}
+  },
+  "alignment_check": {
+    "method": "review_score 순차 비교, 최초 불일치 지점까지만 검증된 정렬로 인정",
+    "verified_aligned_pairs": 39474,
+    "first_mismatch_index": 39474,
+    "cause": "en-translated 쪽에 39474번째 행 부근에서 행이 하나 끼어들어 이후 밀림"
+  },
+  "sample": {
+    "seed": 20260821,
+    "n": 300,
+    "source": "verified_aligned_pairs 구간에서 무작위 추출 후 idx 순 정렬",
+    "output": "processed/sample.jsonl"
+  },
+  "runs": {
+    "pt_to_en": {
+      "status": "완료",
+      "models": 15,
+      "quantization": "GGUF Q4_K_M (대부분 mradermacher 양자화, HY-MT1.5는 tencent 공식 GGUF)",
+      "metric": "sacrebleu corpus BLEU, chrF2",
+      "output": "processed/results/*.jsonl, processed/leaderboard_result.json"
+    },
+    "pt_to_ko": {
+      "status": "완료 (2026-08-20)",
+      "models": 15,
+      "metric": "hangul_ratio (참조 번역이 없어 BLEU 불가 - 자동판정은 스크립트, 최종 결과는 샘플 수동검증 병행)",
+      "note": "hangul_ratio 자동판정은 Seed-X-PPO-7B를 OK로 오판함 - REPORT.md 수동검증 결과 참조",
+      "output": "processed/results_ko/*.jsonl, processed/leaderboard_result_ko.json"
+    }
+  }
+}
