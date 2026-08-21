@@ -437,23 +437,27 @@ test('루프가 끝나는 중에 들어온 시작 요청을 흘리지 않는다'
   assert.equal(data[JOB_KEY].status, 'completed');
 });
 
-test('목록 복귀 클릭이 다 실패하면 브라우저 뒤로가기로 돌아온다', async () => {
-  // 클릭이 새 탭을 열면 우리가 보는 탭은 상세 그대로다. 눈으로는 복귀한 것처럼 보인다.
-  let wentBack = false;
-  const { api } = fakeChrome(async (method) => {
-    if (method === 'pageFacts') return [{ result: { ...LIST, isList: wentBack } }];
-    if (method === 'performAction') return [{ result: { ok: true } }];
-    return undefined;
-  }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
-  api.tabs.goBack = async () => { wentBack = true; };
+test('목록 복귀는 주소로 바로 이동한다', () => {
+  // 뒤로가기는 우리가 방문한 상세 페이지들을 거꾸로 되짚어 엉뚱한 곳으로 간다.
+  // 배송조회 화면에는 돌아가기 버튼이 아예 없다. 클릭으로 풀 문제가 아니다.
+  return (async () => {
+    let onList = false;
+    let navigated = null;
+    let clicks = 0;
+    const { api } = fakeChrome(async (method) => {
+      if (method === 'pageFacts') return [{ result: { ...LIST, isList: onList } }];
+      if (method === 'performAction') { clicks += 1; return [{ result: { ok: true } }]; }
+      return undefined;
+    }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
+    api.tabs.update = async (_id, info) => { if (info.url) { navigated = info.url; onList = true; } return {}; };
 
-  const outcome = await controllerFor(api).executeAction(
-    runningJob({ phase: 'DETAIL', orders: [], warnings: [] }),
-    { type: 'click', target: 'backToList', index: 0, expect: 'backOnList' }
-  );
+    const job = runningJob({ phase: 'DETAIL', orders: [], warnings: [], listUrl: 'https://mc.coupang.com/ssr/desktop/order/list?page=2' });
+    const outcome = await controllerFor(api).executeAction(job, { type: 'click', target: 'backToList', index: 0, expect: 'backOnList' });
 
-  assert.equal(outcome.ok, true, outcome.reason);
-  assert.equal(wentBack, true, '뒤로가기를 쓰지 않았다');
+    assert.equal(outcome.ok, true, outcome.reason);
+    assert.equal(navigated, 'https://mc.coupang.com/ssr/desktop/order/list?page=2', '저장해 둔 목록 주소로 가야 한다');
+    assert.equal(clicks, 0, '복귀에 클릭을 쓰면 안 된다');
+  })();
 });
 
 test('탭이 사라지면 쿠팡 탭을 다시 찾아 이어간다', async () => {

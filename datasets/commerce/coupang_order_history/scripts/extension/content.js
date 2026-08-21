@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-23b';
+  const BUILD = '2026-08-23c';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
