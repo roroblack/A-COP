@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-23i';
+  const BUILD = '2026-08-23j';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -213,7 +213,7 @@
       if (state.listKey && listPositionKey(root) !== state.listKey) { state.restore = { yearDone: false, attempts: 0 }; state.phase = 'RESTORE'; return { state, action: { type: 'none' }, progress: progress(state, '목록 위치가 달라져 복원합니다.') }; }
     if (item.returning === 'fromDetail') item.returning = null; if (item.returning === 'fromTracking') { item.returning = null; state.cursor += 1; return { state, action: { type: 'none' }, progress: progress(state, '다음 주문을 확인합니다.') }; }
       if (!item.detailDone) { item.returning = 'detail'; return { state, action: { type: 'click', target: 'detail', index: item.cardIndex }, progress: progress(state, '주문 상세를 엽니다.') }; }
-      if (!item.trackingDone) { const order = state.orders[item.orderIndexes[0]]; if (!findOrderTrackingAction(root, order)) { for (const index of item.orderIndexes) { state.orders[index].Warnings = [...(state.orders[index].Warnings || []), '배송 조회 버튼이 없는 주문입니다(취소/환불 등).']; state.orders[index]._TrackingOutcome = 'buttonMissing'; } item.trackingDone = true; state.cursor += 1; return { state, action: { type: 'none' }, progress: progress(state, '배송 조회가 없는 주문을 건너뜁니다.') }; } item.returning = 'tracking'; return { state, action: { type: 'click', target: 'tracking', index: item.cardIndex }, progress: progress(state, '배송 조회를 엽니다.') }; }
+      if (!item.trackingDone) { const order = state.orders[item.orderIndexes[0]]; const trackUrl = trackingUrlFor(order); if (trackUrl) { item.returning = 'tracking'; return { state, action: { type: 'navigate', url: trackUrl, expect: 'tracking' }, progress: progress(state, '배송조회 주소로 이동합니다.') }; } if (!findOrderTrackingAction(root, order)) { for (const index of item.orderIndexes) { state.orders[index].Warnings = [...(state.orders[index].Warnings || []), '배송 조회 버튼이 없는 주문입니다(취소/환불 등).']; state.orders[index]._TrackingOutcome = 'buttonMissing'; } item.trackingDone = true; state.cursor += 1; return { state, action: { type: 'none' }, progress: progress(state, '배송 조회가 없는 주문을 건너뜁니다.') }; } item.returning = 'tracking'; return { state, action: { type: 'click', target: 'tracking', index: item.cardIndex }, progress: progress(state, '배송 조회를 엽니다.') }; }
       state.cursor += 1; return { state, action: { type: 'none' }, progress: progress(state, '다음 주문을 확인합니다.') };
     }
     if (state.phase === 'RESTORE') {
@@ -307,7 +307,13 @@
       || target?.querySelector?.('script[id="__NEXT_DATA__"]')
       || target?.querySelector?.('#__NEXT_DATA__');
     if (!element) return null;
-    try { return JSON.parse(element.textContent || ''); } catch { return null; }
+    const text = element.textContent || '';
+    // shipmentBoxId 같은 값은 자릿수가 커서 JSON.parse 가 정밀도를 잃는다.
+    // 1093824089505681408 이 1093824089505681400 이 되어 틀린 주소를 만든다.
+    // 파싱 전에 긴 정수를 문자열로 바꿔 원본 자릿수를 지킨다.
+    const safe = text.replace(/:\s*(\d{16,})(?=\s*[,}\]])/g, ':"$1"');
+    try { return JSON.parse(safe); } catch { /* 원본으로 한 번 더 시도한다 */ }
+    try { return JSON.parse(text); } catch { return null; }
   }
 
   const deepFind = (node, key, depth = 0) => {
@@ -348,6 +354,8 @@
 
       for (const group of order?.deliveryGroupList ?? []) {
         const statusCode = group?.groupStatus?.status ?? group?.invoiceStatus ?? null;
+        // 배송조회 주소를 직접 만들면 버튼을 찾아 누를 필요가 없다.
+        const boxId = group?.shipmentBoxId ?? group?.shipmentBoxIds?.[0] ?? Object.entries(group || {}).find(([key]) => /shipmentbox/i.test(key))?.[1] ?? null;
         const products = group?.productList ?? [];
         for (const product of (products.length ? products : [null])) {
           rows.push(sanitizeValue({
@@ -368,6 +376,7 @@
             TrackingNumber: group?.invoiceNumber ?? null,
             ProductUrl: productUrlOf(product?.productId, product?.vendorItemId),
             VendorItemId: product?.vendorItemId != null ? String(product.vendorItemId) : null,
+            _shipmentBoxId: boxId != null ? String(boxId) : null,
             DeliveryRegion: null,
             TrackingEvents: [],
             Warnings: [],
@@ -401,6 +410,17 @@
     };
   }
 
+  const TRACK_URL = 'https://mc.coupang.com/ssr/desktop/shiptrack';
+  // 주문번호·배송박스·송장번호·상품식별자가 다 있으면 주소를 만들 수 있다.
+  function trackingUrlFor(order) {
+    if (!order?.OrderId || !order?.TrackingNumber || !order?._shipmentBoxId) return null;
+    const url = new URL(TRACK_URL);
+    url.searchParams.set('orderId', order.OrderId);
+    url.searchParams.set('shipmentBoxId', order._shipmentBoxId);
+    url.searchParams.set('invoiceNumber', order.TrackingNumber);
+    if (order.VendorItemId) url.searchParams.set('vendorItemIds', order.VendorItemId);
+    return url.href;
+  }
   function listUrlForPage(pageIndex, year) {
     const url = new URL(ORDER_LIST_URL);
     if (pageIndex !== null && pageIndex !== undefined) url.searchParams.set('pageIndex', String(pageIndex));
@@ -447,7 +467,7 @@
   async function collectDetailsOnCurrentPage(orders, scope, collectedAt, page, visited, start, end, deps = {}) { for (const order of orders) { order.Warnings ||= []; order.TrackingEvents ||= []; order.TrackingEventRaw ||= []; const root = deps.getDocument?.() || globalThis.document; const detail = deps.findOrderDetailAction?.(root, order) ?? findOrderDetailAction(root, order); if (detail && deps.clickAndWait && !await deps.clickAndWait(detail)) order.Warnings.push('주문 상세 수집 실패: 페이지가 전환되지 않았습니다.'); if (scope === 'tracking') { const tracking = deps.findOrderTrackingAction?.(deps.getDocument?.() || root, order) ?? findOrderTrackingAction(deps.getDocument?.() || root, order); if (!tracking) { order.Warnings.push('배송 조회 버튼이 없는 주문입니다(취소/환불 등).'); order._TrackingOutcome = 'buttonMissing'; } else if (deps.clickAndWait && await deps.clickAndWait(tracking)) { const priorWarnings = order.Warnings; const parsed = (deps.parseTrackingPage || parseTrackingPage)(deps.getDocument?.() || globalThis.document, collectedAt, order.OrderStatus); Object.assign(order, parsed); order.Warnings = [...priorWarnings, ...(parsed.Warnings || [])]; } } await deps.returnToOrderList?.(); await deps.randomDelay?.(); } return orders; }
   async function collectOrders(config = {}) { let state = initialState(config); const runtime = config.runtime || {}; for (let count = 0; count < (runtime.maxTransitions || 1000); count += 1) { const result = runStep(state); state = result.state; runtime.reportProgress?.(result.progress); if (result.action.type === 'done') return state.result; if (result.action.type === 'navigate') { if (globalThis.location) globalThis.location.href = result.action.url; } else if (result.action.type === 'click') { const performed = performAction(result.action); if (!performed.ok) throw new Error(performed.reason); } await runtime.randomDelay?.(); } throw new Error('상태 기계 반복 상한을 초과했습니다.'); }
 
-  const api = { BUILD, SELECTORS, pageFacts, readNextData, ordersFromNextData, paginationFromNextData, listUrlForPage, describePage, describeTarget, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
+  const api = { BUILD, SELECTORS, pageFacts, readNextData, trackingUrlFor, ordersFromNextData, paginationFromNextData, listUrlForPage, describePage, describeTarget, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
   globalThis.__coupangOrderCollector = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

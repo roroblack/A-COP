@@ -194,9 +194,14 @@
     async function runAction(job, action) {
       if (action.type === 'none' || action.type === 'done') return { ok: true };
       if (action.type === 'navigate') {
-        await chromeApi.tabs.update(job.tabId, { url: action.url });
-        const ok = await awaitCondition(job.tabId, (facts) => facts.isList, navigationTimeoutMs);
-        return { ok, reason: ok ? null : '주소 이동 뒤 목록이 나타나지 않았습니다.' };
+        const before = await readFacts(job.tabId).catch(() => ({ url: null, isList: null }));
+        await chromeApi.tabs.update(job.tabId, { url: action.url, active: true });
+        // 목록으로 가는 이동과 배송조회로 가는 이동은 기대하는 결과가 다르다.
+        const want = action.expect === 'tracking'
+          ? (facts) => !facts.isList && facts.url !== before.url
+          : (facts) => facts.isList;
+        const ok = await awaitCondition(job.tabId, want, navigationTimeoutMs);
+        return { ok, reason: ok ? null : `주소 이동 뒤 원하는 화면이 나타나지 않았습니다: ${action.url}` };
       }
       if (action.type !== 'click') return { ok: false, reason: `모르는 액션 ${action.type}` };
 

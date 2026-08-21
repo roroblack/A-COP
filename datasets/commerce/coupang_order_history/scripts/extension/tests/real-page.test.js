@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { parseFragment } = require('./test-dom.js');
-const { diagnoseStructure, isOrderListPage, listUrlForPage, ordersFromNextData, pageFacts, paginationFromNextData, parseDocument, parseTrackingPage, performAction, runStep } = require('../content.js');
+const { diagnoseStructure, isOrderListPage, listUrlForPage, ordersFromNextData, pageFacts, paginationFromNextData, trackingUrlFor, parseDocument, parseTrackingPage, performAction, runStep } = require('../content.js');
 
 // 사용자가 실제 쿠팡 주문목록에서 복사한 HTML이다. raw/find.md에서 뽑았다.
 const html = fs.readFileSync(path.join(__dirname, 'fixtures/order_list_real.html'), 'utf8');
@@ -304,4 +304,49 @@ test('__NEXT_DATA__: 송장이 없는 주문은 배송조회를 열지 않는다
 
   const withTracking = state.queue.filter((item) => !item.trackingDone);
   assert.equal(withTracking.length, 1, '송장 있는 주문만 배송조회 대상이어야 한다');
+});
+
+const trackingListHtml = fs.readFileSync(path.join(__dirname, 'fixtures/order_list_tracking.html'), 'utf8');
+
+test('__NEXT_DATA__: 배송조회 주소를 만들어 클릭 없이 이동한다', () => {
+  // 버튼을 찾아 누르는 대신 주소를 만든다. 화면 구조와 무관해진다.
+  const document = asDocument(parseFragment(trackingListHtml));
+  global.document = document;
+  global.location = { href: 'https://mc.coupang.com/ssr/desktop/order/list' };
+
+  const rows = ordersFromNextData(document);
+  const url = trackingUrlFor(rows[0]);
+
+  assert.match(url, /shiptrack/);
+  assert.match(url, /orderId=16102412157785/);
+  assert.match(url, /shipmentBoxId=1093824089505681408/);
+  assert.match(url, /invoiceNumber=10327823250323/);
+  assert.match(url, /vendorItemIds=86704060029/);
+
+  let state = { phase: 'INIT', scope: 'tracking', yearScope: 'current' };
+  state = runStep(state).state;
+  state = runStep(state).state;
+  const step = runStep(state);
+
+  assert.equal(step.action.type, 'navigate', `클릭을 하려 한다: ${step.action.type}`);
+  assert.equal(step.action.expect, 'tracking');
+  assert.match(step.action.url, /shiptrack/);
+});
+
+test('__NEXT_DATA__: 배송박스 번호가 없으면 주소를 만들지 않는다', () => {
+  // 못 만들면 기존 방식대로 버튼을 찾는다. 조용히 틀린 주소로 가지 않는다.
+  assert.equal(trackingUrlFor({ OrderId: '1', TrackingNumber: '2' }), null);
+  assert.equal(trackingUrlFor({ OrderId: '1', _shipmentBoxId: '3' }), null);
+});
+
+test('__NEXT_DATA__: 자릿수가 큰 값이 잘리지 않는다', () => {
+  // shipmentBoxId 는 JavaScript 안전 정수 범위를 넘는다.
+  // JSON.parse 를 그냥 쓰면 1093824089505681408 이 1093824089505681400 이 된다.
+  // 그 상태로 주소를 만들면 다른 배송건을 조회한다.
+  const document = asDocument(parseFragment(trackingListHtml));
+  global.document = document;
+  const rows = ordersFromNextData(document);
+
+  assert.equal(rows[0]._shipmentBoxId, '1093824089505681408');
+  assert.match(trackingUrlFor(rows[0]), /shipmentBoxId=1093824089505681408/);
 });
