@@ -169,11 +169,15 @@
       return false;
     }
 
+    // 조건은 "행동 전과 달라졌는가" 를 함께 봐야 한다.
+    // 목록이 아니라는 것만 보면, 이미 목록 밖일 때 클릭도 없이 성공으로 친다.
+    // 그러면 상태만 앞으로 가고 실제 페이지는 그대로다.
     function conditionFor(action, before) {
-      if (action.expect === 'leftList') return (facts) => !facts.isList;
+      const moved = (facts) => facts.url !== before.url;
+      if (action.expect === 'leftList') return (facts) => !facts.isList && moved(facts);
+      if (action.expect === 'tracking') return (facts) => !facts.isList && moved(facts);
       if (action.expect === 'listChanged') return (facts) => facts.isList && facts.listKey !== before.listKey;
       if (action.expect === 'backOnList') return (facts) => facts.isList;
-      if (action.expect === 'tracking') return (facts) => !facts.isList;
       return (facts) => facts.listKey !== before.listKey || facts.isList !== before.isList;
     }
 
@@ -199,8 +203,8 @@
       const before = await readFacts(job.tabId);
       const satisfied = conditionFor(action, before);
       // 페이지 이동을 기대하는 행동은 더 오래 기다린다.
-      const timeout = action.expect === 'leftList' || action.expect === 'tracking' || action.expect === 'backOnList'
-        ? navigationTimeoutMs : changeTimeoutMs;
+      // 한 시도에 오래 매달리면 다른 방법을 시도할 기회가 없다. 짧게 끊고 올린다.
+      const timeout = Math.min(changeTimeoutMs, 8000);
 
       // 목록 복귀는 주소로 바로 간다.
       // 뒤로가기는 우리가 방문한 상세 페이지들을 거꾸로 되짚어 엉뚱한 곳으로 간다.

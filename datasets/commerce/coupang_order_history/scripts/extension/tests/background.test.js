@@ -154,7 +154,7 @@ test('조건이 늦게 참이 되면 기다렸다가 성공으로 본다', async
     if (method === 'pageFacts') {
       polls += 1;
       // 세 번째 확인에서야 상세 페이지가 된다.
-      return [{ result: polls >= 4 ? { ...LIST, isList: false } : LIST }];
+      return [{ result: polls >= 4 ? { ...LIST, isList: false, url: '/detail/1' } : LIST }];
     }
     if (method === 'performAction') return [{ result: { ok: true } }];
     return undefined;
@@ -196,29 +196,31 @@ test('상태에 undefined가 섞여 있어도 직렬화해서 보낸다', async 
   assert.deepEqual(received, { page: 1, orders: [{ name: 'a' }] });
 });
 
-test('이미 이동해 있으면 다시 누르지 않는다', async () => {
-  // 이동이 늦게 반영되면 다음 시도가 나가고, 그때는 요소가 없어 실패로 끝났다.
-  let clicks = 0;
-  let onDetail = true;   // 이미 상세로 넘어와 있는 상태
+test('이미 목록에 있으면 복귀 동작을 하지 않는다', async () => {
+  // 목록 도달이 목표이므로 이미 목록이면 아무것도 하지 않아도 된다.
+  // 반대로 '목록이 아님' 같은 조건은 이동 여부까지 봐야 한다. 안 그러면
+  // 이미 목록 밖일 때 클릭도 없이 성공으로 쳐서 상태만 앞으로 간다.
+  let touched = 0;
   const { api } = fakeChrome(async (method) => {
-    if (method === 'pageFacts') return [{ result: { ...LIST, isList: !onDetail } }];
-    if (method === 'performAction') { clicks += 1; return [{ result: { ok: true } }]; }
+    if (method === 'pageFacts') return [{ result: LIST }];
+    if (method === 'performAction') { touched += 1; return [{ result: { ok: true } }]; }
     return undefined;
   }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
+  api.tabs.update = async () => { touched += 1; return {}; };
 
   const outcome = await controllerFor(api).executeAction(
     runningJob({ phase: 'DETAIL', orders: [], warnings: [] }),
-    { type: 'click', target: 'detail', index: 0, expect: 'leftList' }
+    { type: 'click', target: 'backToList', index: 0, expect: 'backOnList' }
   );
 
   assert.equal(outcome.ok, true);
-  assert.equal(clicks, 0, '이미 상세인데 또 눌렀다');
+  assert.equal(touched, 0, '이미 목록인데 이동을 시도했다');
 });
 
 test('요소가 사라졌어도 이미 이동했으면 성공으로 본다', async () => {
   let moved = false;
   const { api } = fakeChrome(async (method) => {
-    if (method === 'pageFacts') return [{ result: { ...LIST, isList: !moved } }];
+    if (method === 'pageFacts') return [{ result: moved ? { ...LIST, isList: false, url: '/detail/1' } : LIST }];
     if (method === 'performAction') {
       // 첫 클릭은 먹혔지만 확인이 늦었고, 두 번째에는 요소가 이미 없다.
       if (!moved) { moved = true; return [{ result: { ok: true } }]; }
@@ -511,7 +513,7 @@ test('송장번호가 없는 배송조회 화면도 도착으로 본다', async 
   // 송장 표가 있어야만 도착으로 보면 그 주문에서 영원히 기다린다.
   let moved = false;
   const { api } = fakeChrome(async (method) => {
-    if (method === 'pageFacts') return [{ result: { ...LIST, isList: !moved, hasTrackingTable: false } }];
+    if (method === 'pageFacts') return [{ result: moved ? { ...LIST, isList: false, hasTrackingTable: false, url: '/shiptrack' } : LIST }];
     if (method === 'performAction') { moved = true; return [{ result: { ok: true } }]; }
     return undefined;
   }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
@@ -577,4 +579,24 @@ test('팝업 심장박동이 멎으면 워커가 이어받는다', async () => {
   await createController(api, { sleep: async () => {}, pollMs: 0, changeTimeoutMs: 5, random: () => 0, driver: 'worker' }).resume(3);
 
   assert.ok(workerSteps >= 1, '팝업이 멎었는데 워커가 이어받지 않았다');
+});
+
+test('이미 목록 밖이어도 클릭 없이 성공으로 치지 않는다', async () => {
+  // 조건이 "목록이 아님" 뿐이면, 상세 페이지에 있을 때 상세 클릭이 클릭도 없이
+  // 성공으로 처리된다. 그러면 상태만 앞으로 가고 실제 페이지는 그대로다.
+  let clicks = 0;
+  let url = '/detail/1';
+  const { api } = fakeChrome(async (method) => {
+    if (method === 'pageFacts') return [{ result: { ...LIST, isList: false, url } }];
+    if (method === 'performAction') { clicks += 1; url = '/detail/2'; return [{ result: { ok: true } }]; }
+    return undefined;
+  }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
+
+  const outcome = await controllerFor(api).executeAction(
+    runningJob({ phase: 'DETAIL', orders: [], warnings: [] }),
+    { type: 'click', target: 'detail', index: 0, expect: 'leftList' }
+  );
+
+  assert.equal(clicks >= 1, true, '클릭도 하지 않고 성공으로 쳤다');
+  assert.equal(outcome.ok, true);
 });
