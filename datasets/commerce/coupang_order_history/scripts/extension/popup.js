@@ -3,7 +3,7 @@
 (() => {
   const ORDER_LIST_URL = 'https://mc.coupang.com/ssr/desktop/order/list';
   const elements = {
-    min: document.querySelector('#minDelay'), max: document.querySelector('#maxDelay'),
+    min: document.querySelector('#minDelay'), max: document.querySelector('#maxDelay'), long: document.querySelector('#longDelay'),
     start: document.querySelector('#startButton'), stop: document.querySelector('#stopButton'),
     openList: document.querySelector('#openListButton'), diagnose: document.querySelector('#diagnoseButton'), detailProbe: document.querySelector('#detailProbeButton'), stateProbe: document.querySelector('#stateProbeButton'), nextProbe: document.querySelector('#nextProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
     trackingDownload: document.querySelector('#trackingDownloadButton'), trackingReason: document.querySelector('#trackingDownloadReason'),
@@ -41,10 +41,17 @@
   async function activeOrderListTab(anyCoupangPage = false) { const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }); const ok = tab?.id && (anyCoupangPage ? /^https:\/\/mc\.coupang\.com\//.test(tab.url || '') : isOrderListUrl(tab.url)); if (!ok) throw new Error(`쿠팡 주문목록 페이지에서 실행하세요.
 ${ORDER_LIST_URL}`); return tab; }
   function config() {
-    const minDelayMs = Math.round(Number(elements.min.value) * 1000); const maxDelayMs = Math.round(Number(elements.max.value) * 1000);
-    if (!Number.isFinite(minDelayMs) || minDelayMs < 800) throw new Error('최소 대기 시간은 0.8초 이상이어야 합니다.');
+    const minDelayMs = Math.round(Number(elements.min.value) * 1000);
+    const maxDelayMs = Math.round(Number(elements.max.value) * 1000);
+    const longDelayMs = Math.round(Number(elements.long.value) * 1000);
+    if (!Number.isFinite(minDelayMs) || minDelayMs < 300) throw new Error('최소 대기 시간은 0.3초 이상이어야 합니다.');
     if (!Number.isFinite(maxDelayMs) || maxDelayMs < minDelayMs) throw new Error('최대 대기 시간은 최소 대기 시간 이상이어야 합니다.');
-    return { collectionScope: selected('collectionScope') || 'tracking', yearScope: selected('yearScope') || 'current', minDelayMs, maxDelayMs };
+    if (!Number.isFinite(longDelayMs) || longDelayMs < maxDelayMs) throw new Error('가끔 쉬는 초는 최대 대기 시간 이상이어야 합니다.');
+    return {
+      collectionScope: selected('collectionScope') || 'tracking',
+      yearScope: selected('yearScope') || 'current',
+      minDelayMs, maxDelayMs, longDelayMs
+    };
   }
   function message(payload) { return new Promise((resolve, reject) => chrome.runtime.sendMessage(payload, (response) => { if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message)); else if (!response?.ok) reject(new Error(response?.error || '요청에 실패했습니다.')); else resolve(response); })); }
   function bar(done, total, width = 14) {
@@ -65,7 +72,11 @@ ${ORDER_LIST_URL}`); return tab; }
       `누적 주문 ${progress.orderCount ?? 0}건 (상품 행 ${progress.count || 0}개) · 배송 ${progress.trackingCount || 0}건`
     ];
     const remain = (progress.waitUntil || 0) - Date.now();
-    if (job.status === 'running' && remain > 0) lines.push(`다음 동작까지 ${(remain / 1000).toFixed(1)}초`);
+    if (job.status === 'running' && remain > 0) {
+      const total = (progress.waitMs || 0) / 1000;
+      const kind = progress.longBreak ? '잠깐 쉬는 중' : '대기';
+      lines.push(`${kind} ${(remain / 1000).toFixed(1)}초 남음 (추첨 ${total.toFixed(1)}초) ${bar(total - remain / 1000, total, 10)}`);
+    }
     lines.push(progress.message || '');
     if (job.lastClick && job.lastClick.ok === false) lines.push(`마지막 클릭 실패: ${job.lastClick.reason}`);
     return lines.filter(Boolean).join('\n');

@@ -298,3 +298,48 @@ test('컨텍스트가 사라졌으면 주입하고 다시 부른다', async () =
   assert.equal(injected, true);
   assert.deepEqual(facts, LIST);
 });
+
+test('수집 중에는 서비스 워커를 깨워 둔다', async () => {
+  // 다른 창을 보고 있으면 서비스 워커가 잠들어 작업이 멈춘 것처럼 보였다.
+  let intervals = 0;
+  const realSetInterval = globalThis.setInterval;
+  const realClearInterval = globalThis.clearInterval;
+  globalThis.setInterval = () => { intervals += 1; return 1; };
+  globalThis.clearInterval = () => {};
+  try {
+    const { api } = fakeChrome(async (method, value) => {
+      if (method === 'pageFacts') return [{ result: LIST }];
+      if (method === 'runStep') {
+        return [{ result: { state: { ...value, phase: 'DONE', done: true, result: { orderData: { orders: [] }, trackingData: [] } }, action: { type: 'done' }, progress: {} } }];
+      }
+      return undefined;
+    }, runningJob({ phase: 'LIST', orders: [], warnings: [] }));
+
+    await controllerFor(api).resume(3);
+
+    assert.equal(intervals, 1, '깨워 두는 타이머가 걸리지 않았다');
+  } finally {
+    globalThis.setInterval = realSetInterval;
+    globalThis.clearInterval = realClearInterval;
+  }
+});
+
+test('대기는 대개 짧고 가끔 길다', async () => {
+  // 간격이 일정하면 사람으로 보이지 않는다.
+  const waits = [];
+  const draws = [0.9, 0.05, 0.5];   // 두 번째만 긴 쉼
+  let call = 0;
+  const { api } = fakeChrome(async () => undefined, runningJob({ phase: 'LIST', orders: [], warnings: [] }));
+  const controller = createController(api, {
+    sleep: async (ms) => { waits.push(ms); },
+    pollMs: 0, changeTimeoutMs: 1, navigationTimeoutMs: 1,
+    random: () => draws[call++ % draws.length]
+  });
+  const config = { minDelayMs: 300, maxDelayMs: 1100, longDelayMs: 2000 };
+
+  for (let i = 0; i < 3; i += 1) await controller.rateLimit(config, null);
+
+  assert.ok(waits.every((ms) => ms >= 300 && ms <= 2000), `범위를 벗어났다: ${waits}`);
+  assert.ok(waits.some((ms) => ms > 1100), '긴 쉼이 한 번도 없었다');
+  assert.ok(waits.some((ms) => ms <= 1100), '짧은 대기가 한 번도 없었다');
+});

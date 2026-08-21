@@ -67,19 +67,28 @@
       try { return await run(); } catch { return undefined; }
     }
 
-    // 대기가 얼마나 남았는지 팝업이 보여줄 수 있게 알려준다.
-    async function rateLimit(config, job) {
-      const min = Math.max(800, Number(config?.minDelayMs) || 800);
+    // 대개 최소~최대 사이로 쉰다. 여섯 번에 한 번쯤 더 길게 쉰다.
+    // 간격이 일정하면 사람으로 보이지 않는다.
+    function drawWait(config) {
+      const min = Math.max(300, Number(config?.minDelayMs) || 300);
       const max = Math.max(min, Number(config?.maxDelayMs) || 1100);
-      const waitMs = Math.round(min + random() * (max - min));
+      const long = Math.max(max, Number(config?.longDelayMs) || 2000);
+      const takeLongBreak = random() < 1 / 6;
+      const low = takeLongBreak ? max : min;
+      const high = takeLongBreak ? long : max;
+      return { waitMs: Math.round(low + random() * (high - low)), longBreak: takeLongBreak };
+    }
+
+    async function rateLimit(config, job) {
+      const { waitMs, longBreak } = drawWait(config);
       if (job) {
-        job.progress = { ...(job.progress || {}), waitMs, waitUntil: Date.now() + waitMs };
+        job.progress = { ...(job.progress || {}), waitMs, longBreak, waitUntil: Date.now() + waitMs };
         await saveJob(job);
         sendProgress(job.progress, job.status);
       }
       await sleep(waitMs);
       if (job) {
-        job.progress = { ...(job.progress || {}), waitMs: 0, waitUntil: 0 };
+        job.progress = { ...(job.progress || {}), waitMs: 0, longBreak: false, waitUntil: 0 };
         await saveJob(job);
       }
     }
@@ -159,6 +168,21 @@
       return { ok: false, reason: `${action.target} 클릭이 네 번 다 통하지 않았습니다.` };
     }
 
+    // MV3 서비스 워커는 유휴 30초면 종료된다. 알람이 깨울 때까지 작업이 멈춰 보인다.
+    // 다른 창을 보고 있어도 계속 돌게 20초마다 확장 API를 한 번 부른다.
+    let keepAliveTimer = null;
+    function startKeepAlive() {
+      if (keepAliveTimer) return;
+      keepAliveTimer = setInterval(() => {
+        try { chromeApi.runtime.getPlatformInfo?.(() => void chromeApi.runtime.lastError); } catch { /* 무시 */ }
+      }, 20000);
+    }
+    function stopKeepAlive() {
+      if (!keepAliveTimer) return;
+      clearInterval(keepAliveTimer);
+      keepAliveTimer = null;
+    }
+
     async function loop(maxIterations = Infinity) {
       let iterations = 0;
       while (iterations < maxIterations) {
@@ -216,7 +240,10 @@
     }
 
     function resume(maxIterations = Infinity) {
-      if (!loopPromise) loopPromise = loop(maxIterations).finally(() => { loopPromise = null; });
+      if (!loopPromise) {
+        startKeepAlive();
+        loopPromise = loop(maxIterations).finally(() => { loopPromise = null; stopKeepAlive(); });
+      }
       return loopPromise;
     }
 
@@ -232,7 +259,7 @@
         result: null, startedAt: new Date().toISOString()
       };
       await saveJob(job);
-      chromeApi.alarms.create(ALARM_NAME, { periodInMinutes: 0.5 });
+      chromeApi.alarms.create(ALARM_NAME, { periodInMinutes: 0.5, delayInMinutes: 0.5 });
       if (options.autoRun !== false) void resume();
       return job;
     }
@@ -248,7 +275,7 @@
       return job;
     }
 
-    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector };
+    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector, rateLimit };
   }
 
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
