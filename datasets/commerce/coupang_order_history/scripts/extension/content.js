@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-22u';
+  const BUILD = '2026-08-22v';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -98,9 +98,19 @@
   function parseDocument(root) { const cards = discoverCards(root); const groups = cards.map((card, index) => productRows(card, index)); return { orders: groups.flat(), orderCardCount: groups.filter((items) => items.length).length }; }
   function actionLeaf(card, labels) {
     const wanted = labels.map((label) => label.replace(/\s+/g, ''));
-    const matches = [...(card?.querySelectorAll?.('*') || [])].filter((element) => wanted.some((label) => compact(element) === label || compact(element).includes(label)));
-    // 가장 안쪽 요소를 고른다. 클릭은 위로만 전파되므로 안쪽을 눌러야 조상 핸들러까지 닿는다.
-    return matches.find((element) => ![...(element.children || [])].some((child) => wanted.some((label) => compact(child).includes(label)))) || matches.at(-1) || null;
+    const elements = visibleElements(card);
+    const innermost = (list) =>
+      list.find((element) => ![...(element.children || [])].some((child) => wanted.some((label) => compact(child).includes(label))))
+      || list.at(-1) || null;
+    // 정확히 일치하는 것을 먼저 쓴다. 포함만 보면 상세 페이지의 다른 '주문목록' 링크를 누른다.
+    // 라벨은 구체적인 것부터 온다.
+    for (const label of wanted) {
+      const exact = elements.filter((element) => compact(element) === label);
+      if (!exact.length) continue;
+      const clickable = exact.filter((element) => element.tagName === 'BUTTON' || (element.tagName === 'A' && element.getAttribute?.('href')));
+      return innermost(clickable.length ? clickable : exact);
+    }
+    return innermost(elements.filter((element) => wanted.some((label) => compact(element).includes(label))));
   }
   // 리프가 안 먹힐 때를 대비해 조상을 한 칸씩 올린 후보를 함께 둔다.
   function actionCandidates(card, labels) {

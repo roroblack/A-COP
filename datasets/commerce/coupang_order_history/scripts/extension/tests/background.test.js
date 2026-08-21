@@ -436,3 +436,44 @@ test('루프가 끝나는 중에 들어온 시작 요청을 흘리지 않는다'
   assert.ok(steps >= 1, '아무도 돌지 않았다');
   assert.equal(data[JOB_KEY].status, 'completed');
 });
+
+test('목록 복귀 클릭이 다 실패하면 브라우저 뒤로가기로 돌아온다', async () => {
+  // 클릭이 새 탭을 열면 우리가 보는 탭은 상세 그대로다. 눈으로는 복귀한 것처럼 보인다.
+  let wentBack = false;
+  const { api } = fakeChrome(async (method) => {
+    if (method === 'pageFacts') return [{ result: { ...LIST, isList: wentBack } }];
+    if (method === 'performAction') return [{ result: { ok: true } }];
+    return undefined;
+  }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
+  api.tabs.goBack = async () => { wentBack = true; };
+
+  const outcome = await controllerFor(api).executeAction(
+    runningJob({ phase: 'DETAIL', orders: [], warnings: [] }),
+    { type: 'click', target: 'backToList', index: 0, expect: 'backOnList' }
+  );
+
+  assert.equal(outcome.ok, true, outcome.reason);
+  assert.equal(wentBack, true, '뒤로가기를 쓰지 않았다');
+});
+
+test('탭이 사라지면 쿠팡 탭을 다시 찾아 이어간다', async () => {
+  // 클릭이 새 탭을 열면 원래 탭이 사라지고 모든 호출이 실패한다.
+  let tabAlive = false;
+  let steps = 0;
+  const { api, data } = fakeChrome(async (method, value) => {
+    if (method === 'pageFacts') return [{ result: LIST }];
+    if (method === 'runStep') {
+      if (!tabAlive) return [{ result: undefined }];   // 탭이 없어 아무것도 못 받는다
+      steps += 1;
+      return [{ result: { state: { ...value, phase: 'DONE', done: true, result: { orderData: { orders: [] }, trackingData: [] } }, action: { type: 'done' }, progress: {} } }];
+    }
+    return undefined;
+  }, runningJob({ phase: 'LIST', orders: [], warnings: [] }));
+  api.tabs.get = (_id, cb) => cb(null);                       // 원래 탭 없음
+  api.tabs.query = (_q, cb) => { tabAlive = true; cb([{ id: 99 }]); };
+
+  await controllerFor(api).resume(6);
+
+  assert.equal(data[JOB_KEY].tabId, 99, '새 탭으로 옮기지 않았다');
+  assert.ok(steps >= 1, '탭을 찾고도 진행하지 않았다');
+});

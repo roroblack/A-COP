@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "쿠팡 주문내역 추출",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "description": "열려 있는 쿠팡 주문목록에서 상세·배송 이력을 선택해 로컬 JSON 파일로 저장합니다.",
   "permissions": [
     "activeTab",
     "scripting",
     "downloads",
     "storage",
-    "alarms"
+    "alarms",
+    "tabs"
   ],
   "host_permissions": [
     "https://mc.coupang.com/*",

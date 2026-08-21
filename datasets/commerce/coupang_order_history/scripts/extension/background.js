@@ -209,6 +209,15 @@
         }
         if (await awaitCondition(job.tabId, satisfied, timeout)) return { ok: true, attempt };
       }
+      // 목록 복귀는 브라우저 뒤로가기로도 된다. 클릭이 새 탭을 열었을 때도 이쪽은 통한다.
+      if (action.target === 'backToList' && chromeApi.tabs?.goBack) {
+        try {
+          await chromeApi.tabs.goBack(job.tabId);
+          if (await awaitCondition(job.tabId, satisfied, navigationTimeoutMs)) {
+            return { ok: true, attempt: 4, note: '뒤로가기로 목록에 돌아왔습니다.' };
+          }
+        } catch { /* 뒤로 갈 곳이 없으면 아래에서 실패로 남긴다 */ }
+      }
       return { ok: false, reason: `${action.target} 클릭이 네 번 다 통하지 않았습니다.` };
     }
 
@@ -242,6 +251,26 @@
       });
     }
 
+    // 클릭이 새 탭을 열거나 탭이 닫히면 우리가 보던 탭이 사라진다.
+    // 그러면 모든 호출이 "Frame with ID 0 was removed" 로 실패하고 영영 진행되지 않는다.
+    async function recoverTab(job) {
+      const stillThere = await new Promise((resolve) => {
+        try { chromeApi.tabs.get(job.tabId, (tab) => resolve(!chromeApi.runtime.lastError && Boolean(tab))); }
+        catch { resolve(true); }
+      });
+      if (stillThere) return false;
+      const found = await new Promise((resolve) => {
+        try { chromeApi.tabs.query({ url: 'https://mc.coupang.com/*' }, (tabs) => resolve((tabs || [])[0] || null)); }
+        catch { resolve(null); }
+      });
+      if (!found?.id) return false;
+      job.tabId = found.id;
+      job.state.warnings ||= [];
+      job.state.warnings.push('탭이 바뀌어 새 탭으로 이어서 진행합니다.');
+      await saveJob(job);
+      return true;
+    }
+
     let stepFailures = 0;
     async function noteStepFailure(job, reason) {
       stepFailures += 1;
@@ -269,6 +298,7 @@
         }
         if (!step?.state || !step?.action) {
           // 조용히 넘어가면 화면이 시작값에서 멈춘 채로 남는다. 사유를 남긴다.
+          if (await recoverTab(job)) { continue; }
           await noteStepFailure(job, lastCallError || '수집기가 결과를 주지 않았습니다.');
           await sleep(pollMs);
           continue;
@@ -391,7 +421,8 @@
   }
 
   let startupError = null;
-  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+  // 팝업도 이 파일을 읽어 컨트롤러를 쓴다. 팝업은 스스로를 표시하고 지나간다.
+  if (!globalThis.__coupangPopup && typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
     const controller = createController(chrome);
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message?.type === 'START') {
@@ -434,5 +465,6 @@
     controller.getJob().then((job) => { if (job?.status === 'running') void controller.resume(); }).catch(() => {});
   }
 
+  globalThis.__coupangController = { createController, JOB_KEY, ALARM_NAME };
   if (typeof module !== 'undefined' && module.exports) module.exports = { createController, JOB_KEY, ALARM_NAME };
 })();
