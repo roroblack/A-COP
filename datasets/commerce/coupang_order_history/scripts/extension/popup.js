@@ -253,6 +253,7 @@ ${ORDER_LIST_URL}`); return tab; }
           ...(page.value.nextCandidates || []).map((line) => `  ${line}`),
         ].join('\n'),
         `작업 ${job?.status} / ${state.phase} / ${state.page}페이지`,
+        `탭 수집대상=${job?.tabId ?? '-'} 현재보는탭=${tab.id}${job?.tabId !== tab.id ? '  ← 다름' : ''}`,
         `마지막결과 ${job?.lastOutcome ? JSON.stringify(job.lastOutcome) : '없음'} 건너뛰기=${Boolean(state.skipCurrent)}`,
         `큐 ${state.cursor || 0}/${(state.queue || []).length} returning=${item?.returning ?? '-'} detailDone=${item?.detailDone ?? '-'}`,
         `마지막클릭 ${job?.lastClick ? JSON.stringify(job.lastClick) : '없음'}`,
