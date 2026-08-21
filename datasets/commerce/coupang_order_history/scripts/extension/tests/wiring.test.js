@@ -7,25 +7,38 @@ const path = require('node:path');
 // 브라우저와 같은 경로로 돌린다.
 // 모듈이 평가되면서 리스너가 등록되고, START 메시지가 그 리스너로 들어온다.
 // 지금까지 테스트는 controller.start()를 직접 불러서 이 경로를 밟은 적이 없다.
-function loadWorker({ initialJob = null, onRunStep } = {}) {
-  const data = initialJob ? { coupangJob: structuredClone(initialJob) } : {};
+function loadWorker({ initialJob = null, dataStore = null, onRunStep, setDelays = [], injectionError = null } = {}) {
+  const data = dataStore || (initialJob ? { coupangJob: structuredClone(initialJob) } : {});
   const listeners = { message: [], alarm: [], tabUpdated: [] };
-  const calls = { runStep: 0, injections: 0 };
+  const calls = { runStep: 0, injections: 0, alarmCreates: [] };
+  let setIndex = 0;
 
   const chrome = {
     storage: { local: {
       get(key, cb) { setTimeout(() => cb({ [key]: data[key] }), 0); },
-      set(value, cb) { Object.assign(data, structuredClone(value)); setTimeout(() => cb?.(), 0); }
+      set(value, cb) {
+        const snapshot = structuredClone(value);
+        const delay = setDelays[setIndex++] || 0;
+        setTimeout(() => { Object.assign(data, snapshot); cb?.(); }, delay);
+      }
     } },
     scripting: { async executeScript(details) {
-      if (details.files) { calls.injections += 1; return [{ result: true }]; }
+      if (details.files) {
+        calls.injections += 1;
+        if (injectionError) throw new Error(injectionError);
+        return [{ result: true }];
+      }
       const [method, value] = details.args;
       if (method === 'pageFacts') return [{ result: { isList: true, listKey: 'p1', cards: 3, hasTrackingTable: false, hasOrderNumber: false, url: '/list' } }];
       if (method === 'runStep') { calls.runStep += 1; return [{ result: onRunStep(value, calls.runStep) }]; }
       return [{ result: undefined }];
     } },
     tabs: { async update() { return {}; }, onUpdated: { addListener: (fn) => listeners.tabUpdated.push(fn) } },
-    alarms: { create() {}, clear() {}, onAlarm: { addListener: (fn) => listeners.alarm.push(fn) } },
+    alarms: {
+      create(name, details) { calls.alarmCreates.push({ name, details, createdAt: Date.now() }); },
+      clear() {},
+      onAlarm: { addListener: (fn) => listeners.alarm.push(fn) }
+    },
     runtime: {
       lastError: null,
       sendMessage(_message, cb) { cb?.(); },
@@ -46,7 +59,7 @@ function loadWorker({ initialJob = null, onRunStep } = {}) {
     }
     resolve(null);
   });
-  return { data, send, calls };
+  return { data, send, calls, listeners };
 }
 
 const DONE_STEP = (state) => ({
@@ -119,4 +132,77 @@ test('중단한 뒤 지금 상태를 눌러도 다시 돌지 않는다', async (
 
   assert.equal(data.coupangJob.status, 'stopped');
   assert.equal(calls.runStep, before, '지금 상태가 중단된 작업을 되살렸다');
+});
+
+test('START 직후 워커가 끝나도 곧 깨울 알람을 남긴다', async () => {
+  const { send, calls } = loadWorker({ onRunStep: (state) => DONE_STEP(state) });
+
+  const response = await send({ type: 'START', tabId: 7, config: { collectionScope: 'list' } });
+  assert.equal(response?.ok, true, response?.error);
+
+  const alarm = calls.alarmCreates.at(-1);
+  assert.ok(alarm, '이어가기 알람을 만들지 않았다');
+  const firstAt = alarm.details.when ?? alarm.createdAt + (alarm.details.delayInMinutes ?? alarm.details.periodInMinutes) * 60000;
+  assert.ok(firstAt - alarm.createdAt <= 1000, `첫 알람이 ${firstAt - alarm.createdAt}ms 뒤라 워커 종료 직후 이어가지 못한다`);
+});
+
+test('느린 storage 쓰기가 나중 START를 덮어쓰지 않는다', async () => {
+  const { data, send } = loadWorker({
+    setDelays: [40, 0],
+    onRunStep: (state) => DONE_STEP(state)
+  });
+
+  const first = send({ type: 'START', tabId: 7, config: { collectionScope: 'detail' } });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  const second = send({ type: 'START', tabId: 7, config: { collectionScope: 'list' } });
+  await Promise.all([first, second]);
+  await new Promise((resolve) => setTimeout(resolve, 80));
+
+  assert.equal(data.coupangJob.config.collectionScope, 'list', '먼저 온 START가 나중 START를 덮어썼다');
+  assert.equal(data.coupangJob.status, 'completed');
+});
+
+test('후보 확인: 재평가된 워커가 알람으로 저장 작업을 재개한다', async () => {
+  const dataStore = {};
+  loadWorker({ dataStore, onRunStep: (state) => DONE_STEP(state) });
+  dataStore.coupangJob = {
+    status: 'running', tabId: 7, config: {}, state: { phase: 'LIST', page: 3 }, progress: {}
+  };
+  const restarted = loadWorker({ dataStore, onRunStep: (state) => DONE_STEP(state) });
+  restarted.listeners.alarm[0]({ name: 'coupangCollectorKeepAlive' });
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(dataStore.coupangJob.status, 'completed');
+});
+
+test('후보 확인: 팝업 재개방의 GET_JOB만으로 실행 중 작업을 재개한다', async () => {
+  const previous = {
+    status: 'running', tabId: 7, config: {}, state: { phase: 'LIST', page: 2 }, progress: {}
+  };
+  const { data, send } = loadWorker({ initialJob: previous, onRunStep: (state) => DONE_STEP(state) });
+  const response = await send({ type: 'GET_JOB' });
+  assert.equal(response?.ok, true);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(data.coupangJob.status, 'completed');
+});
+
+test('후보 확인: 지연이 없으면 같은 작업의 START 두 번은 마지막 요청을 남긴다', async () => {
+  const { data, send } = loadWorker({ onRunStep: (state) => DONE_STEP(state) });
+  await Promise.all([
+    send({ type: 'START', tabId: 7, config: { collectionScope: 'detail' } }),
+    send({ type: 'START', tabId: 7, config: { collectionScope: 'list' } })
+  ]);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(data.coupangJob.config.collectionScope, 'list');
+  assert.equal(data.coupangJob.status, 'completed');
+});
+
+test('후보 확인: 접근 거절은 START 오류로 응답한다', async () => {
+  const { data, send } = loadWorker({
+    injectionError: 'Cannot access contents of the page',
+    onRunStep: (state) => DONE_STEP(state)
+  });
+  const response = await send({ type: 'START', tabId: 7, config: {} });
+  assert.equal(response?.ok, false);
+  assert.match(response?.error || '', /Cannot access contents of the page/);
+  assert.equal(data.coupangJob, undefined);
 });

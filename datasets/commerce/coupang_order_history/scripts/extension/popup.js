@@ -216,7 +216,6 @@ ${ORDER_LIST_URL}`); return tab; }
       const hasHost = await new Promise((resolve) => {
         try { chrome.permissions.contains({ origins: REQUIRED_ORIGINS }, (r) => resolve(Boolean(r))); } catch { resolve(null); }
       });
-      lines.push(`사이트 접근 권한 ${hasHost === null ? '확인 불가' : hasHost ? '있음' : '없음 (배경 수집 불가)'}`);
       const tab = await activeOrderListTab(true);
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
       const page = await runInTab(tab.id, 'describePage');
@@ -240,6 +239,7 @@ ${ORDER_LIST_URL}`); return tab; }
         `주문 ${(state.orders || []).length}행, 주문번호확보 ${(state.orders || []).filter((o) => o && o._idSource === 'orderNumber').length}행`,
         `경고 ${(state.warnings || []).slice(-2).join(' | ') || '없음'}`
       ];
+      lines.push(`사이트 접근 권한 ${hasHost === null ? '확인 불가' : hasHost ? '있음' : '없음 (배경 수집 불가)'}`);
       if (health) {
         const since = health.lastLoopAt ? Math.round((Date.now() - new Date(health.lastLoopAt).getTime()) / 1000) : null;
         lines.push(`루프 ${health.looping ? '돎' : '멈춤'} · 깨움 ${health.keepAlive ? '켜짐' : '꺼짐'} · 마지막 걸음 ${since === null ? '없음' : `${since}초 전`}`);
