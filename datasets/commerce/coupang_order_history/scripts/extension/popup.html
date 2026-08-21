@@ -34,6 +34,26 @@
         border-radius: 8px;
       }
 
+      fieldset.scope {
+        grid-template-columns: 1fr;
+      }
+
+      .scope label {
+        display: flex;
+        grid-column: 1 / -1;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .scope input {
+        width: auto;
+        margin-top: 2px;
+      }
+
+      .scope span {
+        color: #6b7280;
+      }
+
       legend {
         padding: 0 4px;
         font-size: 13px;
@@ -60,6 +80,18 @@
         gap: 8px;
       }
 
+      #scopeSummary {
+        margin: 0 0 2px;
+        padding: 10px;
+        border: 1px solid #93c5fd;
+        border-radius: 7px;
+        color: #1e3a8a;
+        background: #eff6ff;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.45;
+      }
+
       button {
         padding: 10px 12px;
         border: 0;
@@ -72,6 +104,10 @@
 
       button.secondary {
         background: #047857;
+      }
+
+      button.stop {
+        background: #b91c1c;
       }
 
       button:disabled {
@@ -101,8 +137,36 @@
   <body>
     <h1>쿠팡 주문내역 추출</h1>
 
+    <fieldset class="scope">
+      <legend>수집 범위</legend>
+      <label>
+        <input type="radio" name="collectionScope" value="list">
+        <strong>목록만</strong> <span>빠름</span>
+      </label>
+      <label>
+        <input type="radio" name="collectionScope" value="detail">
+        <strong>목록 + 상세</strong> <span>주문번호·결제정보 포함</span>
+      </label>
+      <label>
+        <input type="radio" name="collectionScope" value="tracking" checked>
+        <strong>목록 + 상세 + 배송조회</strong> <span>배송 이력 포함, 가장 느림</span>
+      </label>
+    </fieldset>
+
+    <fieldset class="scope">
+      <legend>연도 범위</legend>
+      <label>
+        <input type="radio" name="yearScope" value="all" checked>
+        <strong>전체 연도</strong>
+      </label>
+      <label>
+        <input type="radio" name="yearScope" value="current">
+        <strong>현재 화면만</strong>
+      </label>
+    </fieldset>
+
     <fieldset>
-      <legend>페이지 사이 대기 시간</legend>
+      <legend>페이지·주문 사이 대기 시간</legend>
       <label>
         최소 초
         <input id="minDelay" type="number" min="0.8" step="0.1" value="1.5" inputmode="decimal">
@@ -114,15 +178,21 @@
     </fieldset>
 
     <div class="actions">
+      <p id="scopeSummary">수집 범위: 목록 + 상세 + 배송조회 (가장 느림)</p>
       <button id="startButton" type="button">수집 시작</button>
+      <button id="stopButton" class="stop" type="button" disabled>중단</button>
       <button id="diagnoseButton" type="button">구조 진단</button>
-      <button id="downloadButton" class="secondary" type="button" disabled>JSON 내려받기</button>
+      <button id="orderDownloadButton" class="secondary" type="button" disabled>주문 JSON 내려받기</button>
+      <button id="trackingDownloadButton" class="secondary" type="button" disabled>배송 JSON 내려받기</button>
     </div>
+
+    <p id="trackingDownloadReason" class="help">수집 전에는 배송 JSON을 내려받을 수 없습니다.</p>
 
     <div id="status" role="status" aria-live="polite">주문목록 페이지에서 수집을 시작하세요.</div>
 
     <p class="help">0건이면 구조 진단으로 선택자 매칭 수를 확인하세요. 결과는 외부 서버로 전송하지 않습니다.</p>
 
+    <script src="content.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
