@@ -542,3 +542,39 @@ test('배송조회에서 뒤로가기도 클릭도 안 되면 목록 주소로 �
   assert.equal(outcome.ok, true, outcome.reason);
   assert.match(navigated || '', /order\/list/);
 });
+
+test('팝업이 돌리는 동안 워커는 끼어들지 않는다', async () => {
+  // 둘이 같이 돌면 같은 걸음을 두 번 밟는다.
+  let workerSteps = 0;
+  const job = runningJob({ phase: 'LIST', orders: [], warnings: [] });
+  job.driver = 'popup';
+  job.driverAt = Date.now();
+  const { api } = fakeChrome(async (method) => {
+    if (method === 'pageFacts') return [{ result: LIST }];
+    if (method === 'runStep') { workerSteps += 1; return [{ result: undefined }]; }
+    return undefined;
+  }, job);
+
+  await createController(api, { sleep: async () => {}, pollMs: 0, changeTimeoutMs: 5, random: () => 0, driver: 'worker' }).resume(3);
+
+  assert.equal(workerSteps, 0, '팝업이 돌리는데 워커도 밟았다');
+});
+
+test('팝업 심장박동이 멎으면 워커가 이어받는다', async () => {
+  let workerSteps = 0;
+  const job = runningJob({ phase: 'LIST', orders: [], warnings: [] });
+  job.driver = 'popup';
+  job.driverAt = Date.now() - 60000;   // 1분 전이 마지막 박동
+  const { api } = fakeChrome(async (method, value) => {
+    if (method === 'pageFacts') return [{ result: LIST }];
+    if (method === 'runStep') {
+      workerSteps += 1;
+      return [{ result: { state: { ...value, phase: 'DONE', done: true, result: { orderData: { orders: [] }, trackingData: [] } }, action: { type: 'done' }, progress: {} } }];
+    }
+    return undefined;
+  }, job);
+
+  await createController(api, { sleep: async () => {}, pollMs: 0, changeTimeoutMs: 5, random: () => 0, driver: 'worker' }).resume(3);
+
+  assert.ok(workerSteps >= 1, '팝업이 멎었는데 워커가 이어받지 않았다');
+});

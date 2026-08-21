@@ -154,7 +154,17 @@ ${ORDER_LIST_URL}`); return tab; }
   function downloadJson(value, filename) { const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' }); const url = URL.createObjectURL(blob); chrome.downloads.download({ url, filename, saveAs: true }, () => { URL.revokeObjectURL(url); void chrome.runtime.lastError; }); }
   function updateScopeSummary() { const labels = { list: '목록만', detail: '목록 + 상세', tracking: '목록 + 상세 + 배송조회' }; elements.scopeSummary.textContent = `수집 범위: ${labels[selected('collectionScope')] || labels.tracking}`; }
 
-  elements.start.addEventListener('click', async () => { try { await ensureHostPermission(); const tab = await ensureOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config() }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
+  // 팝업이 열려 있는 동안은 팝업이 수집을 돌린다.
+  // 서비스 워커는 유휴 30초면 종료되지만 팝업은 열려 있는 한 살아 있다.
+  // 워커는 팝업의 심장박동이 멎으면 이어받는다.
+  const popupController = globalThis.__coupangController?.createController(chrome, { driver: 'popup' }) || null;
+
+  function drivePopupLoop() {
+    if (!popupController) return;
+    void popupController.resume().catch(() => {});
+  }
+
+  elements.start.addEventListener('click', async () => { try { await ensureHostPermission(); const tab = await ensureOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config() }); render(response.job); drivePopupLoop(); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.stop.addEventListener('click', async () => { try { const response = await message({ type: 'STOP' }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.diagnose.addEventListener('click', async () => { elements.diagnose.disabled = true; try { const tab = await activeOrderListTab(); await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }); const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__coupangOrderCollector?.diagnoseStructure() }); const diagnosis = results?.[0]?.result; if (!diagnosis) throw new Error('진단 결과를 받지 못했습니다.'); setStatus(Object.entries(diagnosis).map(([key, value]) => `${key}: ${value}`).join('\n')); } catch (error) { setProbe(`오류: ${error.message}`); } finally { elements.diagnose.disabled = false; } });
   async function runInTab(tabId, method, ...args) {
@@ -312,5 +322,6 @@ ${ORDER_LIST_URL}`); return tab; }
   chrome.storage.onChanged.addListener((changes, area) => { if (area === 'local' && changes.coupangJob) render(changes.coupangJob.newValue); });
   updateScopeSummary();
   elements.buildLine.textContent = `확장 ${chrome.runtime.getManifest().version}`;
+  setTimeout(() => { if (currentJob?.status === 'running') drivePopupLoop(); }, 300);
   message({ type: 'GET_JOB' }).then((response) => render(response.job)).catch(() => {});
 })();
