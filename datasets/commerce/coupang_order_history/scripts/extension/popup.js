@@ -271,6 +271,7 @@ ${ORDER_LIST_URL}`); return tab; }
       if (!popupController) lines.push('팝업루프 없음 (컨트롤러를 불러오지 못함)');
       else {
         const since = mine?.lastLoopAt ? Math.round((Date.now() - new Date(mine.lastLoopAt).getTime()) / 1000) : null;
+        if (mine?.currentAction) lines.push(`팝업이 기다리는 것: ${mine.currentAction} (${Math.round((mine.currentActionMs || 0) / 1000)}초째)`);
         lines.push(`팝업루프 ${mine?.looping ? '돎' : '멈춤'} · 마지막 걸음 ${since === null ? '없음' : `${since}초 전`} · 호출실패 ${mine?.callFailCount ?? '-'}회`);
         if (mine?.lastCallError) lines.push(`팝업호출오류: ${mine.lastCallError}`);
         if (mine?.lastLoopError) lines.push(`팝업루프오류: ${mine.lastLoopError}`);
@@ -322,7 +323,8 @@ ${ORDER_LIST_URL}`); return tab; }
 
   elements.openList.addEventListener('click', async () => {
     elements.openList.disabled = true;
-    try { await ensureOrderListTab(); setStatus('주문목록 페이지입니다. 수집 시작을 누르세요.'); }
+    try { const tab = await ensureOrderListTab(); setProbe(`주문목록 페이지입니다.
+${tab.url || ''}`); }
     catch (error) { setProbe(`오류: ${error.message}`); }
     finally { elements.openList.disabled = false; }
   });

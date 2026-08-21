@@ -60,6 +60,8 @@
     let lastLoopError = null;
     let callFailCount = 0;
     let lastCallError = null;
+    let currentAction = null;
+    let currentActionAt = 0;
     function withTimeout(promise, ms, label) {
       let timer = null;
       const guard = new Promise((_, reject) => { timer = setTimeout(() => { timeoutCount += 1; lastTimeoutAt = new Date().toISOString(); reject(new Error(`${label} 응답이 없습니다.`)); }, ms); });
@@ -180,6 +182,12 @@
     }
 
     async function executeAction(job, action) {
+      currentAction = `${action.type}${action.target ? ':' + action.target : ''}${action.expect ? '(' + action.expect + ')' : ''}`;
+      currentActionAt = Date.now();
+      try { return await runAction(job, action); } finally { currentAction = null; currentActionAt = 0; }
+    }
+
+    async function runAction(job, action) {
       if (action.type === 'none' || action.type === 'done') return { ok: true };
       if (action.type === 'navigate') {
         await chromeApi.tabs.update(job.tabId, { url: action.url });
@@ -461,7 +469,7 @@
       return job;
     }
 
-    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector, rateLimit, health: () => ({ timeoutCount, lastTimeoutAt, lastLoopAt, loopErrorCount, lastLoopError, callFailCount, lastCallError, looping: Boolean(loopPromise), keepAlive: Boolean(keepAliveTimer) }) };
+    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector, rateLimit, health: () => ({ timeoutCount, lastTimeoutAt, lastLoopAt, loopErrorCount, lastLoopError, callFailCount, lastCallError, currentAction, currentActionMs: currentActionAt ? Date.now() - currentActionAt : 0, looping: Boolean(loopPromise), keepAlive: Boolean(keepAliveTimer) }) };
   }
 
   let startupError = null;
