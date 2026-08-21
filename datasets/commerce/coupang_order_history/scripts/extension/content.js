@@ -140,6 +140,8 @@
   function finish(state) { state.phase = 'DONE'; state.done = true; state.result = buildExportPayloads(state.orders, { collectionScope: state.scope, pageCount: state.pageCount, warning: state.warnings.length ? state.warnings.join(' ') : null }); state.tracking = state.result.trackingData; return { state, action: { type: 'done' }, progress: progress(state, '수집이 완료되었습니다.') }; }
   function runStep(input = {}) {
     const out = runStepInner(input);
+    // 정체 횟수를 클릭 후보 단계로 쓴다. 0이면 리프, 1이면 부모, ...
+    if (out?.action?.type === 'click') out.action.attempt = Math.min(input.stalls || 0, 3);
     // 중단되거나 탭이 닫혀도 누적분을 내려받을 수 있게 매 걸음 부분 결과를 갱신한다.
     if (out?.state && !out.state.done) out.state.result = buildExportPayloads(out.state.orders, { collectionScope: out.state.scope, pageCount: out.state.pageCount, warning: out.state.warnings.length ? out.state.warnings.join(' ') : null, partial: true });
     return out;
@@ -176,10 +178,35 @@
     if (state.phase === 'NEXT_YEAR') { const nextIndex = state.yearIndex + 1; if (nextIndex >= state.years.length) return finish(state); const label = state.years[nextIndex].label; const tabIndex = yearEntries(root).findIndex((entry) => entry.label === label); if (tabIndex < 0) { state.warnings.push(`${label} 연도 탭을 찾지 못했습니다.`); state.yearIndex = nextIndex; return { state, action: { type: 'none' }, progress: progress(state, '다음 연도 탭을 찾습니다.') }; } state.yearIndex = nextIndex; state.page = 1; state.phase = 'LIST'; return { state, action: { type: 'click', target: 'yearTab', index: tabIndex }, progress: progress(state, `${label} 연도로 이동합니다.`) }; }
     return finish(state);
   }
+  function clickElement(element) {
+    if (!element) return false;
+    const view = globalThis.window;
+    if (view && typeof view.MouseEvent === 'function') {
+      for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click']) {
+        try { element.dispatchEvent(new view.MouseEvent(type, { bubbles: true, cancelable: true, view })); } catch { /* 지원하지 않는 이벤트는 건너뀜다 */ }
+      }
+      return true;
+    }
+    if (typeof element.click === 'function') { element.click(); return true; }
+    return false;
+  }
   function performAction(action) {
-    const root = globalThis.document; if (!action || ['none', 'done'].includes(action.type)) return { ok: true }; if (action.type !== 'click') return { ok: false, reason: '클릭 액션이 아닙니다.' };
-    let target = null; if (action.target === 'nextPage') target = findNextButton(root); if (action.target === 'yearTab') target = yearEntries(root)[action.index]?.element; if (action.target === 'detail') target = actionIn(discoverCards(root)[action.index], ['주문 상세보기', '주문상세보기']); if (action.target === 'tracking') target = actionIn(discoverCards(root)[action.index], ['배송 조회', '배송조회']); if (action.target === 'backToList') target = actionIn(root, ['주문목록 돌아가기', '주문 목록 돌아가기', '주문목록']);
-    if (!target || (action.target === 'nextPage' && isPaginationButtonDisabled(target))) return { ok: false, reason: `${action.target} 요소를 찾지 못했습니다.` }; target.click(); return { ok: true };
+    const root = globalThis.document;
+    if (!action || ['none', 'done'].includes(action.type)) return { ok: true };
+    if (action.type !== 'click') return { ok: false, reason: '클릭 액션이 아닙니다.' };
+    const attempt = Math.max(0, action.attempt || 0);
+    let candidates = [];
+    if (action.target === 'nextPage') candidates = [findNextButton(root)].filter(Boolean);
+    if (action.target === 'yearTab') candidates = [yearEntries(root)[action.index]?.element].filter(Boolean);
+    if (action.target === 'detail') candidates = actionCandidates(discoverCards(root)[action.index], ['주문 상세보기', '주문상세보기']);
+    if (action.target === 'tracking') candidates = actionCandidates(discoverCards(root)[action.index], ['배송 조회', '배송조회']);
+    if (action.target === 'backToList') candidates = actionCandidates(root, ['주문목록 돌아가기', '주문 목록 돌아가기', '주문목록']);
+    if (!candidates.length) return { ok: false, reason: `${action.target} 요소를 찾지 못했습니다.` };
+    // 재시도할수록 바깥쪽 조상을 누른다. 후보가 모자라면 마지막 것을 쓴다.
+    const target = candidates[Math.min(attempt, candidates.length - 1)];
+    if (action.target === 'nextPage' && isPaginationButtonDisabled(target)) return { ok: false, reason: '다음 버튼이 비활성 상태입니다.' };
+    if (!clickElement(target)) return { ok: false, reason: '클릭할 수 없는 요소입니다.' };
+    return { ok: true, depth: Math.min(attempt, candidates.length - 1), tag: target.tagName || null };
   }
   function diagnoseStructure(root = globalThis.document) { const parsed = parseDocument(root); const cards = discoverCards(root); const count = (selector) => cards.reduce((sum, card) => sum + card.querySelectorAll(selector).length, 0); return { productTitleLinks: root.querySelectorAll(SELECTORS.productTitleLink).length, orderCards: parsed.orderCardCount, productImageLinks: count(SELECTORS.productImageLink), prices: count(SELECTORS.price), quantities: parsed.orders.filter((order) => order.Quantity !== null).length, orderStatuses: count(SELECTORS.orderStatus), deliveryNotices: count(SELECTORS.deliveryNotice), yearTabs: extractYearTabs(root).length, nextButton: Boolean(findNextButton(root)) }; }
   async function collectDetailsOnCurrentPage(orders, scope, collectedAt, page, visited, start, end, deps = {}) { for (const order of orders) { order.Warnings ||= []; order.TrackingEvents ||= []; order.TrackingEventRaw ||= []; const root = deps.getDocument?.() || globalThis.document; const detail = deps.findOrderDetailAction?.(root, order) ?? findOrderDetailAction(root, order); if (detail && deps.clickAndWait && !await deps.clickAndWait(detail)) order.Warnings.push('주문 상세 수집 실패: 페이지가 전환되지 않았습니다.'); if (scope === 'tracking') { const tracking = deps.findOrderTrackingAction?.(deps.getDocument?.() || root, order) ?? findOrderTrackingAction(deps.getDocument?.() || root, order); if (!tracking) { order.Warnings.push('배송 조회 버튼이 없는 주문입니다(취소/환불 등).'); order._TrackingOutcome = 'buttonMissing'; } else if (deps.clickAndWait && await deps.clickAndWait(tracking)) { const priorWarnings = order.Warnings; const parsed = (deps.parseTrackingPage || parseTrackingPage)(deps.getDocument?.() || globalThis.document, collectedAt, order.OrderStatus); Object.assign(order, parsed); order.Warnings = [...priorWarnings, ...(parsed.Warnings || [])]; } } await deps.returnToOrderList?.(); await deps.randomDelay?.(); } return orders; }

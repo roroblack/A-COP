@@ -143,6 +143,10 @@
             }
           } catch {
             // 이동 중 컨텍스트 소실은 다음 반복에서 재주입하여 복구한다.
+            // 예외가 계속 나면 진행이 멈추므로 정체로 센다.
+            job.state.stalls = (job.state.stalls || 0) + 1;
+            if (job.state.stalls >= 3) { job.state.forceSkip = true; job.state.stalls = 0; }
+            await saveJob(job);
           }
           await rateLimit(job.config);
         }
