@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-22f';
+  const BUILD = '2026-08-22g';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -182,7 +182,7 @@
       if (restore.attempts > state.page + 3) return giveUp('목록 위치를 복원하지 못해 이 페이지의 남은 주문을 건너뜁니다.');
       restore.attempts += 1;
       const label = state.years[state.yearIndex]?.label;
-      if (!restore.yearDone && label) { restore.yearDone = true; const tabIndex = yearEntries(root).findIndex((entry) => entry.label === label); if (tabIndex >= 0) return { state, action: { type: 'click', target: 'yearTab', index: tabIndex }, progress: progress(state, `${label} 연도로 돌아갑니다.`) }; }
+      if (!restore.yearDone && label && state.yearScope !== 'current') { restore.yearDone = true; const tabIndex = yearEntries(root).findIndex((entry) => entry.label === label); if (tabIndex >= 0) return { state, action: { type: 'click', target: 'yearTab', index: tabIndex }, progress: progress(state, `${label} 연도로 돌아갑니다.`) }; }
       const next = findNextButton(root);
       if (!next || isPaginationButtonDisabled(next)) return giveUp('목록 위치 복원 중 다음 페이지 버튼을 찾지 못했습니다.');
       return { state, action: { type: 'click', target: 'nextPage', index: 0 }, progress: progress(state, `목록 위치를 복원하는 중입니다(${restore.attempts}회).`) };

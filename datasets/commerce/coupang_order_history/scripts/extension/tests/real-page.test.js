@@ -160,3 +160,18 @@ test('실측 상세: script가 있어도 상세로 본다', () => {
   global.document = document;
   assert.equal(isOrderListPage(document), false, 'script 안의 주문 상세보기를 버튼으로 착각했다');
 });
+
+test('연도 탭을 쓰지 않는 설정이면 위치 복원에서도 누르지 않는다', () => {
+  // 연도 탭을 누르면 주소에 requestYear가 붙어 자리가 더 어긋난다.
+  const document = asDocument(parseFragment(html));
+  global.document = document;
+  const state = {
+    phase: 'RESTORE', scope: 'tracking', yearScope: 'current',
+    years: [{ label: '2026', done: false }], yearIndex: 0, page: 2,
+    orders: [], tracking: [], queue: [{ cardIndex: 0, orderIndexes: [], detailDone: false, trackingDone: false, returning: null }],
+    cursor: 0, warnings: [], listKey: '다른키', restore: { yearDone: false, attempts: 0 }
+  };
+  const step = runStep(state);
+  assert.equal(step.action.type, 'click');
+  assert.equal(step.action.target, 'nextPage', `연도 탭을 눌렀다: ${step.action.target}`);
+});
