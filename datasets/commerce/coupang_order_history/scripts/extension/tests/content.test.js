@@ -598,3 +598,18 @@ test('실측 형태 C: 배송중은 발송됨이되 완료가 아니다', () => 
   const json = JSON.stringify(t);
   assert.equal(json.includes('최*우'), false, 'PII 미포함');
 });
+
+test('상세 페이지를 목록으로 오인하지 않는다', () => {
+  // discoverCards는 아무것도 못 찾으면 root를 카드로 돌려준다.
+  // 주문일 문자열만 보고 판정하면 상세 페이지도 목록이 된다.
+  assert.equal(isOrderListPage(parseFragment(DETAIL_HTML)), false);
+});
+
+test('주문 상세보기가 있으면 목록 페이지다', () => {
+  assert.equal(isOrderListPage(parseFragment(ORDER_LIST_PAGE_HTML)), true);
+});
+
+test('주문목록 돌아가기가 있으면 목록 페이지가 아니다', () => {
+  const html = '<main><span>주문 상세보기</span><button>주문목록 돌아가기</button></main>';
+  assert.equal(isOrderListPage(parseFragment(html)), false);
+});

@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-21d';
+  const BUILD = '2026-08-21e';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -108,7 +108,7 @@
   const isPaginationButtonDisabled = (button) => !button || Boolean(button.disabled) || button.hasAttribute?.('disabled') || button.getAttribute?.('aria-disabled') === 'true';
   function yearEntries(root) { return [...(root?.querySelectorAll?.('*') || [])].map((element) => ({ element, label: text(element) })).filter(({ element, label }) => /^\d{4}$/.test(label || '') && ![...(element.children || [])].some((child) => /^\d{4}$/.test(text(child) || ''))); }
   const extractYearTabs = (root) => yearEntries(root).map(({ label }) => Number(label));
-  const isOrderListPage = (root) => discoverCards(root).some((card) => /\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\s*주문/.test(text(card) || '')) && !/받는사람\s*정보/.test(text(root) || '');
+  const isOrderListPage = (root) => detailActionLeaves(root).length > 0 && !/주문목록\s*돌아가기/.test(compact(root) || '') && !/받는사람\s*정보/.test(compact(root) || '');
   const rows = (root) => [...(root?.querySelectorAll?.('tr') || [])];
   function rowValue(root, label) { const row = rows(root).find((item) => compact(item).startsWith(label.replace(/\s+/g, ''))); return text([...(row?.querySelectorAll?.('td') || [])].at(-1)); }
   function parseDetailPage(root, pageUrl = '') {
@@ -189,7 +189,7 @@
     if (!element) return false;
     const view = globalThis.window;
     if (view && typeof view.MouseEvent === 'function') {
-      for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click']) {
+      for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
         try { element.dispatchEvent(new view.MouseEvent(type, { bubbles: true, cancelable: true, view })); } catch { /* 지원하지 않는 이벤트는 건너뀜다 */ }
       }
       return true;
