@@ -217,6 +217,7 @@ ${ORDER_LIST_URL}`); return tab; }
         lines.push(`응답없음 ${health.timeoutCount}회 · 루프오류 ${health.loopErrorCount}회 · 호출실패 ${health.callFailCount}회`);
         if (health.lastLoopError) lines.push(`루프오류: ${health.lastLoopError}`);
         if (health.lastCallError) lines.push(`호출오류: ${health.lastCallError}`);
+        if (health.startupError) lines.push(`시작오류: ${health.startupError}`);
       }
       const text = lines.join('\n');
       setStatus(text);

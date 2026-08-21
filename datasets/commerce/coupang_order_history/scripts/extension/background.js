@@ -208,6 +208,22 @@
       keepAliveTimer = null;
     }
 
+    // 오래 걸리는 걸음 도중에 중단이 들어올 수 있다. 그때 손에 든 낡은 job 을 그대로
+    // 저장하면 status 가 running 으로 되살아난다. 저장 전에 실제 상태를 확인한다.
+    async function saveIfRunning(job) {
+      const current = await getJob();
+      if (current?.status !== 'running') return false;
+      await saveJob(job);
+      return true;
+    }
+
+    let stepFailures = 0;
+    async function noteStepFailure(job, reason) {
+      stepFailures += 1;
+      job.progress = { ...(job.progress || {}), message: `걸음이 진행되지 않습니다(${stepFailures}회): ${reason}` };
+      try { await saveJob(job); sendProgress(job.progress, job.status); } catch { /* 저장 실패는 다음 걸음에서 다시 시도한다 */ }
+    }
+
     async function loop(maxIterations = Infinity) {
       let iterations = 0;
       while (iterations < maxIterations) {
@@ -220,11 +236,14 @@
         let step;
         try {
           step = await callCollector(job.tabId, 'runStep', job.state);
-        } catch {
+        } catch (error) {
+          await noteStepFailure(job, error.message);
           await sleep(pollMs);
           continue;
         }
         if (!step?.state || !step?.action) {
+          // 조용히 넘어가면 화면이 시작값에서 멈춘 채로 남는다. 사유를 남긴다.
+          await noteStepFailure(job, lastCallError || '수집기가 결과를 주지 않았습니다.');
           await sleep(pollMs);
           continue;
         }
@@ -232,7 +251,7 @@
         job.state = step.state;
         job.progress = step.progress;
         if (step.state.result) job.result = step.state.result;
-        await saveJob(job);
+        if (!await saveIfRunning(job)) return getJob();
         sendProgress(step.progress, job.status);
 
         if (step.action.type === 'done') {
@@ -259,7 +278,7 @@
             job.state.warnings ||= [];
             job.state.warnings.push(outcome.reason || '행동이 통하지 않았습니다.');
           }
-          await saveJob(job);
+          if (!await saveIfRunning(job)) return getJob();
           await rateLimit(job.config, job);
         }
         } catch (error) {
@@ -286,7 +305,23 @@
       return loopPromise;
     }
 
+    // 서비스 워커가 페이지에 접근할 수 있는지 먼저 확인한다.
+    // 사이트 액세스가 "클릭할 때"면 팝업은 되는데(아이콘 클릭으로 activeTab 획득)
+    // 배경에서 도는 수집은 아무것도 못 한다. 증상은 "시작하자마자 멈춤"이다.
+    async function ensureAccess(tabId) {
+      try {
+        await inject(tabId);
+      } catch (error) {
+        throw new Error(
+          '페이지에 접근할 수 없어 수집을 시작하지 못했습니다.\n' +
+          '확장 아이콘을 오른쪽 클릭해 사이트 액세스를 "mc.coupang.com에서" 또는 "모든 사이트에서"로 바꿔주세요.\n' +
+          `(${error.message})`
+        );
+      }
+    }
+
     async function start(tabId, config = {}, startOptions = {}) {
+      await ensureAccess(tabId);
       const job = {
         status: 'running', tabId, config,
         state: {
@@ -317,6 +352,7 @@
     return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector, rateLimit, health: () => ({ timeoutCount, lastTimeoutAt, lastLoopAt, loopErrorCount, lastLoopError, callFailCount, lastCallError, looping: Boolean(loopPromise), keepAlive: Boolean(keepAliveTimer) }) };
   }
 
+  let startupError = null;
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
     const controller = createController(chrome);
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -329,7 +365,7 @@
         controller.stop().then((job) => sendResponse({ ok: true, job })).catch((error) => sendResponse({ ok: false, error: error.message }));
         return true;
       }
-      if (message?.type === 'HEALTH') { sendResponse({ ok: true, health: controller.health() }); return true; }
+      if (message?.type === 'HEALTH') { sendResponse({ ok: true, health: { ...controller.health(), startupError } }); return true; }
       if (message?.type === 'GET_JOB') {
         // 서비스 워커가 잠들었다면 이 메시지가 깨운다. 깨어난 김에 작업도 이어간다.
         controller.getJob().then((job) => { if (job?.status === 'running') void controller.resume(); sendResponse({ ok: true, job }); });
@@ -337,14 +373,23 @@
       }
       return false;
     });
+    // 등록 하나가 실패하면 그 뒤의 등록이 전부 건너뛰어진다. 따로 감싼다.
     // 우리 작업은 페이지를 계속 이동시킨다. 그 로드를 서비스 워커를 깨우는 신호로 쓴다.
-    chrome.tabs.onUpdated.addListener((tabId, info) => {
-      if (info.status !== 'complete') return;
-      controller.getJob().then((job) => { if (job?.status === 'running' && job.tabId === tabId) void controller.resume(); }).catch(() => {});
-    });
-    chrome.alarms.onAlarm.addListener((alarm) => {
-      if (alarm.name === ALARM_NAME) void controller.resume();
-    });
+    try {
+      chrome.tabs.onUpdated.addListener((tabId, info) => {
+        if (info.status !== 'complete') return;
+        controller.getJob().then((job) => { if (job?.status === 'running' && job.tabId === tabId) void controller.resume(); }).catch(() => {});
+      });
+    } catch (error) {
+      startupError = `탭 이벤트 등록 실패: ${error.message}`;
+    }
+    try {
+      chrome.alarms.onAlarm.addListener((alarm) => {
+        if (alarm.name === ALARM_NAME) void controller.resume();
+      });
+    } catch (error) {
+      startupError = `알람 등록 실패: ${error.message}`;
+    }
     // 도는 작업이 있을 때만 시작한다. 헛도는 루프가 start 의 resume 과 겹친다.
     controller.getJob().then((job) => { if (job?.status === 'running') void controller.resume(); }).catch(() => {});
   }
