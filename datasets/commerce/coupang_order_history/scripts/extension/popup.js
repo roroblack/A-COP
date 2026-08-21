@@ -5,7 +5,7 @@
   const elements = {
     min: document.querySelector('#minDelay'), max: document.querySelector('#maxDelay'),
     start: document.querySelector('#startButton'), stop: document.querySelector('#stopButton'),
-    diagnose: document.querySelector('#diagnoseButton'), orderDownload: document.querySelector('#orderDownloadButton'),
+    diagnose: document.querySelector('#diagnoseButton'), detailProbe: document.querySelector('#detailProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
     trackingDownload: document.querySelector('#trackingDownloadButton'), trackingReason: document.querySelector('#trackingDownloadReason'),
     status: document.querySelector('#status'), scopeSummary: document.querySelector('#scopeSummary')
   };
@@ -38,7 +38,8 @@
     elements.trackingReason.textContent = trackingCount > 0 ? `배송 이력 ${trackingCount}건을 내려받을 수 있습니다.${partialNote}` : running ? '수집 중에는 내려받을 수 없습니다.' : '수집된 배송 이력이 없습니다.';
     if (!job) return;
     const progress = job.progress || {};
-    setStatus(`${job.status === 'completed' ? '수집 완료' : job.status === 'stopped' ? '수집 중단' : '수집 중'}\n단계: ${progress.stage || '-'} / ${progress.year || '-'}년\n페이지: ${progress.page || 1}\n누적 건수: ${progress.orderCount ?? 0}건 (상품 행 ${progress.count || 0}개)\n${progress.message || ''}`);
+    setStatus(`${job.status === 'completed' ? '수집 완료' : job.status === 'stopped' ? '수집 중단' : '수집 중'}\n단계: ${progress.stage || '-'} / ${progress.year || '-'}년\n페이지: ${progress.page || 1}\n누적 건수: ${progress.orderCount ?? 0}건 (상품 행 ${progress.count || 0}개)\n${progress.message || ''}${job.lastClick && job.lastClick.ok === false ? `
+마지막 클릭 실패: ${job.lastClick.reason}` : ''}`);
   }
   function dateStamp() { const now = new Date(); return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`; }
   function downloadJson(value, filename) { const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' }); const url = URL.createObjectURL(blob); chrome.downloads.download({ url, filename, saveAs: true }, () => { URL.revokeObjectURL(url); void chrome.runtime.lastError; }); }
@@ -47,11 +48,69 @@
   elements.start.addEventListener('click', async () => { try { const tab = await activeOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config() }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.stop.addEventListener('click', async () => { try { const response = await message({ type: 'STOP' }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.diagnose.addEventListener('click', async () => { elements.diagnose.disabled = true; try { const tab = await activeOrderListTab(); await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }); const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__coupangOrderCollector?.diagnoseStructure() }); const diagnosis = results?.[0]?.result; if (!diagnosis) throw new Error('진단 결과를 받지 못했습니다.'); setStatus(Object.entries(diagnosis).map(([key, value]) => `${key}: ${value}`).join('\n')); } catch (error) { setStatus(`오류: ${error.message}`); } finally { elements.diagnose.disabled = false; } });
+  async function runInTab(tabId, method, ...args) {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (name, values) => {
+        const collector = globalThis.__coupangOrderCollector;
+        if (!collector) return { error: '수집 스크립트가 없습니다.' };
+        try { return { value: collector[name](...values) }; } catch (error) { return { error: error.message }; }
+      },
+      args: [method, args]
+    });
+    return results?.[0]?.result || { error: '응답이 없습니다.' };
+  }
+
+  // 현재 페이지에서 상세 열기를 실제로 한 번 해보고 단계별로 보고한다.
+  elements.detailProbe.addEventListener('click', async () => {
+    elements.detailProbe.disabled = true;
+    const lines = [];
+    const show = () => setStatus(lines.join('\n'));
+    try {
+      const tab = await activeOrderListTab();
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+      lines.push(`확장 ${chrome.runtime.getManifest().version}`);
+
+      const before = await runInTab(tab.id, 'describeTarget', 'detail', 0, 0);
+      if (before.error) throw new Error(before.error);
+      const info = before.value;
+      lines.push(`content.js 빌드 ${info.build}`);
+      lines.push(`목록 페이지 ${info.isList ? 'ok' : '아님'}`);
+      lines.push(`카드 ${info.cardCount}개`);
+      lines.push(`클릭 후보 ${info.candidateCount}개: ${info.chain.join(' < ') || '없음'}`);
+      lines.push(`누를 것 ${info.pickTag || '없음'} "${info.pickText || ''}"`);
+      show();
+      if (!info.pickTag) throw new Error('클릭할 요소를 찾지 못했습니다.');
+
+      const clicked = await runInTab(tab.id, 'performAction', { type: 'click', target: 'detail', index: 0, attempt: 0 });
+      lines.push(`클릭 ${clicked.error ? `예외 ${clicked.error}` : JSON.stringify(clicked.value)}`);
+      show();
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const after = await runInTab(tab.id, 'describeTarget', 'detail', 0, 0);
+      if (after.error) {
+        lines.push('3초 후: 스크립트가 사라짐 (페이지가 이동했다는 뜻)');
+      } else {
+        const now = after.value;
+        lines.push(`3초 후 주소 ${now.url === info.url ? '그대로' : '바뀜'}`);
+        lines.push(`3초 후 서명 ${now.signature === info.signature ? '그대로' : '바뀜'}`);
+        lines.push(`3초 후 목록페이지 ${now.isList ? 'ok (안 열림)' : '아님 (상세로 보임)'}`);
+      }
+      show();
+    } catch (error) {
+      lines.push(`오류: ${error.message}`);
+      show();
+    } finally {
+      elements.detailProbe.disabled = false;
+    }
+  });
+
   elements.orderDownload.addEventListener('click', () => { if (currentJob?.result?.orderData) downloadJson(currentJob.result.orderData, `coupang_order_history_${dateStamp()}.json`); });
   elements.trackingDownload.addEventListener('click', () => { if ((currentJob?.result?.trackingData?.length || 0) > 0) downloadJson(currentJob.result.trackingData, `coupang_tracking_${dateStamp()}.json`); });
   for (const radio of document.querySelectorAll('input[name="collectionScope"]')) radio.addEventListener('change', updateScopeSummary);
   chrome.runtime.onMessage.addListener((event) => { if (event?.type === 'COUPANG_JOB_PROGRESS') message({ type: 'GET_JOB' }).then((response) => render(response.job)).catch(() => {}); });
   chrome.storage.onChanged.addListener((changes, area) => { if (area === 'local' && changes.coupangJob) render(changes.coupangJob.newValue); });
   updateScopeSummary();
+  elements.buildLine.textContent = `확장 ${chrome.runtime.getManifest().version}`;
   message({ type: 'GET_JOB' }).then((response) => render(response.job)).catch(() => {});
 })();

@@ -1,6 +1,7 @@
 'use strict';
 
 (() => {
+  const BUILD = '2026-08-21c';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -208,11 +209,33 @@
     if (!clickElement(target)) return { ok: false, reason: '클릭할 수 없는 요소입니다.' };
     return { ok: true, depth: Math.min(attempt, candidates.length - 1), tag: target.tagName || null };
   }
+  // 지금 페이지에서 무엇을 누를지 그대로 보여준다. 클릭은 하지 않는다.
+  function describeTarget(target, index = 0, attempt = 0) {
+    const root = globalThis.document;
+    const labels = target === 'tracking'
+      ? ['배송 조회', '배송조회']
+      : ['주문 상세보기', '주문상세보기'];
+    const cards = discoverCards(root);
+    const card = cards[index];
+    const candidates = card ? actionCandidates(card, labels) : [];
+    const pick = candidates[Math.min(attempt, Math.max(0, candidates.length - 1))];
+    return {
+      build: BUILD,
+      url: globalThis.location?.href || null,
+      isList: isOrderListPage(root),
+      cardCount: cards.length,
+      candidateCount: candidates.length,
+      chain: candidates.map((element) => `${element.tagName}.${(element.getAttribute?.('class') || '').split(' ')[0]}`),
+      pickTag: pick?.tagName || null,
+      pickText: pick ? (pick.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30) : null,
+      signature: pageSignature(root)
+    };
+  }
   function diagnoseStructure(root = globalThis.document) { const parsed = parseDocument(root); const cards = discoverCards(root); const count = (selector) => cards.reduce((sum, card) => sum + card.querySelectorAll(selector).length, 0); return { productTitleLinks: root.querySelectorAll(SELECTORS.productTitleLink).length, orderCards: parsed.orderCardCount, productImageLinks: count(SELECTORS.productImageLink), prices: count(SELECTORS.price), quantities: parsed.orders.filter((order) => order.Quantity !== null).length, orderStatuses: count(SELECTORS.orderStatus), deliveryNotices: count(SELECTORS.deliveryNotice), yearTabs: extractYearTabs(root).length, nextButton: Boolean(findNextButton(root)) }; }
   async function collectDetailsOnCurrentPage(orders, scope, collectedAt, page, visited, start, end, deps = {}) { for (const order of orders) { order.Warnings ||= []; order.TrackingEvents ||= []; order.TrackingEventRaw ||= []; const root = deps.getDocument?.() || globalThis.document; const detail = deps.findOrderDetailAction?.(root, order) ?? findOrderDetailAction(root, order); if (detail && deps.clickAndWait && !await deps.clickAndWait(detail)) order.Warnings.push('주문 상세 수집 실패: 페이지가 전환되지 않았습니다.'); if (scope === 'tracking') { const tracking = deps.findOrderTrackingAction?.(deps.getDocument?.() || root, order) ?? findOrderTrackingAction(deps.getDocument?.() || root, order); if (!tracking) { order.Warnings.push('배송 조회 버튼이 없는 주문입니다(취소/환불 등).'); order._TrackingOutcome = 'buttonMissing'; } else if (deps.clickAndWait && await deps.clickAndWait(tracking)) { const priorWarnings = order.Warnings; const parsed = (deps.parseTrackingPage || parseTrackingPage)(deps.getDocument?.() || globalThis.document, collectedAt, order.OrderStatus); Object.assign(order, parsed); order.Warnings = [...priorWarnings, ...(parsed.Warnings || [])]; } } await deps.returnToOrderList?.(); await deps.randomDelay?.(); } return orders; }
   async function collectOrders(config = {}) { let state = initialState(config); const runtime = config.runtime || {}; for (let count = 0; count < (runtime.maxTransitions || 1000); count += 1) { const result = runStep(state); state = result.state; runtime.reportProgress?.(result.progress); if (result.action.type === 'done') return state.result; if (result.action.type === 'navigate') { if (globalThis.location) globalThis.location.href = result.action.url; } else if (result.action.type === 'click') { const performed = performAction(result.action); if (!performed.ok) throw new Error(performed.reason); } await runtime.randomDelay?.(); } throw new Error('상태 기계 반복 상한을 초과했습니다.'); }
 
-  const api = { SELECTORS, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
+  const api = { BUILD, SELECTORS, describeTarget, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
   globalThis.__coupangOrderCollector = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

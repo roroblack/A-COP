@@ -88,7 +88,16 @@
       }
       if (action.type === 'click') {
         const before = await readSignature(job.tabId);
-        await callCollector(job.tabId, 'performAction', action);
+        // 클릭 실패 사유를 버리면 원인을 알 수 없다. 상태에 남긴다.
+        const outcome = await callCollector(job.tabId, 'performAction', action);
+        const report = outcome?.[0]?.result;
+        if (report && report.ok === false) {
+          job.state.warnings ||= [];
+          job.state.warnings.push(`클릭 실패: ${report.reason || '사유 없음'}`);
+          job.lastClick = report;
+          return false;
+        }
+        if (report) job.lastClick = report;
         return waitForPageChange(job.tabId, before);
       }
       return false;
