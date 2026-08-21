@@ -113,11 +113,15 @@ styled-components 클래스는 빌드마다 바뀔 수 있다.
 
 택배사, 송장번호, 배송 이력은 쿠팡 배송조회 화면에서 얻는다.
 
-주문 파일은 `coupang_order_history_YYYYMMDD.json`으로 저장한다.
+주문 파일은 `coupang_order_history_YYYYMMDD_HHMMSS.json`으로 저장한다.
+
+시각은 내려받은 때가 아니라 수집을 시작한 때다.
+
+같은 결과를 다시 받아도 이름이 같다.
 
 주문 파일에는 택배사와 송장번호만 남긴다.
 
-배송 이벤트는 `coupang_tracking_YYYYMMDD.json`에 별도 배열로 저장한다.
+배송 이벤트는 `coupang_tracking_YYYYMMDD_HHMMSS.json`에 별도 배열로 저장한다.
 
 각 배송 이벤트는 `kind`, `where`, `timeString`, `raw`를 포함한다.
 

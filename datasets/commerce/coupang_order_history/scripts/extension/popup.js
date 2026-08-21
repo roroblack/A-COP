@@ -101,7 +101,14 @@ ${ORDER_LIST_URL}`); return tab; }
     if (!job) return;
     showProgress(job);
   }
-  function dateStamp() { const now = new Date(); return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`; }
+  // 파일명에는 내려받은 시각이 아니라 수집을 시작한 시각을 쓴다.
+  // 같은 결과를 다시 받아도 이름이 같고, 여러 번 돌린 것끼리 섞이지 않는다.
+  function runStamp(job) {
+    const at = job?.startedAt ? new Date(job.startedAt) : new Date();
+    const when = Number.isNaN(at.getTime()) ? new Date() : at;
+    const pad = (value) => String(value).padStart(2, '0');
+    return `${when.getFullYear()}${pad(when.getMonth() + 1)}${pad(when.getDate())}_${pad(when.getHours())}${pad(when.getMinutes())}${pad(when.getSeconds())}`;
+  }
   function downloadJson(value, filename) { const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' }); const url = URL.createObjectURL(blob); chrome.downloads.download({ url, filename, saveAs: true }, () => { URL.revokeObjectURL(url); void chrome.runtime.lastError; }); }
   function updateScopeSummary() { const labels = { list: '목록만', detail: '목록 + 상세', tracking: '목록 + 상세 + 배송조회' }; elements.scopeSummary.textContent = `수집 범위: ${labels[selected('collectionScope')] || labels.tracking}`; }
 
@@ -243,8 +250,8 @@ ${ORDER_LIST_URL}`); return tab; }
     finally { elements.openList.disabled = false; }
   });
 
-  elements.orderDownload.addEventListener('click', () => { if (currentJob?.result?.orderData) downloadJson(currentJob.result.orderData, `coupang_order_history_${dateStamp()}.json`); });
-  elements.trackingDownload.addEventListener('click', () => { if ((currentJob?.result?.trackingData?.length || 0) > 0) downloadJson(currentJob.result.trackingData, `coupang_tracking_${dateStamp()}.json`); });
+  elements.orderDownload.addEventListener('click', () => { if (currentJob?.result?.orderData) downloadJson(currentJob.result.orderData, `coupang_order_history_${runStamp(currentJob)}.json`); });
+  elements.trackingDownload.addEventListener('click', () => { if ((currentJob?.result?.trackingData?.length || 0) > 0) downloadJson(currentJob.result.trackingData, `coupang_tracking_${runStamp(currentJob)}.json`); });
   for (const radio of document.querySelectorAll('input[name="collectionScope"]')) radio.addEventListener('change', updateScopeSummary);
   chrome.runtime.onMessage.addListener((event) => { if (event?.type === 'COUPANG_JOB_PROGRESS') message({ type: 'GET_JOB' }).then((response) => render(response.job)).catch(() => {}); });
   chrome.storage.onChanged.addListener((changes, area) => { if (area === 'local' && changes.coupangJob) render(changes.coupangJob.newValue); });
