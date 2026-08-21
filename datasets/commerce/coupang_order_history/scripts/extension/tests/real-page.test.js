@@ -233,3 +233,22 @@ test('다음이 한 번 안 통했다고 마지막 페이지로 보지 않는다
   assert.equal(giveUp.state.phase, 'NEXT_YEAR');
   assert.match(giveUp.state.warnings.at(-1), /넘어가지 않아|마지막 페이지/);
 });
+
+test('목록 순서가 바뀌어도 같은 주문을 누른다', () => {
+  // 목록이 다시 그려지면 카드 순번이 다른 주문을 가리킨다.
+  // 실제로 배송조회에서 나온 뒤 엉뚱한 주문의 상세로 들어갔다.
+  const document = asDocument(parseFragment(html));
+  global.document = document;
+  const orders = parseDocument(document).orders;
+  const target = orders.find((order) => order._cardIndex === 2);
+  const key = `${target.OrderedAt || ''}|${target.VendorItemId || target.ProductName || ''}`;
+
+  // 순번은 일부러 틀리게 주고 키로만 찾게 한다
+  const byKey = performAction({ type: 'click', target: 'detail', index: 0, attempt: 0, cardKey: key });
+  const byIndex = performAction({ type: 'click', target: 'detail', index: 2, attempt: 0 });
+
+  assert.equal(byKey.ok, true, byKey.reason);
+  assert.equal(byIndex.ok, true, byIndex.reason);
+  assert.equal(byKey.tag, byIndex.tag);
+  assert.equal(byKey.tag, 'SPAN');
+});
