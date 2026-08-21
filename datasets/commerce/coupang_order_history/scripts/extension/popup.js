@@ -14,6 +14,31 @@
   function setStatus(message) { elements.status.textContent = message; }
   function selected(name) { return document.querySelector(`input[name="${name}"]:checked`)?.value; }
   function isOrderListUrl(value) { try { const url = new URL(value); return url.origin === 'https://mc.coupang.com' && url.pathname.startsWith('/ssr/desktop/order/list'); } catch { return false; } }
+  const REQUIRED_ORIGINS = ['https://mc.coupang.com/*', 'https://www.coupang.com/*'];
+
+  // 사이트 액세스가 "클릭할 때"면 확장은 아이콘을 누른 순간에만 접근할 수 있고
+  // 페이지를 이동하면 회수된다. 팝업은 되는데 배경 수집은 멈추는 이유가 이것이다.
+  // 시작 버튼 클릭은 사용자 제스처이므로 이 자리에서 영구 허용을 요청할 수 있다.
+  async function ensureHostPermission() {
+    const has = await new Promise((resolve) => {
+      try { chrome.permissions.contains({ origins: REQUIRED_ORIGINS }, (result) => resolve(Boolean(result))); }
+      catch { resolve(true); }
+    });
+    if (has) return true;
+    setStatus('쿠팡 페이지 접근 권한을 요청합니다. 허용을 눌러주세요.');
+    const granted = await new Promise((resolve) => {
+      try { chrome.permissions.request({ origins: REQUIRED_ORIGINS }, (result) => resolve(Boolean(result))); }
+      catch { resolve(false); }
+    });
+    if (!granted) {
+      throw new Error(
+        '쿠팡 페이지 접근이 허용되지 않아 수집할 수 없습니다.\n' +
+        '확장 아이콘을 오른쪽 클릭해 사이트 액세스를 "모든 사이트에서"로 바꿔주세요.'
+      );
+    }
+    return true;
+  }
+
   function waitForTabLoad(tabId, timeoutMs = 20000) {
     return new Promise((resolve) => {
       const timer = setTimeout(() => { chrome.tabs.onUpdated.removeListener(listener); resolve(false); }, timeoutMs);
@@ -123,7 +148,7 @@ ${ORDER_LIST_URL}`); return tab; }
   function downloadJson(value, filename) { const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' }); const url = URL.createObjectURL(blob); chrome.downloads.download({ url, filename, saveAs: true }, () => { URL.revokeObjectURL(url); void chrome.runtime.lastError; }); }
   function updateScopeSummary() { const labels = { list: '목록만', detail: '목록 + 상세', tracking: '목록 + 상세 + 배송조회' }; elements.scopeSummary.textContent = `수집 범위: ${labels[selected('collectionScope')] || labels.tracking}`; }
 
-  elements.start.addEventListener('click', async () => { try { const tab = await ensureOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config() }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
+  elements.start.addEventListener('click', async () => { try { await ensureHostPermission(); const tab = await ensureOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config() }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.stop.addEventListener('click', async () => { try { const response = await message({ type: 'STOP' }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.diagnose.addEventListener('click', async () => { elements.diagnose.disabled = true; try { const tab = await activeOrderListTab(); await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }); const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__coupangOrderCollector?.diagnoseStructure() }); const diagnosis = results?.[0]?.result; if (!diagnosis) throw new Error('진단 결과를 받지 못했습니다.'); setStatus(Object.entries(diagnosis).map(([key, value]) => `${key}: ${value}`).join('\n')); } catch (error) { setStatus(`오류: ${error.message}`); } finally { elements.diagnose.disabled = false; } });
   async function runInTab(tabId, method, ...args) {
@@ -188,6 +213,10 @@ ${ORDER_LIST_URL}`); return tab; }
     elements.stateProbe.disabled = true;
     try {
       const health = await message({ type: 'HEALTH' }).then((r) => r.health).catch(() => null);
+      const hasHost = await new Promise((resolve) => {
+        try { chrome.permissions.contains({ origins: REQUIRED_ORIGINS }, (r) => resolve(Boolean(r))); } catch { resolve(null); }
+      });
+      lines.push(`사이트 접근 권한 ${hasHost === null ? '확인 불가' : hasHost ? '있음' : '없음 (배경 수집 불가)'}`);
       const tab = await activeOrderListTab(true);
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
       const page = await runInTab(tab.id, 'describePage');
