@@ -6,7 +6,7 @@
   const DEFAULT_POLL_MS = 400;
   const DEFAULT_CHANGE_TIMEOUT_MS = 15000;
   const NAVIGATION_TIMEOUT_MS = 30000;
-  const CALL_TIMEOUT_MS = 10000;
+  const CALL_TIMEOUT_MS = 5000;
 
   function createController(chromeApi, options = {}) {
     const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -33,9 +33,14 @@
 
     // executeScript 가 끝내 응답하지 않으면 루프가 통째로 멈춘다. 탭이 숨겨지거나
     // 버려졌을 때 그런 일이 생긴다. 어떤 호출도 무한정 기다리지 않게 한다.
+    let timeoutCount = 0;
+    let lastTimeoutAt = null;
+    let lastLoopAt = null;
+    let loopErrorCount = 0;
+    let lastLoopError = null;
     function withTimeout(promise, ms, label) {
       let timer = null;
-      const guard = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} 응답이 없습니다.`)), ms); });
+      const guard = new Promise((_, reject) => { timer = setTimeout(() => { timeoutCount += 1; lastTimeoutAt = new Date().toISOString(); reject(new Error(`${label} 응답이 없습니다.`)); }, ms); });
       return Promise.race([promise, guard]).finally(() => clearTimeout(timer));
     }
 
@@ -197,6 +202,8 @@
       let iterations = 0;
       while (iterations < maxIterations) {
         iterations += 1;
+        lastLoopAt = new Date().toISOString();
+        try {
         const job = await getJob();
         if (!job || job.status !== 'running') return job;
 
@@ -245,6 +252,12 @@
           await saveJob(job);
           await rateLimit(job.config, job);
         }
+        } catch (error) {
+          // 루프는 어떤 이유로도 죽지 않는다. 죽으면 다음 이벤트가 올 때까지 아무 일도 안 일어난다.
+          loopErrorCount += 1;
+          lastLoopError = `${error.message} (${new Date().toISOString()})`;
+          await sleep(pollMs);
+        }
       }
       return getJob();
     }
@@ -257,7 +270,7 @@
       return loopPromise;
     }
 
-    async function start(tabId, config = {}) {
+    async function start(tabId, config = {}, startOptions = {}) {
       const job = {
         status: 'running', tabId, config,
         state: {
@@ -270,7 +283,7 @@
       };
       await saveJob(job);
       chromeApi.alarms.create(ALARM_NAME, { periodInMinutes: 0.5, delayInMinutes: 0.5 });
-      if (options.autoRun !== false) void resume();
+      if (startOptions.autoRun !== false && options.autoRun !== false) void resume();
       return job;
     }
 
@@ -285,7 +298,7 @@
       return job;
     }
 
-    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector, rateLimit };
+    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector, rateLimit, health: () => ({ timeoutCount, lastTimeoutAt, lastLoopAt, loopErrorCount, lastLoopError, looping: Boolean(loopPromise), keepAlive: Boolean(keepAliveTimer) }) };
   }
 
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
@@ -300,12 +313,18 @@
         controller.stop().then((job) => sendResponse({ ok: true, job })).catch((error) => sendResponse({ ok: false, error: error.message }));
         return true;
       }
+      if (message?.type === 'HEALTH') { sendResponse({ ok: true, health: controller.health() }); return true; }
       if (message?.type === 'GET_JOB') {
         // 서비스 워커가 잠들었다면 이 메시지가 깨운다. 깨어난 김에 작업도 이어간다.
         controller.getJob().then((job) => { if (job?.status === 'running') void controller.resume(); sendResponse({ ok: true, job }); });
         return true;
       }
       return false;
+    });
+    // 우리 작업은 페이지를 계속 이동시킨다. 그 로드를 서비스 워커를 깨우는 신호로 쓴다.
+    chrome.tabs.onUpdated.addListener((tabId, info) => {
+      if (info.status !== 'complete') return;
+      controller.getJob().then((job) => { if (job?.status === 'running' && job.tabId === tabId) void controller.resume(); }).catch(() => {});
     });
     chrome.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === ALARM_NAME) void controller.resume();

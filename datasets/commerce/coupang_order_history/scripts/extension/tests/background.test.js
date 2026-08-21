@@ -371,3 +371,34 @@ test('페이지 호출이 응답하지 않아도 루프가 멈추지 않는다',
 
   assert.equal(data[JOB_KEY].status, 'completed', '응답 없는 호출에 걸려 멈췄다');
 });
+
+test('루프 안에서 예외가 나도 루프가 죽지 않는다', async () => {
+  // saveJob 이나 sendProgress 가 던지면 루프 프라미스가 거절되고 영영 멈춘다.
+  // 그러면 다음 이벤트가 올 때까지 아무 일도 일어나지 않는다.
+  let saves = 0;
+  const data = { [JOB_KEY]: structuredClone(runningJob({ phase: 'LIST', orders: [], warnings: [] })) };
+  const api = {
+    storage: { local: {
+      get(key, cb) { cb({ [key]: data[key] }); },
+      set(v, cb) { saves += 1; if (saves === 1) throw new Error('저장 실패'); Object.assign(data, structuredClone(v)); cb?.(); }
+    } },
+    scripting: { async executeScript(details) {
+      if (details.files) return [{ result: true }];
+      const [method, value] = details.args;
+      if (method === 'pageFacts') return [{ result: LIST }];
+      if (method === 'runStep') {
+        return [{ result: { state: { ...value, phase: 'DONE', done: true, result: { orderData: { orders: [] }, trackingData: [] } }, action: { type: 'done' }, progress: {} } }];
+      }
+      return [{ result: undefined }];
+    } },
+    tabs: { async update() { return {}; } },
+    alarms: { create() {}, clear() {}, onAlarm: { addListener() {} } },
+    runtime: { lastError: null, sendMessage(_m, cb) { cb?.(); }, onMessage: { addListener() {} } }
+  };
+  const controller = createController(api, { sleep: async () => {}, pollMs: 0, changeTimeoutMs: 5, random: () => 0 });
+
+  await controller.resume(5);
+
+  assert.equal(data[JOB_KEY].status, 'completed', '예외 한 번에 루프가 죽었다');
+  assert.ok(controller.health().loopErrorCount >= 1, '오류를 기록하지 않았다');
+});

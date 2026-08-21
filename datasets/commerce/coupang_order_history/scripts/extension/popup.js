@@ -210,6 +210,12 @@ ${ORDER_LIST_URL}`); return tab; }
         `주문 ${(state.orders || []).length}행, 주문번호확보 ${(state.orders || []).filter((o) => o && o._idSource === 'orderNumber').length}행`,
         `경고 ${(state.warnings || []).slice(-2).join(' | ') || '없음'}`
       ];
+      const health = await message({ type: 'HEALTH' }).then((r) => r.health).catch(() => null);
+      if (health) {
+        const since = health.lastLoopAt ? Math.round((Date.now() - new Date(health.lastLoopAt).getTime()) / 1000) : null;
+        lines.push(`루프 ${health.looping ? '돎' : '멈춤'} · 깨움 ${health.keepAlive ? '켜짐' : '꺼짐'} · 마지막 걸음 ${since === null ? '없음' : `${since}초 전`}`);
+        lines.push(`응답없음 ${health.timeoutCount}회 · 루프오류 ${health.loopErrorCount}회${health.lastLoopError ? ` (${health.lastLoopError})` : ''}`);
+      }
       const text = lines.join('\n');
       setStatus(text);
       console.log(text);
