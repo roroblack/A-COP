@@ -19,7 +19,7 @@
     const minDelayMs = Math.round(Number(elements.min.value) * 1000); const maxDelayMs = Math.round(Number(elements.max.value) * 1000);
     if (!Number.isFinite(minDelayMs) || minDelayMs < 800) throw new Error('최소 대기 시간은 0.8초 이상이어야 합니다.');
     if (!Number.isFinite(maxDelayMs) || maxDelayMs < minDelayMs) throw new Error('최대 대기 시간은 최소 대기 시간 이상이어야 합니다.');
-    return { collectionScope: selected('collectionScope') || 'tracking', yearScope: selected('yearScope') || 'all', minDelayMs, maxDelayMs };
+    return { collectionScope: selected('collectionScope') || 'tracking', yearScope: selected('yearScope') || 'current', minDelayMs, maxDelayMs };
   }
   function message(payload) { return new Promise((resolve, reject) => chrome.runtime.sendMessage(payload, (response) => { if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message)); else if (!response?.ok) reject(new Error(response?.error || '요청에 실패했습니다.')); else resolve(response); })); }
   function render(job) {

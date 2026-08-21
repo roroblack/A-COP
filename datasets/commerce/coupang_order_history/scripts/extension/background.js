@@ -80,6 +80,8 @@
 
     async function executeAction(job, action) {
       if (action.type === 'none' || action.type === 'done') return true;
+      // 페이지가 아직 바뀌지 않았다는 신호다. 잠시 기다렸다가 다시 본다.
+      if (action.type === 'wait') { await sleep(Math.max(600, Number(action.ms) || 900)); return true; }
       if (action.type === 'navigate') {
         let before = '';
         try { before = await readSignature(job.tabId); } catch { /* 현재 문서가 없는 경우 */ }
@@ -89,8 +91,7 @@
       if (action.type === 'click') {
         const before = await readSignature(job.tabId);
         // 클릭 실패 사유를 버리면 원인을 알 수 없다. 상태에 남긴다.
-        const outcome = await callCollector(job.tabId, 'performAction', action);
-        const report = outcome?.[0]?.result;
+        const report = await callCollector(job.tabId, 'performAction', action);
         if (report && report.ok === false) {
           job.state.warnings ||= [];
           job.state.warnings.push(`클릭 실패: ${report.reason || '사유 없음'}`);
@@ -174,7 +175,7 @@
         state: {
           phase: 'INIT', scope: config.collectionScope || 'tracking', years: [], yearIndex: 0,
           page: 1, orders: [], tracking: [], queue: [], cursor: 0, warnings: [], done: false,
-          yearScope: config.yearScope || 'all', pageCount: 0, listSignature: null, listUrl: null
+          yearScope: config.yearScope || 'current', pageCount: 0, listSignature: null, listUrl: null
         },
         progress: { stage: 'INIT', page: 1, count: 0, remaining: 0, message: '수집을 시작합니다.' },
         result: null, startedAt: new Date().toISOString()

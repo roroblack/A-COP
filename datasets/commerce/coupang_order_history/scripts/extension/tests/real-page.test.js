@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { parseFragment } = require('./test-dom.js');
-const { diagnoseStructure, parseDocument, performAction } = require('../content.js');
+const { diagnoseStructure, parseDocument, performAction, runStep } = require('../content.js');
 
 // 사용자가 실제 쿠팡 주문목록에서 복사한 HTML이다. raw/find.md에서 뽑았다.
 const html = fs.readFileSync(path.join(__dirname, 'fixtures/order_list_real.html'), 'utf8');
@@ -89,4 +89,52 @@ test('실측 목록: 취소완료 주문에는 배송 조회 대상이 없다', 
   for (const order of cancelled) {
     assert.equal(performAction({ type: 'click', target: 'tracking', index: order._cardIndex, attempt: 0 }).ok, false);
   }
+});
+
+test('실측 목록: 상세를 눌렀는데 아직 목록이면 다시 누르지 않고 기다린다', () => {
+  const document = realDocument();
+  let state = { phase: 'INIT', scope: 'detail', yearScope: 'current' };
+  // INIT -> LIST -> DETAIL 까지 진행시킨다.
+  for (let i = 0; i < 3 && state.phase !== 'DETAIL'; i += 1) state = runStep(state).state;
+  assert.equal(state.phase, 'DETAIL');
+
+  const first = runStep(state);
+  assert.deepEqual(
+    { type: first.action.type, target: first.action.target },
+    { type: 'click', target: 'detail' },
+    '첫 걸음은 상세 클릭이어야 한다'
+  );
+  state = first.state;
+
+  // 클릭했지만 DOM은 아직 목록 그대로다. 여기서 또 클릭하면 무한 반복이 된다.
+  const waited = [];
+  for (let i = 0; i < 6; i += 1) {
+    const step = runStep(state);
+    waited.push(step.action.type);
+    state = step.state;
+  }
+  assert.deepEqual(waited, Array(6).fill('wait'), `기다리지 않고 ${waited.join(',')}를 했다`);
+
+  // 계속 안 바뀌면 포기하지 말고 다시 눌러본다.
+  const retry = runStep(state);
+  assert.equal(retry.action.type, 'click');
+  assert.equal(retry.action.target, 'detail');
+});
+
+test('실측 목록: 다음을 눌렀는데 목록이 그대로면 기다렸다가 판단한다', () => {
+  const document = realDocument();
+  let state = { phase: 'INIT', scope: 'list', yearScope: 'current' };
+  for (let i = 0; i < 3 && state.phase !== 'NEXT_PAGE'; i += 1) state = runStep(state).state;
+  assert.equal(state.phase, 'NEXT_PAGE');
+
+  const next = runStep(state);
+  assert.equal(next.action.type, 'click');
+  assert.equal(next.action.target, 'nextPage');
+  state = next.state;
+  assert.equal(state.phase, 'LIST');
+
+  // 페이지가 아직 안 바뀐 상태로 LIST에 들어온다.
+  const types = [];
+  for (let i = 0; i < 6; i += 1) { const step = runStep(state); types.push(step.action.type); state = step.state; }
+  assert.deepEqual(types, Array(6).fill('wait'), '한 번 보고 바로 끝내면 안 된다');
 });
