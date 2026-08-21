@@ -47,6 +47,43 @@ ${ORDER_LIST_URL}`); return tab; }
     return { collectionScope: selected('collectionScope') || 'tracking', yearScope: selected('yearScope') || 'current', minDelayMs, maxDelayMs };
   }
   function message(payload) { return new Promise((resolve, reject) => chrome.runtime.sendMessage(payload, (response) => { if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message)); else if (!response?.ok) reject(new Error(response?.error || '요청에 실패했습니다.')); else resolve(response); })); }
+  function bar(done, total, width = 14) {
+    if (!total) return '';
+    const filled = Math.max(0, Math.min(width, Math.round((done / total) * width)));
+    return `${'▓'.repeat(filled)}${'░'.repeat(width - filled)} ${Math.round((done / total) * 100)}%`;
+  }
+
+  let countdownTimer = null;
+  function renderStatusLines(job) {
+    const progress = job.progress || {};
+    const head = job.status === 'completed' ? '수집 완료' : job.status === 'stopped' ? '수집 중단' : '수집 중';
+    const done = progress.queueDone || 0;
+    const total = progress.queueTotal || 0;
+    const lines = [
+      `${head} · ${progress.year || '-'}년 ${progress.page || 1}페이지 (지금까지 ${progress.pageCount || 0}페이지)`,
+      total ? `이 페이지 ${done}/${total}건  ${bar(done, total)}` : '이 페이지 목록을 읽는 중',
+      `누적 주문 ${progress.orderCount ?? 0}건 (상품 행 ${progress.count || 0}개) · 배송 ${progress.trackingCount || 0}건`
+    ];
+    const remain = (progress.waitUntil || 0) - Date.now();
+    if (job.status === 'running' && remain > 0) lines.push(`다음 동작까지 ${(remain / 1000).toFixed(1)}초`);
+    lines.push(progress.message || '');
+    if (job.lastClick && job.lastClick.ok === false) lines.push(`마지막 클릭 실패: ${job.lastClick.reason}`);
+    return lines.filter(Boolean).join('\n');
+  }
+
+  function showProgress(job) {
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    setStatus(renderStatusLines(job));
+    const remain = (job.progress?.waitUntil || 0) - Date.now();
+    // 남은 대기를 0.1초마다 다시 그린다. 멈춘 것인지 기다리는 것인지 구분된다.
+    if (job.status === 'running' && remain > 0) {
+      countdownTimer = setInterval(() => {
+        if (((job.progress?.waitUntil || 0) - Date.now()) <= 0) { clearInterval(countdownTimer); countdownTimer = null; }
+        setStatus(renderStatusLines(job));
+      }, 100);
+    }
+  }
+
   function render(job) {
     currentJob = job || null; const running = job?.status === 'running'; const completed = job?.status === 'completed';
     elements.start.disabled = running; elements.stop.disabled = !running;
@@ -62,9 +99,7 @@ ${ORDER_LIST_URL}`); return tab; }
     const partialNote = !completed && orderCount > 0 ? ' (중단 시점까지의 부분 결과)' : '';
     elements.trackingReason.textContent = trackingCount > 0 ? `배송 이력 ${trackingCount}건을 내려받을 수 있습니다.${partialNote}` : running ? '수집 중에는 내려받을 수 없습니다.' : '수집된 배송 이력이 없습니다.';
     if (!job) return;
-    const progress = job.progress || {};
-    setStatus(`${job.status === 'completed' ? '수집 완료' : job.status === 'stopped' ? '수집 중단' : '수집 중'}\n단계: ${progress.stage || '-'} / ${progress.year || '-'}년\n페이지: ${progress.page || 1}\n누적 건수: ${progress.orderCount ?? 0}건 (상품 행 ${progress.count || 0}개)\n${progress.message || ''}${job.lastClick && job.lastClick.ok === false ? `
-마지막 클릭 실패: ${job.lastClick.reason}` : ''}`);
+    showProgress(job);
   }
   function dateStamp() { const now = new Date(); return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`; }
   function downloadJson(value, filename) { const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' }); const url = URL.createObjectURL(blob); chrome.downloads.download({ url, filename, saveAs: true }, () => { URL.revokeObjectURL(url); void chrome.runtime.lastError; }); }

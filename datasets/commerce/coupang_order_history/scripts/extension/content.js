@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-22i';
+  const BUILD = '2026-08-22j';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -146,7 +146,7 @@
   }
   function listPositionKey(root = globalThis.document) { return shortHash(parseDocument(root).orders.map((order) => `${order.OrderedAt}|${order.VendorItemId}|${order.ProductName}`).join('||')); }
   function pageSignature(root = globalThis.document, href = globalThis.location?.href || '') { const ids = parseDocument(root).orders.map((order) => `${order.OrderedAt}|${order.VendorItemId}|${order.ProductName}`).join('||'); return `${href}|${shortHash(ids)}`; }
-  const progress = (state, message) => ({ stage: state.phase, page: state.page, count: state.orders.length, orderCount: new Set(state.orders.map((order) => order.OrderId).filter(Boolean)).size, year: state.years[state.yearIndex]?.label || null, remaining: Math.max(0, state.queue.length - state.cursor), message });
+  const progress = (state, message) => ({ stage: state.phase, page: state.page, count: state.orders.length, orderCount: new Set(state.orders.map((order) => order.OrderId).filter(Boolean)).size, queueDone: state.cursor || 0, queueTotal: (state.queue || []).length, trackingCount: (state.tracking || []).length, pageCount: state.pageCount || 0, year: state.years[state.yearIndex]?.label || null, remaining: Math.max(0, state.queue.length - state.cursor), message });
   function initialState(config = {}) { return { phase: 'INIT', scope: config.collectionScope || config.scope || 'tracking', years: [], yearIndex: 0, page: 1, orders: [], tracking: [], queue: [], cursor: 0, warnings: [], done: false, yearScope: config.yearScope || 'current', pageCount: 0, listSignature: null, listUrl: null, listKey: null, restore: null, seenKeys: [], skipCurrent: false }; }
   function finish(state) { state.phase = 'DONE'; state.done = true; state.result = buildExportPayloads(state.orders, { collectionScope: state.scope, pageCount: state.pageCount, warning: state.warnings.length ? state.warnings.join(' ') : null }); state.tracking = state.result.trackingData; return { state, action: { type: 'done' }, progress: progress(state, '수집이 완료되었습니다.') }; }
   function runStep(input = {}) {

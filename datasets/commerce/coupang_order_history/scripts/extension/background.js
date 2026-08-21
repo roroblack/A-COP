@@ -67,10 +67,21 @@
       try { return await run(); } catch { return undefined; }
     }
 
-    async function rateLimit(config) {
+    // 대기가 얼마나 남았는지 팝업이 보여줄 수 있게 알려준다.
+    async function rateLimit(config, job) {
       const min = Math.max(800, Number(config?.minDelayMs) || 1500);
       const max = Math.max(min, Number(config?.maxDelayMs) || 3500);
-      await sleep(Math.round(min + random() * (max - min)));
+      const waitMs = Math.round(min + random() * (max - min));
+      if (job) {
+        job.progress = { ...(job.progress || {}), waitMs, waitUntil: Date.now() + waitMs };
+        await saveJob(job);
+        sendProgress(job.progress, job.status);
+      }
+      await sleep(waitMs);
+      if (job) {
+        job.progress = { ...(job.progress || {}), waitMs: 0, waitUntil: 0 };
+        await saveJob(job);
+      }
     }
 
     function sendProgress(progress, status) {
@@ -130,7 +141,7 @@
 
       for (let attempt = 0; attempt < 4; attempt += 1) {
         // 재시도도 사람 속도로 한다. 연달아 네 번 누르면 봇으로 보인다.
-        if (attempt > 0) await rateLimit(job.config);
+        if (attempt > 0) await rateLimit(job.config, job);
         // 이미 원하는 상태면 또 누르지 않는다. 늦게 반영된 이동을 다시 누르면 망가진다.
         if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt, note: attempt ? '이미 이동해 있었습니다.' : null };
 
@@ -198,7 +209,7 @@
             job.state.warnings.push(outcome.reason || '행동이 통하지 않았습니다.');
           }
           await saveJob(job);
-          await rateLimit(job.config);
+          await rateLimit(job.config, job);
         }
       }
       return getJob();
