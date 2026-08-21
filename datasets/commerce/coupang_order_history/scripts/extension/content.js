@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-21f';
+  const BUILD = '2026-08-21h';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -254,6 +254,10 @@
       hasPaymentBlock: /결제\s*정보/.test(compacted),
       hasTrackingButton: /배송\s*조회/.test(compacted),
       nextButton: Boolean(findNextButton(globalThis.document)),
+      nextCandidates: [...(root?.querySelectorAll?.('button') || [])]
+        .filter((button) => compact(button).includes('다음'))
+        .map((button, index) => `${index}:"${compact(button).slice(0, 12)}" cls=${(button.getAttribute('class') || '').split(' ')[0]} disabled=${Boolean(button.disabled) || button.hasAttribute('disabled')}`),
+
       signature: pageSignature(root)
     };
   }
