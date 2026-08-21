@@ -471,7 +471,7 @@
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message?.type === 'START') {
         const tabId = message.tabId || sender.tab?.id;
-        controller.start(tabId, message.config).then((job) => sendResponse({ ok: true, job })).catch((error) => sendResponse({ ok: false, error: error.message }));
+        controller.start(tabId, message.config, { autoRun: !message.popupDrives }).then((job) => sendResponse({ ok: true, job })).catch((error) => sendResponse({ ok: false, error: error.message }));
         return true;
       }
       if (message?.type === 'STOP') {

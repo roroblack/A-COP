@@ -207,3 +207,18 @@ test('대기 중 STOP이 와도 대기 종료 저장이 작업을 되살리지 �
 
   assert.equal(data.coupangJob.status, 'stopped', '대기 종료 저장이 중단 작업을 되살렸다');
 });
+
+test('팝업이 돌릴 때는 워커가 시작하지 않는다', async () => {
+  // 둘이 같이 돌면 서로의 상태를 덮어써 건수가 어긋난다.
+  const { data, send, calls } = loadWorker({ onRunStep: (state) => DONE_STEP(state) });
+
+  const response = await send({
+    type: 'START', tabId: 7, popupDrives: true,
+    config: { collectionScope: 'list', minDelayMs: 300, maxDelayMs: 300, longDelayMs: 300 }
+  });
+  assert.equal(response?.ok, true, response?.error);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+
+  assert.equal(calls.runStep, 0, '팝업이 돌리는데 워커도 시작했다');
+  assert.equal(data.coupangJob.status, 'running');
+});

@@ -164,7 +164,11 @@ ${ORDER_LIST_URL}`); return tab; }
     void popupController.resume().catch(() => {});
   }
 
-  elements.start.addEventListener('click', async () => { try { await ensureHostPermission(); const tab = await ensureOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config() }); render(response.job); drivePopupLoop(); } catch (error) { setStatus(`오류: ${error.message}`); } });
+  // resume 은 이미 돌고 있으면 아무 일도 하지 않는다. 주기적으로 밀어도 안전하다.
+  // 팝업 루프가 어떤 이유로 끝났으면 여기서 다시 시작된다.
+  setInterval(() => { if (currentJob?.status === 'running') drivePopupLoop(); }, 3000);
+
+  elements.start.addEventListener('click', async () => { try { await ensureHostPermission(); const tab = await ensureOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config(), popupDrives: Boolean(popupController) }); render(response.job); drivePopupLoop(); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.stop.addEventListener('click', async () => { try { const response = await message({ type: 'STOP' }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.diagnose.addEventListener('click', async () => { elements.diagnose.disabled = true; try { const tab = await activeOrderListTab(); await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }); const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__coupangOrderCollector?.diagnoseStructure() }); const diagnosis = results?.[0]?.result; if (!diagnosis) throw new Error('진단 결과를 받지 못했습니다.'); setStatus(Object.entries(diagnosis).map(([key, value]) => `${key}: ${value}`).join('\n')); } catch (error) { setProbe(`오류: ${error.message}`); } finally { elements.diagnose.disabled = false; } });
   async function runInTab(tabId, method, ...args) {
@@ -262,6 +266,14 @@ ${ORDER_LIST_URL}`); return tab; }
         lines.push(`응답없음 ${health.timeoutCount}회 · 루프오류 ${health.loopErrorCount}회 · 호출실패 ${health.callFailCount}회`);
         if (health.lastLoopError) lines.push(`루프오류: ${health.lastLoopError}`);
         if (health.lastCallError) lines.push(`호출오류: ${health.lastCallError}`);
+      }
+      const mine = popupController?.health?.();
+      if (!popupController) lines.push('팝업루프 없음 (컨트롤러를 불러오지 못함)');
+      else {
+        const since = mine?.lastLoopAt ? Math.round((Date.now() - new Date(mine.lastLoopAt).getTime()) / 1000) : null;
+        lines.push(`팝업루프 ${mine?.looping ? '돎' : '멈춤'} · 마지막 걸음 ${since === null ? '없음' : `${since}초 전`} · 호출실패 ${mine?.callFailCount ?? '-'}회`);
+        if (mine?.lastCallError) lines.push(`팝업호출오류: ${mine.lastCallError}`);
+        if (mine?.lastLoopError) lines.push(`팝업루프오류: ${mine.lastLoopError}`);
         if (health.startupError) lines.push(`시작오류: ${health.startupError}`);
       }
       const text = lines.join('\n');
