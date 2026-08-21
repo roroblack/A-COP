@@ -482,7 +482,7 @@
       if (message?.type === 'GET_JOB') {
         // 서비스 워커가 잠들었다면 이 메시지가 깨운다. 깨어난 김에 작업도 이어간다.
         controller.getJob()
-          .then((job) => { if (job?.status === 'running') void controller.resume(); sendResponse({ ok: true, job }); })
+          .then((job) => sendResponse({ ok: true, job }))
           .catch((error) => sendResponse({ ok: false, error: error.message }));
         return true;
       }
@@ -493,20 +493,21 @@
     try {
       chrome.tabs.onUpdated.addListener((tabId, info) => {
         if (info.status !== 'complete') return;
-        controller.getJob().then((job) => { if (job?.status === 'running' && job.tabId === tabId) void controller.resume(); }).catch(() => {});
+        controller.getJob().then((job) => () => {}).catch(() => {});
       });
     } catch (error) {
       startupError = `탭 이벤트 등록 실패: ${error.message}`;
     }
     try {
       chrome.alarms.onAlarm.addListener((alarm) => {
-        if (alarm.name === ALARM_NAME) void controller.resume();
+        void alarm;
       });
     } catch (error) {
       startupError = `알람 등록 실패: ${error.message}`;
     }
     // 도는 작업이 있을 때만 시작한다. 헛도는 루프가 start 의 resume 과 겹친다.
-    controller.getJob().then((job) => { if (job?.status === 'running') void controller.resume(); }).catch(() => {});
+    // 수집은 팝업이 돌린다. 워커는 상태 저장과 메시지 응답만 맡는다.
+    // 구동자가 둘이면 같은 걸음을 밟고 서로의 상태를 덮어쓴다.
   }
 
   globalThis.__coupangController = { createController, JOB_KEY, ALARM_NAME };
