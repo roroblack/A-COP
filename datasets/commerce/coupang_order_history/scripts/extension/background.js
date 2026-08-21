@@ -288,6 +288,8 @@
       if (!asleep && frameErrors < 5) return false;
       try {
         await chromeApi.tabs.reload(job.tabId);
+        // 활성 탭은 잠들지 않는다. 깨울 때 앞으로 가져온다.
+        try { await chromeApi.tabs.update(job.tabId, { active: true }); } catch { /* 무시 */ }
         job.state.warnings ||= [];
         job.state.warnings.push('탭이 잠들어 다시 불러왔습니다.');
         frameErrors = 0;
@@ -418,6 +420,8 @@
 
     async function start(tabId, config = {}, startOptions = {}) {
       await ensureAccess(tabId);
+      // 수집 도는 동안 탭을 앞에 둔다. 배경 탭은 Edge 절전 대상이다.
+      try { await chromeApi.tabs.update(tabId, { active: true }); } catch { /* 무시 */ }
       const job = {
         jobId: `${Date.now()}-${++jobSequence}`,
         status: 'running', tabId, config,
