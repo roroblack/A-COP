@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { parseFragment } = require('./test-dom.js');
-const { diagnoseStructure, parseDocument, performAction, runStep } = require('../content.js');
+const { diagnoseStructure, isOrderListPage, pageFacts, parseDocument, performAction, runStep } = require('../content.js');
 
 // 사용자가 실제 쿠팡 주문목록에서 복사한 HTML이다. raw/find.md에서 뽑았다.
 const html = fs.readFileSync(path.join(__dirname, 'fixtures/order_list_real.html'), 'utf8');
@@ -94,3 +94,46 @@ test('실측 목록: 취소완료 주문에는 배송 조회 대상이 없다', 
 });
 
 
+
+// 진짜 Document는 textContent가 null이다. 요소만으로 테스트하면 이 차이를 놓친다.
+function asDocument(element) {
+  return {
+    nodeType: 9,
+    textContent: null,
+    body: element,
+    title: '주문상세',
+    querySelector: (selector) => element.querySelector(selector),
+    querySelectorAll: (selector) => element.querySelectorAll(selector)
+  };
+}
+
+const detailHtml = fs.readFileSync(path.join(__dirname, 'fixtures/order_detail_real.html'), 'utf8');
+
+test('실측 상세: document로 넘겨도 목록으로 오인하지 않는다', () => {
+  const document = asDocument(parseFragment(detailHtml));
+  global.document = document;
+  assert.equal(isOrderListPage(document), false);
+});
+
+test('실측 상세: 주문목록 돌아가기 버튼을 찾는다', () => {
+  const document = asDocument(parseFragment(detailHtml));
+  global.document = document;
+  const result = performAction({ type: 'click', target: 'backToList', index: 0, attempt: 0 });
+  assert.equal(result.ok, true, result.reason);
+  assert.equal(result.tag, 'BUTTON');
+});
+
+test('실측 상세: pageFacts가 상세 표지를 제대로 읽는다', () => {
+  const document = asDocument(parseFragment(detailHtml));
+  global.document = document;
+  global.location = { href: 'https://mc.coupang.com/ssr/desktop/order/16102427993090' };
+  const facts = pageFacts();
+  assert.equal(facts.isList, false);
+  assert.equal(facts.hasOrderNumber, true, '주문번호 표지를 못 읽었다');
+});
+
+test('실측 목록: document로 넘겨도 목록으로 본다', () => {
+  const document = asDocument(parseFragment(html));
+  global.document = document;
+  assert.equal(isOrderListPage(document), true);
+});

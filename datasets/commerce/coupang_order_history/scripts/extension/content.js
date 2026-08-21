@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-22d';
+  const BUILD = '2026-08-22e';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -15,8 +15,10 @@
   const ALLOWED_HOSTS = new Set(['mc.coupang.com', 'www.coupang.com']);
   const PRIVATE_KEYS = new Set(['Recipient', 'RecipientName', 'Phone', 'PhoneNumber', 'Address', 'FullAddress', 'PostalCode']);
 
-  const text = (element) => element?.textContent?.replace(/[\s\u200B-\u200D\uFEFF]+/g, ' ').trim() || null;
-  const compact = (element) => (element?.textContent || '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '');
+  const text = (element) => textSource(element)?.textContent?.replace(/[\s\u200B-\u200D\uFEFF]+/g, ' ').trim() || null;
+  // document 를 그대로 넘기면 textContent 가 null 이다. body 로 내려가서 읽는다.
+  const textSource = (node) => (node && node.nodeType === 9 ? node.body : node) || node;
+  const compact = (element) => (textSource(element)?.textContent || '').replace(/[\s\u200B-\u200D\uFEFF]+/g, '');
   const numberOf = (value) => { const digits = String(value || '').replace(/[^0-9]/g, ''); return digits ? Number(digits) : null; };
   function shortHash(value) { let hash = 2166136261; for (const character of String(value || '')) { hash ^= character.codePointAt(0); hash = Math.imul(hash, 16777619); } return (hash >>> 0).toString(16).padStart(8, '0'); }
   function sanitizeValue(value) {
@@ -28,7 +30,7 @@
   function safeUrl(element) { const href = element?.getAttribute?.('href'); if (!href) return null; try { const url = new URL(href, 'https://www.coupang.com'); return url.protocol === 'https:' && ALLOWED_HOSTS.has(url.hostname) ? url.href : null; } catch { return null; } }
   const vendorId = (href) => String(href || '').match(/[?&]vendorItemId=(\d+)(?:&|$)/)?.[1] || null;
   function ancestors(element) { const all = []; for (let current = element; current; current = current.parentElement) all.push(current); return all; }
-  const DETAIL_ACTION_TEXT = /^주문상세(보기)?$/;
+  const DETAIL_ACTION_TEXT = /^주문상세보기$/;
   function detailActionLeaves(node) { return [...(node?.querySelectorAll?.('*') || [])].filter((element) => !(element.children?.length) && DETAIL_ACTION_TEXT.test(compact(element))); }
   function orderCardOf(element) {
     let fallback = null;
