@@ -257,3 +257,44 @@ test('재시도 사이에도 사람 속도로 쉰다', async () => {
   const humanPauses = waits.filter((ms) => ms === 800);
   assert.equal(humanPauses.length, 3, `재시도 대기가 ${humanPauses.length}번뿐이다`);
 });
+
+test('이미 주입돼 있으면 content.js를 다시 넣지 않는다', async () => {
+  // 폴링마다 37KB를 다시 주입하면 느리다.
+  let injections = 0;
+  const data = {};
+  const api = {
+    storage: { local: { get(key, cb) { cb({ [key]: data[key] }); }, set(v, cb) { Object.assign(data, structuredClone(v)); cb?.(); } } },
+    scripting: { async executeScript(details) {
+      if (details.files) { injections += 1; return [{ result: true }]; }
+      return [{ result: LIST }];
+    } },
+    tabs: { async update() { return {}; } },
+    alarms: { create() {}, clear() {}, onAlarm: { addListener() {} } },
+    runtime: { lastError: null, sendMessage(_m, cb) { cb?.(); }, onMessage: { addListener() {} } }
+  };
+  const controller = controllerFor(api);
+
+  for (let i = 0; i < 5; i += 1) await controller.callCollector(7, 'pageFacts');
+
+  assert.equal(injections, 0, `주입이 ${injections}번 일어났다`);
+});
+
+test('컨텍스트가 사라졌으면 주입하고 다시 부른다', async () => {
+  let injected = false;
+  const data = {};
+  const api = {
+    storage: { local: { get(key, cb) { cb({ [key]: data[key] }); }, set(v, cb) { Object.assign(data, structuredClone(v)); cb?.(); } } },
+    scripting: { async executeScript(details) {
+      if (details.files) { injected = true; return [{ result: true }]; }
+      return [{ result: injected ? LIST : undefined }];   // 주입 전에는 수집기가 없다
+    } },
+    tabs: { async update() { return {}; } },
+    alarms: { create() {}, clear() {}, onAlarm: { addListener() {} } },
+    runtime: { lastError: null, sendMessage(_m, cb) { cb?.(); }, onMessage: { addListener() {} } }
+  };
+
+  const facts = await controllerFor(api).callCollector(7, 'pageFacts');
+
+  assert.equal(injected, true);
+  assert.deepEqual(facts, LIST);
+});

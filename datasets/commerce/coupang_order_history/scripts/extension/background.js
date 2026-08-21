@@ -40,19 +40,31 @@
     }
 
     async function callCollector(tabId, method, argument) {
+      const payload = serializable(argument);
+      const run = async () => {
+        const results = await chromeApi.scripting.executeScript({
+          target: { tabId },
+          // args에 undefined가 들어가면 Chrome이 직렬화하지 못하고 예외를 던진다.
+          // 인자 없는 함수를 부를 때가 그렇다. null로 바꿔 보내고 저쪽에서 되살린다.
+          func: (name, value) => {
+            const collector = globalThis.__coupangOrderCollector;
+            if (!collector || typeof collector[name] !== 'function') return undefined;
+            return value === null ? collector[name]() : collector[name](value);
+          },
+          args: [method, payload]
+        });
+        return results?.[0]?.result;
+      };
+
+      // 이미 주입돼 있으면 그대로 쓴다. 폴링마다 37KB를 다시 넣으면 느리다.
+      try {
+        const result = await run();
+        if (result !== undefined) return result;
+      } catch {
+        // 페이지가 바뀌어 컨텍스트가 사라졌다. 아래에서 다시 주입한다.
+      }
       await inject(tabId);
-      const results = await chromeApi.scripting.executeScript({
-        target: { tabId },
-        // args에 undefined가 들어가면 Chrome이 직렬화하지 못하고 예외를 던진다.
-        // 인자 없는 함수를 부를 때가 그렇다. null로 바꿔 보내고 저쪽에서 되살린다.
-        func: (name, value) => {
-          const collector = globalThis.__coupangOrderCollector;
-          if (!collector || typeof collector[name] !== 'function') return undefined;
-          return value === null ? collector[name]() : collector[name](value);
-        },
-        args: [method, serializable(argument)]
-      });
-      return results?.[0]?.result;
+      try { return await run(); } catch { return undefined; }
     }
 
     async function rateLimit(config) {
