@@ -14,7 +14,8 @@
   function setStatus(message) { elements.status.textContent = message; }
   function selected(name) { return document.querySelector(`input[name="${name}"]:checked`)?.value; }
   function isOrderListUrl(value) { try { const url = new URL(value); return url.origin === 'https://mc.coupang.com' && url.pathname.startsWith('/ssr/desktop/order/list'); } catch { return false; } }
-  async function activeOrderListTab() { const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }); if (!tab?.id || !isOrderListUrl(tab.url)) throw new Error(`쿠팡 주문목록 페이지에서 실행하세요.\n${ORDER_LIST_URL}`); return tab; }
+  async function activeOrderListTab(anyCoupangPage = false) { const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }); const ok = tab?.id && (anyCoupangPage ? /^https:\/\/mc\.coupang\.com\//.test(tab.url || '') : isOrderListUrl(tab.url)); if (!ok) throw new Error(`쿠팡 주문목록 페이지에서 실행하세요.
+${ORDER_LIST_URL}`); return tab; }
   function config() {
     const minDelayMs = Math.round(Number(elements.min.value) * 1000); const maxDelayMs = Math.round(Number(elements.max.value) * 1000);
     if (!Number.isFinite(minDelayMs) || minDelayMs < 800) throw new Error('최소 대기 시간은 0.8초 이상이어야 합니다.');
@@ -109,7 +110,7 @@
   elements.stateProbe.addEventListener('click', async () => {
     elements.stateProbe.disabled = true;
     try {
-      const tab = await activeOrderListTab();
+      const tab = await activeOrderListTab(true);
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
       const page = await runInTab(tab.id, 'describePage');
       const job = (await message({ type: 'GET_JOB' })).job;

@@ -5,12 +5,15 @@
   const ALARM_NAME = 'coupangCollectorKeepAlive';
   const DEFAULT_POLL_MS = 400;
   const DEFAULT_CHANGE_TIMEOUT_MS = 15000;
+  const NAVIGATION_TIMEOUT_MS = 30000;
 
   function createController(chromeApi, options = {}) {
     const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     const random = options.random || Math.random;
     const pollMs = options.pollMs ?? DEFAULT_POLL_MS;
     const changeTimeoutMs = options.changeTimeoutMs ?? DEFAULT_CHANGE_TIMEOUT_MS;
+    // 페이지 이동은 더 오래 기다린다. 테스트가 짧게 잡았으면 그걸 따른다.
+    const navigationTimeoutMs = options.navigationTimeoutMs ?? options.changeTimeoutMs ?? NAVIGATION_TIMEOUT_MS;
     let loopPromise = null;
 
     const storageGet = (key) => new Promise((resolve) => chromeApi.storage.local.get(key, resolve));
@@ -94,24 +97,39 @@
       return (facts) => facts.listKey !== before.listKey || facts.isList !== before.isList;
     }
 
+    async function isSatisfiedNow(tabId, satisfied) {
+      try { return satisfied(await readFacts(tabId)); } catch { return false; }
+    }
+
     async function executeAction(job, action) {
       if (action.type === 'none' || action.type === 'done') return { ok: true };
       if (action.type === 'navigate') {
         await chromeApi.tabs.update(job.tabId, { url: action.url });
-        const ok = await awaitCondition(job.tabId, (facts) => facts.isList);
+        const ok = await awaitCondition(job.tabId, (facts) => facts.isList, navigationTimeoutMs);
         return { ok, reason: ok ? null : '주소 이동 뒤 목록이 나타나지 않았습니다.' };
       }
       if (action.type !== 'click') return { ok: false, reason: `모르는 액션 ${action.type}` };
 
       const before = await readFacts(job.tabId);
       const satisfied = conditionFor(action, before);
-      // 방법을 바꿔가며 네 번까지 눌러본다. 기다리기만 하지 않는다.
+      // 페이지 이동을 기대하는 행동은 더 오래 기다린다.
+      const timeout = action.expect === 'leftList' || action.expect === 'tracking' || action.expect === 'backOnList'
+        ? navigationTimeoutMs : changeTimeoutMs;
+
       for (let attempt = 0; attempt < 4; attempt += 1) {
+        // 이미 원하는 상태면 또 누르지 않는다. 늦게 반영된 이동을 다시 누르면 망가진다.
+        if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt, note: attempt ? '이미 이동해 있었습니다.' : null };
+
         const report = await callCollector(job.tabId, 'performAction', { ...action, attempt });
         job.lastClick = { ...(report || {}), attempt, target: action.target, expect: action.expect || null };
         await saveJob(job);
-        if (report?.ok === false) continue;
-        if (await awaitCondition(job.tabId, satisfied)) return { ok: true, attempt };
+
+        if (report?.ok === false) {
+          // 요소가 사라진 것은 이미 넘어갔다는 뜻일 수 있다.
+          if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt, note: '요소는 없었지만 이미 이동해 있었습니다.' };
+          continue;
+        }
+        if (await awaitCondition(job.tabId, satisfied, timeout)) return { ok: true, attempt };
       }
       return { ok: false, reason: `${action.target} 클릭이 네 번 다 통하지 않았습니다.` };
     }

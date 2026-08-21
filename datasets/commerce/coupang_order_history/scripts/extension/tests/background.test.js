@@ -195,3 +195,42 @@ test('상태에 undefined가 섞여 있어도 직렬화해서 보낸다', async 
 
   assert.deepEqual(received, { page: 1, orders: [{ name: 'a' }] });
 });
+
+test('이미 이동해 있으면 다시 누르지 않는다', async () => {
+  // 이동이 늦게 반영되면 다음 시도가 나가고, 그때는 요소가 없어 실패로 끝났다.
+  let clicks = 0;
+  let onDetail = true;   // 이미 상세로 넘어와 있는 상태
+  const { api } = fakeChrome(async (method) => {
+    if (method === 'pageFacts') return [{ result: { ...LIST, isList: !onDetail } }];
+    if (method === 'performAction') { clicks += 1; return [{ result: { ok: true } }]; }
+    return undefined;
+  }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
+
+  const outcome = await controllerFor(api).executeAction(
+    runningJob({ phase: 'DETAIL', orders: [], warnings: [] }),
+    { type: 'click', target: 'detail', index: 0, expect: 'leftList' }
+  );
+
+  assert.equal(outcome.ok, true);
+  assert.equal(clicks, 0, '이미 상세인데 또 눌렀다');
+});
+
+test('요소가 사라졌어도 이미 이동했으면 성공으로 본다', async () => {
+  let moved = false;
+  const { api } = fakeChrome(async (method) => {
+    if (method === 'pageFacts') return [{ result: { ...LIST, isList: !moved } }];
+    if (method === 'performAction') {
+      // 첫 클릭은 먹혔지만 확인이 늦었고, 두 번째에는 요소가 이미 없다.
+      if (!moved) { moved = true; return [{ result: { ok: true } }]; }
+      return [{ result: { ok: false, reason: 'detail 요소를 찾지 못했습니다.' } }];
+    }
+    return undefined;
+  }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
+
+  const outcome = await controllerFor(api).executeAction(
+    runningJob({ phase: 'DETAIL', orders: [], warnings: [] }),
+    { type: 'click', target: 'detail', index: 0, expect: 'leftList' }
+  );
+
+  assert.equal(outcome.ok, true);
+});
