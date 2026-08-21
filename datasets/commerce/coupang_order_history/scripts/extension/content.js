@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-21e';
+  const BUILD = '2026-08-21f';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -237,11 +237,31 @@
       signature: pageSignature(root)
     };
   }
+  // 지금 이 문서가 무엇으로 보이는지 그대로 보고한다.
+  function describePage() {
+    const root = globalThis.document;
+    const compacted = compact(root) || '';
+    return {
+      build: BUILD,
+      url: globalThis.location?.href || null,
+      title: globalThis.document?.title || null,
+      isList: isOrderListPage(root),
+      detailLeaves: detailActionLeaves(root).length,
+      cards: discoverCards(root).length,
+      hasBackToList: /주문목록\s*돌아가기/.test(compacted),
+      hasRecipientBlock: /받는사람\s*정보/.test(compacted),
+      hasOrderNumberLabel: /주문번호/.test(compacted),
+      hasPaymentBlock: /결제\s*정보/.test(compacted),
+      hasTrackingButton: /배송\s*조회/.test(compacted),
+      nextButton: Boolean(findNextButton(globalThis.document)),
+      signature: pageSignature(root)
+    };
+  }
   function diagnoseStructure(root = globalThis.document) { const parsed = parseDocument(root); const cards = discoverCards(root); const count = (selector) => cards.reduce((sum, card) => sum + card.querySelectorAll(selector).length, 0); return { productTitleLinks: root.querySelectorAll(SELECTORS.productTitleLink).length, orderCards: parsed.orderCardCount, productImageLinks: count(SELECTORS.productImageLink), prices: count(SELECTORS.price), quantities: parsed.orders.filter((order) => order.Quantity !== null).length, orderStatuses: count(SELECTORS.orderStatus), deliveryNotices: count(SELECTORS.deliveryNotice), yearTabs: extractYearTabs(root).length, nextButton: Boolean(findNextButton(root)) }; }
   async function collectDetailsOnCurrentPage(orders, scope, collectedAt, page, visited, start, end, deps = {}) { for (const order of orders) { order.Warnings ||= []; order.TrackingEvents ||= []; order.TrackingEventRaw ||= []; const root = deps.getDocument?.() || globalThis.document; const detail = deps.findOrderDetailAction?.(root, order) ?? findOrderDetailAction(root, order); if (detail && deps.clickAndWait && !await deps.clickAndWait(detail)) order.Warnings.push('주문 상세 수집 실패: 페이지가 전환되지 않았습니다.'); if (scope === 'tracking') { const tracking = deps.findOrderTrackingAction?.(deps.getDocument?.() || root, order) ?? findOrderTrackingAction(deps.getDocument?.() || root, order); if (!tracking) { order.Warnings.push('배송 조회 버튼이 없는 주문입니다(취소/환불 등).'); order._TrackingOutcome = 'buttonMissing'; } else if (deps.clickAndWait && await deps.clickAndWait(tracking)) { const priorWarnings = order.Warnings; const parsed = (deps.parseTrackingPage || parseTrackingPage)(deps.getDocument?.() || globalThis.document, collectedAt, order.OrderStatus); Object.assign(order, parsed); order.Warnings = [...priorWarnings, ...(parsed.Warnings || [])]; } } await deps.returnToOrderList?.(); await deps.randomDelay?.(); } return orders; }
   async function collectOrders(config = {}) { let state = initialState(config); const runtime = config.runtime || {}; for (let count = 0; count < (runtime.maxTransitions || 1000); count += 1) { const result = runStep(state); state = result.state; runtime.reportProgress?.(result.progress); if (result.action.type === 'done') return state.result; if (result.action.type === 'navigate') { if (globalThis.location) globalThis.location.href = result.action.url; } else if (result.action.type === 'click') { const performed = performAction(result.action); if (!performed.ok) throw new Error(performed.reason); } await runtime.randomDelay?.(); } throw new Error('상태 기계 반복 상한을 초과했습니다.'); }
 
-  const api = { BUILD, SELECTORS, describeTarget, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
+  const api = { BUILD, SELECTORS, describePage, describeTarget, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
   globalThis.__coupangOrderCollector = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

@@ -5,7 +5,7 @@
   const elements = {
     min: document.querySelector('#minDelay'), max: document.querySelector('#maxDelay'),
     start: document.querySelector('#startButton'), stop: document.querySelector('#stopButton'),
-    diagnose: document.querySelector('#diagnoseButton'), detailProbe: document.querySelector('#detailProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
+    diagnose: document.querySelector('#diagnoseButton'), detailProbe: document.querySelector('#detailProbeButton'), stateProbe: document.querySelector('#stateProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
     trackingDownload: document.querySelector('#trackingDownloadButton'), trackingReason: document.querySelector('#trackingDownloadReason'),
     status: document.querySelector('#status'), scopeSummary: document.querySelector('#scopeSummary')
   };
@@ -102,6 +102,42 @@
       show();
     } finally {
       elements.detailProbe.disabled = false;
+    }
+  });
+
+  // 수집이 멈춘 순간 무슨 상태인지 그대로 찍는다. 수집 중에도 눌러도 된다.
+  elements.stateProbe.addEventListener('click', async () => {
+    elements.stateProbe.disabled = true;
+    try {
+      const tab = await activeOrderListTab();
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+      const page = await runInTab(tab.id, 'describePage');
+      const job = (await message({ type: 'GET_JOB' })).job;
+      const state = job?.state || {};
+      const item = (state.queue || [])[state.cursor || 0];
+      const lines = [
+        `확장 ${chrome.runtime.getManifest().version}`,
+        page.error ? `페이지: 오류 ${page.error}` : [
+          `빌드 ${page.value.build}`,
+          `주소 ${String(page.value.url).replace('https://mc.coupang.com', '')}`,
+          `목록판정 ${page.value.isList} (상세보기 ${page.value.detailLeaves}개, 카드 ${page.value.cards}개)`,
+          `표지 돌아가기=${page.value.hasBackToList} 받는사람정보=${page.value.hasRecipientBlock} 주문번호=${page.value.hasOrderNumberLabel} 결제정보=${page.value.hasPaymentBlock} 배송조회=${page.value.hasTrackingButton}`,
+          `다음버튼 ${page.value.nextButton}`
+        ].join('\n'),
+        `작업 ${job?.status} / ${state.phase} / ${state.page}페이지`,
+        `대기 ${state.waits || 0} 정체 ${state.stalls || 0} 건너뛰기 ${Boolean(state.forceSkip)}`,
+        `큐 ${state.cursor || 0}/${(state.queue || []).length} returning=${item?.returning ?? '-'} detailDone=${item?.detailDone ?? '-'}`,
+        `마지막클릭 ${job?.lastClick ? JSON.stringify(job.lastClick) : '없음'}`,
+        `주문 ${(state.orders || []).length}행, 주문번호확보 ${(state.orders || []).filter((o) => o && o._idSource === 'orderNumber').length}행`,
+        `경고 ${(state.warnings || []).slice(-2).join(' | ') || '없음'}`
+      ];
+      const text = lines.join('\n');
+      setStatus(text);
+      console.log(text);
+    } catch (error) {
+      setStatus(`오류: ${error.message}`);
+    } finally {
+      elements.stateProbe.disabled = false;
     }
   });
 
