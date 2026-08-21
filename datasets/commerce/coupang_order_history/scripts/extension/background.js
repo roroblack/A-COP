@@ -272,11 +272,17 @@
       return getJob();
     }
 
+    // 루프가 끝나는 중에 들어온 resume 요청을 흘리면 아무도 돌지 않는 상태가 된다.
+    // 서비스 워커가 START 메시지로 깨어날 때 모듈 최상단 resume 과 start 의 resume 이 겹친다.
+    let resumeRequested = false;
     function resume(maxIterations = Infinity) {
-      if (!loopPromise) {
-        startKeepAlive();
-        loopPromise = loop(maxIterations).finally(() => { loopPromise = null; stopKeepAlive(); });
-      }
+      if (loopPromise) { resumeRequested = true; return loopPromise; }
+      startKeepAlive();
+      loopPromise = loop(maxIterations).finally(() => {
+        loopPromise = null;
+        stopKeepAlive();
+        if (resumeRequested) { resumeRequested = false; void resume(maxIterations); }
+      });
       return loopPromise;
     }
 
@@ -339,7 +345,8 @@
     chrome.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === ALARM_NAME) void controller.resume();
     });
-    void controller.resume();
+    // 도는 작업이 있을 때만 시작한다. 헛도는 루프가 start 의 resume 과 겹친다.
+    controller.getJob().then((job) => { if (job?.status === 'running') void controller.resume(); }).catch(() => {});
   }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = { createController, JOB_KEY, ALARM_NAME };

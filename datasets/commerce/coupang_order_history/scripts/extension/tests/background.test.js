@@ -402,3 +402,37 @@ test('루프 안에서 예외가 나도 루프가 죽지 않는다', async () =>
   assert.equal(data[JOB_KEY].status, 'completed', '예외 한 번에 루프가 죽었다');
   assert.ok(controller.health().loopErrorCount >= 1, '오류를 기록하지 않았다');
 });
+
+test('루프가 끝나는 중에 들어온 시작 요청을 흘리지 않는다', async () => {
+  // 서비스 워커가 START 로 깨어나면 모듈 최상단 resume 과 start 의 resume 이 겹친다.
+  // 앞 루프가 끝나기 직전에 두 번째 resume 이 오면 "이미 돈다"고 보고 아무도 안 돌았다.
+  let steps = 0;
+  const data = {};   // 처음에는 작업이 없다
+  const api = {
+    storage: { local: { get(key, cb) { cb({ [key]: data[key] }); }, set(v, cb) { Object.assign(data, structuredClone(v)); cb?.(); } } },
+    scripting: { async executeScript(details) {
+      if (details.files) return [{ result: true }];
+      const [method, value] = details.args;
+      if (method === 'pageFacts') return [{ result: LIST }];
+      if (method === 'runStep') {
+        steps += 1;
+        return [{ result: { state: { ...value, phase: 'DONE', done: true, result: { orderData: { orders: [] }, trackingData: [] } }, action: { type: 'done' }, progress: {} } }];
+      }
+      return [{ result: undefined }];
+    } },
+    tabs: { async update() { return {}; } },
+    alarms: { create() {}, clear() {}, onAlarm: { addListener() {} } },
+    runtime: { lastError: null, sendMessage(_m, cb) { cb?.(); }, onMessage: { addListener() {} } }
+  };
+  const controller = createController(api, { sleep: async () => {}, pollMs: 0, changeTimeoutMs: 5, random: () => 0 });
+
+  // 작업이 없는 상태에서 먼저 돈다. 이 루프는 곧 끝난다.
+  const first = controller.resume(5);
+  // 끝나기 전에 작업을 만들고 다시 시작을 건다.
+  await controller.start(7, { collectionScope: 'list' });
+  await first;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.ok(steps >= 1, '아무도 돌지 않았다');
+  assert.equal(data[JOB_KEY].status, 'completed');
+});
