@@ -38,6 +38,8 @@
     let lastLoopAt = null;
     let loopErrorCount = 0;
     let lastLoopError = null;
+    let callFailCount = 0;
+    let lastCallError = null;
     function withTimeout(promise, ms, label) {
       let timer = null;
       const guard = new Promise((_, reject) => { timer = setTimeout(() => { timeoutCount += 1; lastTimeoutAt = new Date().toISOString(); reject(new Error(`${label} 응답이 없습니다.`)); }, ms); });
@@ -75,11 +77,19 @@
       try {
         const result = await run();
         if (result !== undefined) return result;
-      } catch {
-        // 페이지가 바뀌어 컨텍스트가 사라졌다. 아래에서 다시 주입한다.
+      } catch (error) {
+        lastCallError = `${method}: ${error.message}`;
       }
-      await inject(tabId);
-      try { return await run(); } catch { return undefined; }
+      try {
+        await inject(tabId);
+        const result = await run();
+        if (result === undefined) { callFailCount += 1; lastCallError = `${method}: 결과 없음`; }
+        return result;
+      } catch (error) {
+        callFailCount += 1;
+        lastCallError = `${method}: ${error.message}`;
+        return undefined;
+      }
     }
 
     // 대개 최소~최대 사이로 쉰다. 여섯 번에 한 번쯤 더 길게 쉰다.
@@ -298,7 +308,7 @@
       return job;
     }
 
-    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector, rateLimit, health: () => ({ timeoutCount, lastTimeoutAt, lastLoopAt, loopErrorCount, lastLoopError, looping: Boolean(loopPromise), keepAlive: Boolean(keepAliveTimer) }) };
+    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector, rateLimit, health: () => ({ timeoutCount, lastTimeoutAt, lastLoopAt, loopErrorCount, lastLoopError, callFailCount, lastCallError, looping: Boolean(loopPromise), keepAlive: Boolean(keepAliveTimer) }) };
   }
 
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
