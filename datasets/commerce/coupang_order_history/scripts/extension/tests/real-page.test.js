@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { parseFragment } = require('./test-dom.js');
-const { diagnoseStructure, isOrderListPage, pageFacts, parseDocument, parseTrackingPage, performAction, runStep } = require('../content.js');
+const { diagnoseStructure, isOrderListPage, listUrlForPage, ordersFromNextData, pageFacts, paginationFromNextData, parseDocument, parseTrackingPage, performAction, runStep } = require('../content.js');
 
 // 사용자가 실제 쿠팡 주문목록에서 복사한 HTML이다. raw/find.md에서 뽑았다.
 const html = fs.readFileSync(path.join(__dirname, 'fixtures/order_list_real.html'), 'utf8');
@@ -251,4 +251,57 @@ test('목록 순서가 바뀌어도 같은 주문을 누른다', () => {
   assert.equal(byIndex.ok, true, byIndex.reason);
   assert.equal(byKey.tag, byIndex.tag);
   assert.equal(byKey.tag, 'SPAN');
+});
+
+const nextDataHtml = fs.readFileSync(path.join(__dirname, 'fixtures/order_list_nextdata.html'), 'utf8');
+
+test('__NEXT_DATA__: 상세 페이지 없이 주문번호와 송장번호를 얻는다', () => {
+  // 서버가 심어준 JSON 에 주문번호, 판매자, 단가, 배송비, 택배사, 송장번호가 다 있다.
+  // 이걸 읽으면 상세 페이지와 배송조회 화면에 들어갈 이유가 대부분 사라진다.
+  const document = asDocument(parseFragment(nextDataHtml));
+  global.document = document;
+  const rows = ordersFromNextData(document);
+
+  assert.equal(rows.length, 3, '상품 행 수가 다르다');
+  const chip = rows.find((row) => row.ProductName.includes('허니버터칩'));
+  assert.equal(chip.OrderId, '16102412730885');
+  assert.equal(chip._idSource, 'orderNumber');
+  assert.equal(chip.TrackingNumber, '10327825750572');
+  assert.equal(chip.CourierCompany, '로켓배송');
+  assert.equal(chip.OrderStatus, '배송완료');
+  assert.equal(chip.ProductPrice, 2420);
+  assert.equal(chip.OrderedAt, '2026-08-20');
+
+  // 한 주문에 상품이 둘이면 두 행이 같은 주문번호를 갖는다
+  const cancelled = rows.filter((row) => row.OrderId === '16102412664912');
+  assert.equal(cancelled.length, 2);
+  assert.equal(cancelled[0].TrackingNumber, null);
+});
+
+test('__NEXT_DATA__: 다음 페이지 여부를 짐작하지 않는다', () => {
+  const document = asDocument(parseFragment(nextDataHtml));
+  global.document = document;
+  const paging = paginationFromNextData(document);
+
+  assert.deepEqual(paging, { hasNext: true, currentPageIndex: 0, nextPageIndex: 1 });
+  assert.match(listUrlForPage(1, '2026'), /pageIndex=1/);
+  assert.match(listUrlForPage(1, '2026'), /requestYear=2026/);
+});
+
+test('__NEXT_DATA__: 송장이 없는 주문은 배송조회를 열지 않는다', () => {
+  // 송장번호가 없으면 배송조회 화면에도 볼 것이 없다. 여는 것 자체가 낭비다.
+  const document = asDocument(parseFragment(nextDataHtml));
+  global.document = document;
+  global.location = { href: 'https://mc.coupang.com/ssr/desktop/order/list' };
+
+  let state = { phase: 'INIT', scope: 'tracking', yearScope: 'current' };
+  state = runStep(state).state;   // INIT -> LIST
+  state = runStep(state).state;   // LIST -> 큐 생성
+
+  assert.equal(state.orders.length, 3);
+  // JSON 에서 왔으므로 상세는 전부 끝난 것으로 본다
+  assert.ok(state.queue.every((item) => item.detailDone), '상세를 다시 방문하려 한다');
+
+  const withTracking = state.queue.filter((item) => !item.trackingDone);
+  assert.equal(withTracking.length, 1, '송장 있는 주문만 배송조회 대상이어야 한다');
 });

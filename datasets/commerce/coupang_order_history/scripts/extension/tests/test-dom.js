@@ -50,6 +50,8 @@ class TestElement {
   }
 
   matches(selector) {
+    // 진짜 브라우저는 #id 를 지원한다. 테스트도 같아야 한다.
+    if (selector.startsWith('#')) return this.getAttribute('id') === selector.slice(1);
     if (selector === '*') return true;
     const match = selector.match(/^([a-z]+)?(?:\[([\w-]+)(?:([*]?=)"([^"]*)")?\])?$/i);
     if (!match) return false;

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>쿠팡 주문내역 추출</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+
+      body {
+        box-sizing: border-box;
+        width: 360px;
+        margin: 0;
+        padding: 18px;
+        color: #1f2937;
+        background: #ffffff;
+      }
+
+      h1 {
+        margin: 0 0 16px;
+        font-size: 19px;
+      }
+
+      fieldset {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 0 0 14px;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+      }
+
+      legend {
+        padding: 0 4px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      label {
+        display: grid;
+        gap: 5px;
+        font-size: 12px;
+      }
+
+      input {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #9ca3af;
+        border-radius: 6px;
+        font: inherit;
+      }
+
+      .actions {
+        display: grid;
+        gap: 8px;
+      }
+
+      .period {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px;
+      }
+
+      .period label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .period select {
+        flex: 1;
+        padding: 7px 8px;
+        border: 1px solid #9ca3af;
+        border-radius: 6px;
+        font: inherit;
+        background: #fff;
+      }
+
+      .period button {
+        flex: 0 0 auto;
+        padding: 7px 10px;
+      }
+
+      button {
+        padding: 10px 12px;
+        border: 0;
+        border-radius: 7px;
+        color: #ffffff;
+        background: #2563eb;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #047857;
+      }
+
+      button.auto {
+        background: #ea580c;
+      }
+
+      button.nav {
+        background: #7c3aed;
+      }
+
+      button.tertiary {
+        background: #6b7280;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      #status {
+        min-height: 44px;
+        margin: 14px 0;
+        padding: 10px;
+        border-radius: 7px;
+        background: #f3f4f6;
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-line;
+      }
+
+      .help {
+        margin: 12px 0 0;
+        color: #6b7280;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>쿠팡 주문내역 추출</h1>
+
+    <div class="period">
+      <label for="periodSelect">기간</label>
+      <select id="periodSelect"></select>
+      <button id="openPeriodButton" class="nav" type="button">기간 열기</button>
+    </div>
+
+    <div class="actions">
+      <button id="autoButton" class="auto" type="button">자동 수집 (끝까지)</button>
+      <button id="startButton" type="button">이 페이지만 수집</button>
+      <button id="nextPageButton" class="nav" type="button" disabled>다음 페이지로 이동</button>
+      <button id="downloadButton" class="secondary" type="button" disabled>JSON 내려받기</button>
+      <button id="resetButton" class="tertiary" type="button">초기화 (처음부터)</button>
+    </div>
+
+    <div id="status" role="status" aria-live="polite">주문목록 1페이지에서 '자동 수집'을 누르세요.</div>
+
+    <p class="help">먼저 <b>기간</b>을 고릅니다(최근 6개월 또는 연도). '자동 수집'은 그 기간의 1페이지부터 페이지마다 3~7초 랜덤 대기하며 끝까지 모읍니다(중복·wrap 자동 처리). 진행 중 버튼이 '중지'로 바뀌며, 그동안 <b>팝업을 닫지 마세요</b>. 수동으로 하려면 '기간 열기' → '이 페이지만 수집' → '다음 페이지로 이동'을 반복합니다. 페이지의 연도 <b>탭을 클릭하는 것으로는 기간이 바뀌지 않으니</b> 반드시 이 드롭다운을 쓰세요. 결과는 외부 서버로 전송하지 않습니다.</p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

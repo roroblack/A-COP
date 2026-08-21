@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-23h';
+  const BUILD = '2026-08-23i';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -140,7 +140,9 @@
   const isPaginationButtonDisabled = (button) => !button || Boolean(button.disabled) || button.hasAttribute?.('disabled') || button.getAttribute?.('aria-disabled') === 'true';
   function yearEntries(root) { return [...(root?.querySelectorAll?.('*') || [])].map((element) => ({ element, label: text(element) })).filter(({ element, label }) => /^\d{4}$/.test(label || '') && ![...(element.children || [])].some((child) => /^\d{4}$/.test(text(child) || ''))); }
   const extractYearTabs = (root) => yearEntries(root).map(({ label }) => Number(label));
-  const isOrderListPage = (root) => detailActionLeaves(root).length > 0 && !hasElementWithText(root, '주문목록돌아가기') && !hasElementWithText(root, '받는사람정보');
+  const hasOrderListData = (root) => { const data = readNextData(root); return Boolean(data && deepFind(data, 'orderList')); };
+  // 서버가 주문 목록 JSON 을 심어줬으면 그것만으로 목록 페이지다.
+  const isOrderListPage = (root) => (hasOrderListData(root) || detailActionLeaves(root).length > 0) && !hasElementWithText(root, '주문목록돌아가기') && !hasElementWithText(root, '받는사람정보');
   const rows = (root) => [...(root?.querySelectorAll?.('tr') || [])];
   function rowValue(root, label) { const row = rows(root).find((item) => compact(item).startsWith(label.replace(/\s+/g, ''))); return text([...(row?.querySelectorAll?.('td') || [])].at(-1)); }
   function parseDetailPage(root, pageUrl = '') {
@@ -204,7 +206,7 @@
     if (!root) return { state, action: { type: 'none' }, progress: progress(state, '문서를 기다리고 있습니다.') };
     if (state.done || state.phase === 'DONE') return finish(state);
     if (state.phase === 'INIT') { if (!isOrderListPage(root)) return { state, action: { type: 'navigate', url: ORDER_LIST_URL }, progress: progress(state, '주문 목록으로 이동합니다.') }; const entries = yearEntries(root); state.years = (state.yearScope === 'current' ? entries.slice(0, 1) : entries).map(({ label }) => ({ label, done: false })); if (!state.years.length) state.years = [{ label: null, done: false }]; state.phase = 'LIST'; return { state, action: { type: 'none' }, progress: progress(state, '주문 목록을 확인했습니다.') }; }
-    if (state.phase === 'LIST') { if (!isOrderListPage(root)) return { state, action: { type: 'navigate', url: state.listUrl || ORDER_LIST_URL }, progress: progress(state, '주문 목록으로 돌아갑니다.') }; const signature = pageSignature(root); const key = listPositionKey(root); state.seenKeys = state.seenKeys || []; if (key === state.listKey || state.seenKeys.includes(key)) { const next = findNextButton(root); if (next && !isPaginationButtonDisabled(next) && (state.pageRetries || 0) < 2) { state.pageRetries = (state.pageRetries || 0) + 1; state.page = Math.max(1, state.page - 1); state.phase = 'NEXT_PAGE'; return { state, action: { type: 'none' }, progress: progress(state, `페이지가 넘어가지 않아 다시 시도합니다(${state.pageRetries}).`) }; } state.warnings.push(next && !isPaginationButtonDisabled(next) ? '다음 버튼이 있지만 페이지가 넘어가지 않아 멈춥니다.' : '마지막 페이지에 도달했습니다.'); state.queue = []; state.cursor = 0; state.phase = 'NEXT_YEAR'; return { state, action: { type: 'none' }, progress: progress(state, '마지막 페이지입니다.') }; } if (signature !== state.listSignature) { const parsed = parseDocument(root); const base = state.orders.length; state.orders.push(...parsed.orders); state.queue = [...new Set(parsed.orders.map((order) => order._cardIndex))].map((cardIndex) => ({ cardIndex, cardKey: cardKeyOf(parsed.orders.find((order) => order._cardIndex === cardIndex)), orderIndexes: parsed.orders.map((order, index) => order._cardIndex === cardIndex ? base + index : -1).filter((index) => index >= 0), detailDone: state.scope === 'list', trackingDone: state.scope !== 'tracking', returning: null })); state.cursor = 0; state.pageRetries = 0; state.pageCount += 1; state.listSignature = signature; state.listKey = key; state.seenKeys = [...state.seenKeys.slice(-40), key]; state.listUrl = globalThis.location?.href || ORDER_LIST_URL; } state.phase = state.scope === 'list' ? 'NEXT_PAGE' : 'DETAIL'; return { state, action: { type: 'none' }, progress: progress(state, '현재 페이지의 주문을 읽었습니다.') }; }
+    if (state.phase === 'LIST') { if (!isOrderListPage(root)) return { state, action: { type: 'navigate', url: state.listUrl || ORDER_LIST_URL }, progress: progress(state, '주문 목록으로 돌아갑니다.') }; const signature = pageSignature(root); const key = listPositionKey(root); state.seenKeys = state.seenKeys || []; if (key === state.listKey || state.seenKeys.includes(key)) { const next = findNextButton(root); if (next && !isPaginationButtonDisabled(next) && (state.pageRetries || 0) < 2) { state.pageRetries = (state.pageRetries || 0) + 1; state.page = Math.max(1, state.page - 1); state.phase = 'NEXT_PAGE'; return { state, action: { type: 'none' }, progress: progress(state, `페이지가 넘어가지 않아 다시 시도합니다(${state.pageRetries}).`) }; } state.warnings.push(next && !isPaginationButtonDisabled(next) ? '다음 버튼이 있지만 페이지가 넘어가지 않아 멈춥니다.' : '마지막 페이지에 도달했습니다.'); state.queue = []; state.cursor = 0; state.phase = 'NEXT_YEAR'; return { state, action: { type: 'none' }, progress: progress(state, '마지막 페이지입니다.') }; } if (signature !== state.listSignature) { const fromJson = ordersFromNextData(root); const parsed = fromJson && fromJson.length ? { orders: fromJson.map((order, index) => ({ ...order, _cardIndex: index })), orderCardCount: fromJson.length } : parseDocument(root); const base = state.orders.length; state.orders.push(...parsed.orders); state.queue = [...new Set(parsed.orders.map((order) => order._cardIndex))].map((cardIndex) => ({ cardIndex, cardKey: cardKeyOf(parsed.orders.find((order) => order._cardIndex === cardIndex)), orderIndexes: parsed.orders.map((order, index) => order._cardIndex === cardIndex ? base + index : -1).filter((index) => index >= 0), detailDone: state.scope === 'list' || Boolean(fromJson && fromJson.length), trackingDone: state.scope !== 'tracking' || Boolean(fromJson && fromJson.length && !parsed.orders.some((order) => order._cardIndex === cardIndex && order.TrackingNumber)), returning: null })); state.cursor = 0; state.pageRetries = 0; state.pageCount += 1; state.listSignature = signature; state.listKey = key; state.seenKeys = [...state.seenKeys.slice(-40), key]; state.listUrl = globalThis.location?.href || ORDER_LIST_URL; } state.phase = state.scope === 'list' ? 'NEXT_PAGE' : 'DETAIL'; return { state, action: { type: 'none' }, progress: progress(state, '현재 페이지의 주문을 읽었습니다.') }; }
     if (state.phase === 'DETAIL') {
       const item = state.queue[state.cursor]; if (item && state.skipCurrent) { state.skipCurrent = false; const failed = item.detailDone ? '배송 조회' : '주문 상세'; const reason = `페이지가 반응하지 않아 ${failed}를 건너뜁니다.`; for (const index of item.orderIndexes) { const order = state.orders[index]; if (order) order.Warnings = [...(order.Warnings || []), reason]; } if (item.detailDone) item.trackingDone = true; else item.detailDone = true; item.returning = null; if (item.detailDone && item.trackingDone) state.cursor += 1; return { state, action: { type: 'none' }, progress: progress(state, reason) }; } if (!item) { state.phase = 'NEXT_PAGE'; return { state, action: { type: 'none' }, progress: progress(state, '현재 페이지의 상세 수집을 마쳤습니다.') }; }
       if (!isOrderListPage(root)) { if (item.returning === 'detail') { const detail = parseDetailPage(root, globalThis.location?.href || ''); for (const index of item.orderIndexes) mergeDetail(state.orders[index], detail); item.detailDone = true; item.returning = 'fromDetail'; } else if (item.returning === 'tracking') { const tracking = parseTrackingPage(root, new Date(), state.orders[item.orderIndexes[0]]?.OrderStatus); for (const index of item.orderIndexes) { Object.assign(state.orders[index], tracking); state.orders[index]._TrackingOutcome = tracking.ShipmentStarted ? 'collected' : 'preShipment'; } const added = buildExportPayloads(item.orderIndexes.map((index) => state.orders[index])).trackingData; const known = new Set(state.tracking.map((entry) => `${entry.order_id}|${entry.tracking_number}`)); state.tracking.push(...added.filter((entry) => !known.has(`${entry.order_id}|${entry.tracking_number}`))); item.trackingDone = true; item.returning = 'fromTracking'; } return { state, action: { type: 'click', target: 'backToList', index: item.cardIndex }, progress: progress(state, '주문 목록으로 돌아갑니다.') }; }
@@ -227,7 +229,7 @@
       if (!next || isPaginationButtonDisabled(next)) return giveUp('목록 위치 복원 중 다음 페이지 버튼을 찾지 못했습니다.');
       return { state, action: { type: 'click', target: 'nextPage', index: 0 }, progress: progress(state, `목록 위치를 복원하는 중입니다(${restore.attempts}회).`) };
     }
-    if (state.phase === 'NEXT_PAGE') { const next = findNextButton(root); if (next && !isPaginationButtonDisabled(next)) { state.page += 1; state.phase = 'LIST'; return { state, action: { type: 'click', target: 'nextPage', index: 0 }, progress: progress(state, '다음 페이지로 이동합니다.') }; } if (state.years[state.yearIndex]) state.years[state.yearIndex].done = true; state.phase = 'NEXT_YEAR'; return { state, action: { type: 'none' }, progress: progress(state, '현재 연도의 마지막 페이지입니다.') }; }
+    if (state.phase === 'NEXT_PAGE') { const paging = paginationFromNextData(root); if (paging) { if (!paging.hasNext) { if (state.years[state.yearIndex]) state.years[state.yearIndex].done = true; state.phase = 'NEXT_YEAR'; return { state, action: { type: 'none' }, progress: progress(state, '마지막 페이지입니다.') }; } state.page += 1; state.phase = 'LIST'; const url = listUrlForPage(paging.nextPageIndex, state.years[state.yearIndex]?.label); state.listUrl = url; return { state, action: { type: 'navigate', url }, progress: progress(state, `${paging.nextPageIndex + 1}번째 페이지로 이동합니다.`) }; } const next = findNextButton(root); if (next && !isPaginationButtonDisabled(next)) { state.page += 1; state.phase = 'LIST'; return { state, action: { type: 'click', target: 'nextPage', index: 0 }, progress: progress(state, '다음 페이지로 이동합니다.') }; } if (state.years[state.yearIndex]) state.years[state.yearIndex].done = true; state.phase = 'NEXT_YEAR'; return { state, action: { type: 'none' }, progress: progress(state, '현재 연도의 마지막 페이지입니다.') }; }
     if (state.phase === 'NEXT_YEAR') { const nextIndex = state.yearIndex + 1; if (nextIndex >= state.years.length) return finish(state); const label = state.years[nextIndex].label; const tabIndex = yearEntries(root).findIndex((entry) => entry.label === label); if (tabIndex < 0) { state.warnings.push(`${label} 연도 탭을 찾지 못했습니다.`); state.yearIndex = nextIndex; return { state, action: { type: 'none' }, progress: progress(state, '다음 연도 탭을 찾습니다.') }; } state.yearIndex = nextIndex; state.page = 1; state.phase = 'LIST'; return { state, action: { type: 'click', target: 'yearTab', index: tabIndex }, progress: progress(state, `${label} 연도로 이동합니다.`) }; }
     return finish(state);
   }
@@ -294,6 +296,118 @@
   }
   // 지금 이 문서가 무엇으로 보이는지 그대로 보고한다.
   // 지금 문서의 사실만 모아 준다. 판단은 호출한 쪽에서 한다.
+  // 쿠팡 주문목록은 Next.js SSR 페이지다. 서버가 __NEXT_DATA__ 에 주문 데이터를 통째로
+  // 심어준다. 화면 DOM 을 긁는 것보다 정확하고, 상세 페이지에 들어갈 이유도 없앤다.
+  // 주문번호, 판매자, 단가, 배송비, 택배사, 송장번호가 여기에 다 있다.
+  const STATUS_LABELS = Object.freeze({ FINAL_DELIVERY: '배송완료' });
+
+  function readNextData(root = globalThis.document) {
+    const target = (root && root.nodeType === 9 && root.body) ? root.body : root;
+    const element = root?.getElementById?.('__NEXT_DATA__')
+      || target?.querySelector?.('script[id="__NEXT_DATA__"]')
+      || target?.querySelector?.('#__NEXT_DATA__');
+    if (!element) return null;
+    try { return JSON.parse(element.textContent || ''); } catch { return null; }
+  }
+
+  const deepFind = (node, key, depth = 0) => {
+    if (!node || depth > 8) return null;
+    if (Array.isArray(node)) {
+      for (const item of node) { const found = deepFind(item, key, depth + 1); if (found) return found; }
+      return null;
+    }
+    if (typeof node !== 'object') return null;
+    if (Array.isArray(node[key])) return node[key];
+    for (const value of Object.values(node)) { const found = deepFind(value, key, depth + 1); if (found) return found; }
+    return null;
+  };
+
+  const kstTime = (ms) => (typeof ms === 'number' && Number.isFinite(ms))
+    ? new Date(ms).toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }) : null;
+  const numberOrNull = (value) => (typeof value === 'number' && Number.isFinite(value)) ? value : null;
+
+  function productUrlOf(productId, vendorItemId) {
+    if (!productId) return null;
+    const base = `https://www.coupang.com/vp/products/${productId}`;
+    return vendorItemId ? `${base}?vendorItemId=${vendorItemId}` : base;
+  }
+
+  // __NEXT_DATA__ 의 주문 목록을 우리 결과 형식으로 옮긴다.
+  function ordersFromNextData(root = globalThis.document) {
+    const data = readNextData(root);
+    if (!data) return null;
+    const orderList = deepFind(data, 'orderList');
+    if (!orderList) return null;
+
+    const rows = [];
+    for (const order of orderList) {
+      const orderId = order?.orderId != null ? String(order.orderId) : null;
+      const orderedAt = kstTime(order?.orderedAt);
+      const shippingFee = numberOrNull(order?.baseDeliveryPrice);
+      const orderTotal = numberOrNull(order?.totalProductPrice);
+
+      for (const group of order?.deliveryGroupList ?? []) {
+        const statusCode = group?.groupStatus?.status ?? group?.invoiceStatus ?? null;
+        const products = group?.productList ?? [];
+        for (const product of (products.length ? products : [null])) {
+          rows.push(sanitizeValue({
+            OrderId: orderId,
+            OrderedAt: orderedAt ? orderedAt.slice(0, 10) : null,
+            OrderedAtTime: orderedAt,
+            SellerName: group?.vendor?.vendorName ?? null,
+            ProductName: product?.vendorItemName ?? product?.productName ?? order?.title ?? null,
+            Quantity: numberOrNull(product?.quantity),
+            UnitPrice: numberOrNull(product?.unitPrice),
+            ProductPrice: numberOrNull(product?.discountedUnitPrice ?? product?.combinedUnitPrice ?? product?.unitPrice),
+            ShippingFee: shippingFee,
+            TotalAmount: orderTotal,
+            OrderStatus: statusCode ? (STATUS_LABELS[statusCode] || statusCode) : null,
+            DeliveryStatus: group?.pddMessage?.message ?? null,
+            DeliveryCompleteDate: kstTime(group?.deliveredDate),
+            CourierCompany: group?.deliveryCompany?.companyName ?? null,
+            TrackingNumber: group?.invoiceNumber ?? null,
+            ProductUrl: productUrlOf(product?.productId, product?.vendorItemId),
+            VendorItemId: product?.vendorItemId != null ? String(product.vendorItemId) : null,
+            DeliveryRegion: null,
+            TrackingEvents: [],
+            Warnings: [],
+            _idSource: orderId ? 'orderNumber' : 'derived',
+            _source: 'nextData'
+          }));
+        }
+      }
+    }
+    return rows;
+  }
+
+  // 다음 페이지가 있는지, 몇 번인지는 JSON 이 알려준다. 짐작하지 않아도 된다.
+  function paginationFromNextData(root = globalThis.document) {
+    const data = readNextData(root);
+    if (!data) return null;
+    const found = (node, depth = 0) => {
+      if (!node || typeof node !== 'object' || depth > 8) return null;
+      if (Array.isArray(node)) { for (const item of node) { const hit = found(item, depth + 1); if (hit) return hit; } return null; }
+      if ('hasNext' in node) return node;
+      for (const value of Object.values(node)) { const hit = found(value, depth + 1); if (hit) return hit; }
+      return null;
+    };
+    const page = found(data);
+    if (!page) return null;
+    const current = numberOrNull(page.pageIndex ?? page.currentPageIndex);
+    return {
+      hasNext: Boolean(page.hasNext),
+      currentPageIndex: current,
+      nextPageIndex: numberOrNull(page.nextPageIndex) ?? (current === null ? null : current + 1)
+    };
+  }
+
+  function listUrlForPage(pageIndex, year) {
+    const url = new URL(ORDER_LIST_URL);
+    if (pageIndex !== null && pageIndex !== undefined) url.searchParams.set('pageIndex', String(pageIndex));
+    if (year) url.searchParams.set('requestYear', String(year));
+    return url.href;
+  }
+
   function pageFacts() {
     const root = globalThis.document;
     const compacted = compact(root) || '';
@@ -333,7 +447,7 @@
   async function collectDetailsOnCurrentPage(orders, scope, collectedAt, page, visited, start, end, deps = {}) { for (const order of orders) { order.Warnings ||= []; order.TrackingEvents ||= []; order.TrackingEventRaw ||= []; const root = deps.getDocument?.() || globalThis.document; const detail = deps.findOrderDetailAction?.(root, order) ?? findOrderDetailAction(root, order); if (detail && deps.clickAndWait && !await deps.clickAndWait(detail)) order.Warnings.push('주문 상세 수집 실패: 페이지가 전환되지 않았습니다.'); if (scope === 'tracking') { const tracking = deps.findOrderTrackingAction?.(deps.getDocument?.() || root, order) ?? findOrderTrackingAction(deps.getDocument?.() || root, order); if (!tracking) { order.Warnings.push('배송 조회 버튼이 없는 주문입니다(취소/환불 등).'); order._TrackingOutcome = 'buttonMissing'; } else if (deps.clickAndWait && await deps.clickAndWait(tracking)) { const priorWarnings = order.Warnings; const parsed = (deps.parseTrackingPage || parseTrackingPage)(deps.getDocument?.() || globalThis.document, collectedAt, order.OrderStatus); Object.assign(order, parsed); order.Warnings = [...priorWarnings, ...(parsed.Warnings || [])]; } } await deps.returnToOrderList?.(); await deps.randomDelay?.(); } return orders; }
   async function collectOrders(config = {}) { let state = initialState(config); const runtime = config.runtime || {}; for (let count = 0; count < (runtime.maxTransitions || 1000); count += 1) { const result = runStep(state); state = result.state; runtime.reportProgress?.(result.progress); if (result.action.type === 'done') return state.result; if (result.action.type === 'navigate') { if (globalThis.location) globalThis.location.href = result.action.url; } else if (result.action.type === 'click') { const performed = performAction(result.action); if (!performed.ok) throw new Error(performed.reason); } await runtime.randomDelay?.(); } throw new Error('상태 기계 반복 상한을 초과했습니다.'); }
 
-  const api = { BUILD, SELECTORS, pageFacts, describePage, describeTarget, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
+  const api = { BUILD, SELECTORS, pageFacts, readNextData, ordersFromNextData, paginationFromNextData, listUrlForPage, describePage, describeTarget, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
   globalThis.__coupangOrderCollector = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();
