@@ -519,3 +519,22 @@ test('송장번호가 없는 배송조회 화면도 도착으로 본다', async 
 
   assert.equal(outcome.ok, true, outcome.reason);
 });
+
+test('배송조회에서 뒤로가기도 클릭도 안 되면 목록 주소로 이동한다', async () => {
+  // 배송조회 화면에는 주문목록 돌아가기 버튼이 없고 뒤로가기도 통하지 않을 수 있다.
+  let onList = false;
+  let navigated = null;
+  const { api } = fakeChrome(async (method) => {
+    if (method === 'pageFacts') return [{ result: { ...LIST, isList: onList } }];
+    if (method === 'performAction') return [{ result: { ok: false, reason: 'backToList 요소를 찾지 못했습니다.' } }];
+    return undefined;
+  }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
+  api.tabs.goBack = async () => { throw new Error('뒤로 갈 곳이 없습니다.'); };
+  api.tabs.update = async (_id, info) => { if (info.url) { navigated = info.url; onList = true; } return {}; };
+
+  const job = runningJob({ phase: 'DETAIL', orders: [], warnings: [], listUrl: 'https://mc.coupang.com/ssr/desktop/order/list' });
+  const outcome = await controllerFor(api).executeAction(job, { type: 'click', target: 'backToList', index: 0, expect: 'backOnList' });
+
+  assert.equal(outcome.ok, true, outcome.reason);
+  assert.match(navigated || '', /order\/list/);
+});

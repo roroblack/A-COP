@@ -6,6 +6,7 @@
   const DEFAULT_POLL_MS = 400;
   const DEFAULT_CHANGE_TIMEOUT_MS = 15000;
   const NAVIGATION_TIMEOUT_MS = 30000;
+  const ORDER_LIST_URL = 'https://mc.coupang.com/ssr/desktop/order/list';
   const CALL_TIMEOUT_MS = 5000;
   const FIRST_ALARM_DELAY_MS = 100;
 
@@ -206,6 +207,21 @@
         }
       }
 
+      // 뒤로가기도 클릭도 안 되는 화면이 있다. 배송조회가 그렇다.
+      // 마지막 수단으로 주문목록 주소로 직접 이동한다. 이건 언제나 통한다.
+      const forceListUrl = async () => {
+        if (action.target !== 'backToList') return null;
+        try {
+          await chromeApi.tabs.update(job.tabId, { url: job.state?.listUrl || ORDER_LIST_URL, active: true });
+          if (await awaitCondition(job.tabId, satisfied, navigationTimeoutMs)) {
+            job.state.warnings ||= [];
+            job.state.warnings.push('목록 주소로 직접 이동해 돌아왔습니다.');
+            return { ok: true, attempt: 0, note: '목록 주소로 이동했습니다.' };
+          }
+        } catch { /* 이동 자체가 실패하면 아래에서 실패로 남는다 */ }
+        return null;
+      };
+
       for (let attempt = 0; attempt < 4; attempt += 1) {
         // 재시도도 사람 속도로 한다. 연달아 네 번 누르면 봇으로 보인다.
         if (attempt > 0 && !await rateLimit(job.config, job)) {
@@ -221,10 +237,15 @@
         if (report?.ok === false) {
           // 요소가 사라진 것은 이미 넘어갔다는 뜻일 수 있다.
           if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt, note: '요소는 없었지만 이미 이동해 있었습니다.' };
+          // 배송조회 화면에는 목록 돌아가기 버튼이 아예 없다. 네 번 눌러봐야 시간만 버린다.
+          const forcedNow = await forceListUrl();
+          if (forcedNow) return forcedNow;
           continue;
         }
         if (await awaitCondition(job.tabId, satisfied, timeout)) return { ok: true, attempt };
       }
+      const forced = await forceListUrl();
+      if (forced) return forced;
       return { ok: false, reason: `${action.target} 클릭이 네 번 다 통하지 않았습니다.` };
     }
 
