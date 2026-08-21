@@ -175,3 +175,22 @@ test('연도 탭을 쓰지 않는 설정이면 위치 복원에서도 누르지 
   assert.equal(step.action.type, 'click');
   assert.equal(step.action.target, 'nextPage', `연도 탭을 눌렀다: ${step.action.target}`);
 });
+
+test('상세가 실패해도 배송 조회는 시도한다', () => {
+  // 목록 카드에 배송 조회 버튼이 있으므로 상세를 못 읽어도 배송은 받을 수 있다.
+  const document = asDocument(parseFragment(html));
+  global.document = document;
+  const item = { cardIndex: 0, orderIndexes: [0], detailDone: false, trackingDone: false, returning: 'detail' };
+  const state = {
+    phase: 'DETAIL', scope: 'tracking', yearScope: 'current',
+    years: [{ label: '2026', done: false }], yearIndex: 0, page: 1,
+    orders: [{ OrderId: 'x', OrderStatus: '배송중', Warnings: [] }], tracking: [],
+    queue: [item], cursor: 0, warnings: [], skipCurrent: true, listKey: null
+  };
+
+  const step = runStep(state);
+
+  assert.equal(step.state.queue[0].detailDone, true, '상세는 포기해야 한다');
+  assert.equal(step.state.queue[0].trackingDone, false, '배송 조회까지 같이 포기했다');
+  assert.equal(step.state.cursor, 0, '아직 다음 주문으로 넘어가면 안 된다');
+});

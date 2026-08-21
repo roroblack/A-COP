@@ -613,3 +613,16 @@ test('주문목록 돌아가기가 있으면 목록 페이지가 아니다', () 
   const html = '<main><span>주문 상세보기</span><button>주문목록 돌아가기</button></main>';
   assert.equal(isOrderListPage(parseFragment(html)), false);
 });
+
+test('주문번호를 전화번호로 오인해 지우지 않는다', () => {
+  // 실제 수집 결과에 "1600[제거됨]" 이 나왔다. 주문번호가 잘려 나갔다.
+  assert.equal(sanitizeValue('16001612345678'), '16001612345678');
+  assert.equal(sanitizeValue('16102412730885'), '16102412730885');
+  assert.equal(sanitizeValue('10327825750572'), '10327825750572');
+});
+
+test('진짜 전화번호는 그대로 지운다', () => {
+  assert.equal(sanitizeValue('010-1234-5678'), '[제거됨]');
+  assert.equal(sanitizeValue('01012345678'), '[제거됨]');
+  assert.equal(sanitizeValue('연락처 010 1234 5678 입니다'), '연락처 [제거됨] 입니다');
+});

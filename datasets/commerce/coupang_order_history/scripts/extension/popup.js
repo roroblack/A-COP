@@ -5,7 +5,7 @@
   const elements = {
     min: document.querySelector('#minDelay'), max: document.querySelector('#maxDelay'),
     start: document.querySelector('#startButton'), stop: document.querySelector('#stopButton'),
-    diagnose: document.querySelector('#diagnoseButton'), detailProbe: document.querySelector('#detailProbeButton'), stateProbe: document.querySelector('#stateProbeButton'), nextProbe: document.querySelector('#nextProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
+    openList: document.querySelector('#openListButton'), diagnose: document.querySelector('#diagnoseButton'), detailProbe: document.querySelector('#detailProbeButton'), stateProbe: document.querySelector('#stateProbeButton'), nextProbe: document.querySelector('#nextProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
     trackingDownload: document.querySelector('#trackingDownloadButton'), trackingReason: document.querySelector('#trackingDownloadReason'),
     status: document.querySelector('#status'), scopeSummary: document.querySelector('#scopeSummary')
   };
@@ -14,6 +14,30 @@
   function setStatus(message) { elements.status.textContent = message; }
   function selected(name) { return document.querySelector(`input[name="${name}"]:checked`)?.value; }
   function isOrderListUrl(value) { try { const url = new URL(value); return url.origin === 'https://mc.coupang.com' && url.pathname.startsWith('/ssr/desktop/order/list'); } catch { return false; } }
+  function waitForTabLoad(tabId, timeoutMs = 20000) {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => { chrome.tabs.onUpdated.removeListener(listener); resolve(false); }, timeoutMs);
+      function listener(changedTabId, info) {
+        if (changedTabId !== tabId || info.status !== 'complete') return;
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve(true);
+      }
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+  }
+
+  // 주문목록이 아니면 알아서 옮겨준다. 매번 주소를 찾아 들어갈 이유가 없다.
+  async function ensureOrderListTab() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) throw new Error('활성 탭을 찾지 못했습니다.');
+    if (isOrderListUrl(tab.url)) return tab;
+    setStatus('주문목록 페이지로 이동합니다.');
+    await chrome.tabs.update(tab.id, { url: ORDER_LIST_URL });
+    await waitForTabLoad(tab.id);
+    return tab;
+  }
+
   async function activeOrderListTab(anyCoupangPage = false) { const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }); const ok = tab?.id && (anyCoupangPage ? /^https:\/\/mc\.coupang\.com\//.test(tab.url || '') : isOrderListUrl(tab.url)); if (!ok) throw new Error(`쿠팡 주문목록 페이지에서 실행하세요.
 ${ORDER_LIST_URL}`); return tab; }
   function config() {
@@ -46,7 +70,7 @@ ${ORDER_LIST_URL}`); return tab; }
   function downloadJson(value, filename) { const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' }); const url = URL.createObjectURL(blob); chrome.downloads.download({ url, filename, saveAs: true }, () => { URL.revokeObjectURL(url); void chrome.runtime.lastError; }); }
   function updateScopeSummary() { const labels = { list: '목록만', detail: '목록 + 상세', tracking: '목록 + 상세 + 배송조회' }; elements.scopeSummary.textContent = `수집 범위: ${labels[selected('collectionScope')] || labels.tracking}`; }
 
-  elements.start.addEventListener('click', async () => { try { const tab = await activeOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config() }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
+  elements.start.addEventListener('click', async () => { try { const tab = await ensureOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config() }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.stop.addEventListener('click', async () => { try { const response = await message({ type: 'STOP' }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.diagnose.addEventListener('click', async () => { elements.diagnose.disabled = true; try { const tab = await activeOrderListTab(); await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }); const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__coupangOrderCollector?.diagnoseStructure() }); const diagnosis = results?.[0]?.result; if (!diagnosis) throw new Error('진단 결과를 받지 못했습니다.'); setStatus(Object.entries(diagnosis).map(([key, value]) => `${key}: ${value}`).join('\n')); } catch (error) { setStatus(`오류: ${error.message}`); } finally { elements.diagnose.disabled = false; } });
   async function runInTab(tabId, method, ...args) {
@@ -175,6 +199,13 @@ ${ORDER_LIST_URL}`); return tab; }
     } finally {
       elements.nextProbe.disabled = false;
     }
+  });
+
+  elements.openList.addEventListener('click', async () => {
+    elements.openList.disabled = true;
+    try { await ensureOrderListTab(); setStatus('주문목록 페이지입니다. 수집 시작을 누르세요.'); }
+    catch (error) { setStatus(`오류: ${error.message}`); }
+    finally { elements.openList.disabled = false; }
   });
 
   elements.orderDownload.addEventListener('click', () => { if (currentJob?.result?.orderData) downloadJson(currentJob.result.orderData, `coupang_order_history_${dateStamp()}.json`); });
