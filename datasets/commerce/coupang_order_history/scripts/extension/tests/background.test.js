@@ -234,3 +234,26 @@ test('요소가 사라졌어도 이미 이동했으면 성공으로 본다', asy
 
   assert.equal(outcome.ok, true);
 });
+
+test('재시도 사이에도 사람 속도로 쉰다', async () => {
+  // 네 번을 연달아 누르면 봇으로 보인다. 시도 사이에 대기가 있어야 한다.
+  const waits = [];
+  const { api } = fakeChrome(async (method) => {
+    if (method === 'pageFacts') return [{ result: LIST }];          // 끝까지 안 바뀜
+    if (method === 'performAction') return [{ result: { ok: true } }];
+    return undefined;
+  }, runningJob({ phase: 'LIST', orders: [], warnings: [] }));
+  const controller = createController(api, {
+    sleep: async (ms) => { waits.push(ms); },
+    pollMs: 0, changeTimeoutMs: 1, navigationTimeoutMs: 1, random: () => 0.5
+  });
+
+  await controller.executeAction(
+    runningJob({ phase: 'LIST', orders: [], warnings: [] }),
+    { type: 'click', target: 'nextPage', index: 0, expect: 'listChanged' }
+  );
+
+  // 첫 시도 뒤 세 번의 재시도마다 설정된 대기(이 작업은 800ms)가 들어간다.
+  const humanPauses = waits.filter((ms) => ms === 800);
+  assert.equal(humanPauses.length, 3, `재시도 대기가 ${humanPauses.length}번뿐이다`);
+});

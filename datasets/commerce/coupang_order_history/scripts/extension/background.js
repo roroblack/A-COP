@@ -117,6 +117,8 @@
         ? navigationTimeoutMs : changeTimeoutMs;
 
       for (let attempt = 0; attempt < 4; attempt += 1) {
+        // 재시도도 사람 속도로 한다. 연달아 네 번 누르면 봇으로 보인다.
+        if (attempt > 0) await rateLimit(job.config);
         // 이미 원하는 상태면 또 누르지 않는다. 늦게 반영된 이동을 다시 누르면 망가진다.
         if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt, note: attempt ? '이미 이동해 있었습니다.' : null };
 
