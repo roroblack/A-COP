@@ -477,3 +477,45 @@ test('탭이 사라지면 쿠팡 탭을 다시 찾아 이어간다', async () =>
   assert.equal(data[JOB_KEY].tabId, 99, '새 탭으로 옮기지 않았다');
   assert.ok(steps >= 1, '탭을 찾고도 진행하지 않았다');
 });
+
+test('잠든 탭은 다시 불러와 이어간다', async () => {
+  // Edge 절전 탭이 배경 탭을 잠재우면 프레임이 사라져 모든 호출이 실패한다.
+  let asleep = true;
+  let reloaded = false;
+  let steps = 0;
+  const { api, data } = fakeChrome(async (method, value) => {
+    if (method === 'pageFacts') return [{ result: LIST }];
+    if (method === 'runStep') {
+      if (asleep) return [{ result: undefined }];
+      steps += 1;
+      return [{ result: { state: { ...value, phase: 'DONE', done: true, result: { orderData: { orders: [] }, trackingData: [] } }, action: { type: 'done' }, progress: {} } }];
+    }
+    return undefined;
+  }, runningJob({ phase: 'LIST', orders: [], warnings: [] }));
+  api.tabs.get = (_id, cb) => cb({ id: 7, discarded: true });
+  api.tabs.reload = async () => { reloaded = true; asleep = false; };
+
+  await controllerFor(api).resume(8);
+
+  assert.equal(reloaded, true, '잠든 탭을 깨우지 않았다');
+  assert.ok(steps >= 1, '깨우고도 진행하지 않았다');
+  assert.match((data[JOB_KEY].state.warnings || []).join(' '), /잠들어 다시 불러왔습니다/);
+});
+
+test('송장번호가 없는 배송조회 화면도 도착으로 본다', async () => {
+  // shiptrack?...&invoiceNumber= 처럼 송장이 없는 주문이 있다.
+  // 송장 표가 있어야만 도착으로 보면 그 주문에서 영원히 기다린다.
+  let moved = false;
+  const { api } = fakeChrome(async (method) => {
+    if (method === 'pageFacts') return [{ result: { ...LIST, isList: !moved, hasTrackingTable: false } }];
+    if (method === 'performAction') { moved = true; return [{ result: { ok: true } }]; }
+    return undefined;
+  }, runningJob({ phase: 'DETAIL', orders: [], warnings: [] }));
+
+  const outcome = await controllerFor(api).executeAction(
+    runningJob({ phase: 'DETAIL', orders: [], warnings: [] }),
+    { type: 'click', target: 'tracking', index: 0, expect: 'tracking' }
+  );
+
+  assert.equal(outcome.ok, true, outcome.reason);
+});

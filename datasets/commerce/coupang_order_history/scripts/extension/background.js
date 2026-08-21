@@ -170,7 +170,7 @@
       if (action.expect === 'leftList') return (facts) => !facts.isList;
       if (action.expect === 'listChanged') return (facts) => facts.isList && facts.listKey !== before.listKey;
       if (action.expect === 'backOnList') return (facts) => facts.isList;
-      if (action.expect === 'tracking') return (facts) => !facts.isList && facts.hasTrackingTable;
+      if (action.expect === 'tracking') return (facts) => !facts.isList;
       return (facts) => facts.listKey !== before.listKey || facts.isList !== before.isList;
     }
 
@@ -193,6 +193,19 @@
       const timeout = action.expect === 'leftList' || action.expect === 'tracking' || action.expect === 'backOnList'
         ? navigationTimeoutMs : changeTimeoutMs;
 
+      // 목록 복귀는 브라우저 뒤로가기가 가장 확실하다.
+      // 배송조회 화면에는 '주문목록 돌아가기' 버튼이 아예 없어서 클릭으로는 못 나온다.
+      // 배송조회 → 상세 → 목록 순으로 두 번 이상 뒤로 가야 할 수도 있다.
+      if (action.target === 'backToList' && chromeApi.tabs?.goBack) {
+        for (let back = 0; back < 3; back += 1) {
+          if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt: 0, note: '이미 목록입니다.' };
+          try { await chromeApi.tabs.goBack(job.tabId); } catch { break; }
+          if (await awaitCondition(job.tabId, satisfied, navigationTimeoutMs)) {
+            return { ok: true, attempt: 0, note: `뒤로가기 ${back + 1}회로 목록에 돌아왔습니다.` };
+          }
+        }
+      }
+
       for (let attempt = 0; attempt < 4; attempt += 1) {
         // 재시도도 사람 속도로 한다. 연달아 네 번 누르면 봇으로 보인다.
         if (attempt > 0 && !await rateLimit(job.config, job)) {
@@ -211,15 +224,6 @@
           continue;
         }
         if (await awaitCondition(job.tabId, satisfied, timeout)) return { ok: true, attempt };
-      }
-      // 목록 복귀는 브라우저 뒤로가기로도 된다. 클릭이 새 탭을 열었을 때도 이쪽은 통한다.
-      if (action.target === 'backToList' && chromeApi.tabs?.goBack) {
-        try {
-          await chromeApi.tabs.goBack(job.tabId);
-          if (await awaitCondition(job.tabId, satisfied, navigationTimeoutMs)) {
-            return { ok: true, attempt: 4, note: '뒤로가기로 목록에 돌아왔습니다.' };
-          }
-        } catch { /* 뒤로 갈 곳이 없으면 아래에서 실패로 남긴다 */ }
       }
       return { ok: false, reason: `${action.target} 클릭이 네 번 다 통하지 않았습니다.` };
     }
@@ -255,23 +259,43 @@
     }
 
     // 클릭이 새 탭을 열거나 탭이 닫히면 우리가 보던 탭이 사라진다.
-    // 그러면 모든 호출이 "Frame with ID 0 was removed" 로 실패하고 영영 진행되지 않는다.
+    // Edge 의 절전 탭은 배경 탭을 잠재워 프레임을 없앤다. 그러면 모든 호출이
+    // "Frame with ID 0 was removed" 로 실패하고 영영 진행되지 않는다.
+    let frameErrors = 0;
     async function recoverTab(job) {
-      const stillThere = await new Promise((resolve) => {
-        try { chromeApi.tabs.get(job.tabId, (tab) => resolve(!chromeApi.runtime.lastError && Boolean(tab))); }
-        catch { resolve(true); }
-      });
-      if (stillThere) return false;
-      const found = await new Promise((resolve) => {
-        try { chromeApi.tabs.query({ url: 'https://mc.coupang.com/*' }, (tabs) => resolve((tabs || [])[0] || null)); }
+      const tab = await new Promise((resolve) => {
+        try { chromeApi.tabs.get(job.tabId, (found) => resolve(chromeApi.runtime.lastError ? null : found || null)); }
         catch { resolve(null); }
       });
-      if (!found?.id) return false;
-      job.tabId = found.id;
-      job.state.warnings ||= [];
-      job.state.warnings.push('탭이 바뀌어 새 탭으로 이어서 진행합니다.');
-      await saveJob(job);
-      return true;
+
+      if (!tab) {
+        const found = await new Promise((resolve) => {
+          try { chromeApi.tabs.query({ url: 'https://mc.coupang.com/*' }, (tabs) => resolve((tabs || [])[0] || null)); }
+          catch { resolve(null); }
+        });
+        if (!found?.id) return false;
+        job.tabId = found.id;
+        job.state.warnings ||= [];
+        job.state.warnings.push('탭이 바뀌어 새 탭으로 이어서 진행합니다.');
+        frameErrors = 0;
+        await saveJob(job);
+        return true;
+      }
+
+      // 탭은 있는데 프레임이 없다. 잠들었거나 버려진 것이다. 깨운다.
+      const asleep = tab.discarded || tab.status === 'unloaded';
+      frameErrors += 1;
+      if (!asleep && frameErrors < 5) return false;
+      try {
+        await chromeApi.tabs.reload(job.tabId);
+        job.state.warnings ||= [];
+        job.state.warnings.push('탭이 잠들어 다시 불러왔습니다.');
+        frameErrors = 0;
+        await saveJob(job);
+        return true;
+      } catch {
+        return false;
+      }
     }
 
     let stepFailures = 0;
