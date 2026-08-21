@@ -7,6 +7,7 @@
   const DEFAULT_CHANGE_TIMEOUT_MS = 15000;
   const NAVIGATION_TIMEOUT_MS = 30000;
   const CALL_TIMEOUT_MS = 5000;
+  const FIRST_ALARM_DELAY_MS = 100;
 
   function createController(chromeApi, options = {}) {
     const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -18,8 +19,23 @@
     const callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
     let loopPromise = null;
 
-    const storageGet = (key) => new Promise((resolve) => chromeApi.storage.local.get(key, resolve));
-    const storageSet = (value) => new Promise((resolve) => chromeApi.storage.local.set(value, resolve));
+    // 같은 워커에서 시작된 storage 작업은 호출 순서대로 끝낸다.
+    // START 두 건의 저장 완료가 뒤집히면 먼저 온 작업이 나중 작업을 덮어쓸 수 있다.
+    let storageQueue = Promise.resolve();
+    function enqueueStorage(operation) {
+      const result = storageQueue.then(operation);
+      storageQueue = result.catch(() => {});
+      return result;
+    }
+    const storageGet = (key) => enqueueStorage(() => new Promise((resolve) => chromeApi.storage.local.get(key, resolve)));
+    const storageSet = (value) => enqueueStorage(() => new Promise((resolve) => chromeApi.storage.local.set(value, resolve)));
+    let jobMutationQueue = Promise.resolve();
+    let jobSequence = 0;
+    function enqueueJobMutation(operation) {
+      const result = jobMutationQueue.then(operation);
+      jobMutationQueue = result.catch(() => {});
+      return result;
+    }
 
     async function getJob() {
       return (await storageGet(JOB_KEY))[JOB_KEY] || null;
@@ -108,14 +124,15 @@
       const { waitMs, longBreak } = drawWait(config);
       if (job) {
         job.progress = { ...(job.progress || {}), waitMs, longBreak, waitUntil: Date.now() + waitMs };
-        await saveJob(job);
+        if (!await saveIfRunning(job)) return false;
         sendProgress(job.progress, job.status);
       }
       await sleep(waitMs);
       if (job) {
         job.progress = { ...(job.progress || {}), waitMs: 0, longBreak: false, waitUntil: 0 };
-        await saveJob(job);
+        if (!await saveIfRunning(job)) return false;
       }
+      return true;
     }
 
     function sendProgress(progress, status) {
@@ -175,13 +192,15 @@
 
       for (let attempt = 0; attempt < 4; attempt += 1) {
         // 재시도도 사람 속도로 한다. 연달아 네 번 누르면 봇으로 보인다.
-        if (attempt > 0) await rateLimit(job.config, job);
+        if (attempt > 0 && !await rateLimit(job.config, job)) {
+          return { ok: false, stopped: true, reason: '수집이 중단되었습니다.' };
+        }
         // 이미 원하는 상태면 또 누르지 않는다. 늦게 반영된 이동을 다시 누르면 망가진다.
         if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt, note: attempt ? '이미 이동해 있었습니다.' : null };
 
         const report = await callCollector(job.tabId, 'performAction', { ...action, attempt });
         job.lastClick = { ...(report || {}), attempt, target: action.target, expect: action.expect || null };
-        await saveJob(job);
+        if (!await saveIfRunning(job)) return { ok: false, stopped: true, reason: '수집이 중단되었습니다.' };
 
         if (report?.ok === false) {
           // 요소가 사라진 것은 이미 넘어갔다는 뜻일 수 있다.
@@ -211,17 +230,23 @@
     // 오래 걸리는 걸음 도중에 중단이 들어올 수 있다. 그때 손에 든 낡은 job 을 그대로
     // 저장하면 status 가 running 으로 되살아난다. 저장 전에 실제 상태를 확인한다.
     async function saveIfRunning(job) {
-      const current = await getJob();
-      if (current?.status !== 'running') return false;
-      await saveJob(job);
-      return true;
+      return enqueueJobMutation(async () => {
+        const current = await getJob();
+        // 읽기가 실패해 아무것도 못 받은 것과 실제로 중단된 것은 다르다.
+        // 전자를 중단으로 오해하면 멀쩡한 작업이 여기서 끝나 버린다.
+        if (!current) throw new Error('작업 상태를 읽지 못했습니다.');
+        if (current.status !== 'running') return false;
+        if ((current.jobId || job.jobId) && current.jobId !== job.jobId) return false;
+        await saveJob(job);
+        return true;
+      });
     }
 
     let stepFailures = 0;
     async function noteStepFailure(job, reason) {
       stepFailures += 1;
       job.progress = { ...(job.progress || {}), message: `걸음이 진행되지 않습니다(${stepFailures}회): ${reason}` };
-      try { await saveJob(job); sendProgress(job.progress, job.status); } catch { /* 저장 실패는 다음 걸음에서 다시 시도한다 */ }
+      try { if (await saveIfRunning(job)) sendProgress(job.progress, job.status); } catch { /* 저장 실패는 다음 걸음에서 다시 시도한다 */ }
     }
 
     async function loop(maxIterations = Infinity) {
@@ -230,6 +255,7 @@
         iterations += 1;
         lastLoopAt = new Date().toISOString();
         try {
+        console.debug('[수집] 걸음', iterations);
         const job = await getJob();
         if (!job || job.status !== 'running') return job;
 
@@ -251,18 +277,22 @@
         job.state = step.state;
         job.progress = step.progress;
         if (step.state.result) job.result = step.state.result;
-        if (!await saveIfRunning(job)) return getJob();
-        sendProgress(step.progress, job.status);
 
         if (step.action.type === 'done') {
-          job.status = 'completed';
-          job.completedAt = new Date().toISOString();
-          job.result = step.state.result || job.result;
-          await saveJob(job);
-          sendProgress(step.progress, job.status);
+          const completedJob = {
+            ...job,
+            status: 'completed',
+            completedAt: new Date().toISOString(),
+            result: step.state.result || job.result
+          };
+          if (!await saveIfRunning(completedJob)) return getJob();
+          sendProgress(step.progress, completedJob.status);
           chromeApi.alarms.clear(ALARM_NAME);
-          return job;
+          return completedJob;
         }
+
+        if (!await saveIfRunning(job)) return getJob();
+        sendProgress(step.progress, job.status);
 
         if (step.action.type !== 'none') {
           let outcome;
@@ -271,6 +301,7 @@
           } catch (error) {
             outcome = { ok: false, reason: `실행 중 예외: ${error.message}` };
           }
+          console.debug('[수집] 행동', step.action.type, step.action.target || '', '→', outcome.ok ? 'ok' : outcome.reason);
           job.lastOutcome = outcome;
           if (!outcome.ok) {
             // 네 가지 방법이 다 실패했다. 이 걸음은 포기하고 다음으로 넘긴다.
@@ -323,6 +354,7 @@
     async function start(tabId, config = {}, startOptions = {}) {
       await ensureAccess(tabId);
       const job = {
+        jobId: `${Date.now()}-${++jobSequence}`,
         status: 'running', tabId, config,
         state: {
           phase: 'INIT', scope: config.collectionScope || 'tracking', years: [], yearIndex: 0,
@@ -332,18 +364,24 @@
         progress: { stage: 'INIT', page: 1, count: 0, remaining: 0, message: '수집을 시작합니다.' },
         result: null, startedAt: new Date().toISOString()
       };
-      await saveJob(job);
-      chromeApi.alarms.create(ALARM_NAME, { periodInMinutes: 0.5, delayInMinutes: 0.5 });
+      await enqueueJobMutation(() => saveJob(job));
+      // START 응답 직후 워커가 끝나도 다음 이벤트가 곧 다시 깨운다.
+      // 반복 주기는 그대로 두고 첫 실행만 즉시 예약한다.
+      chromeApi.alarms.create(ALARM_NAME, { periodInMinutes: 0.5, when: Date.now() + FIRST_ALARM_DELAY_MS });
       if (startOptions.autoRun !== false && options.autoRun !== false) void resume();
       return job;
     }
 
     async function stop() {
-      const job = await getJob();
+      const job = await enqueueJobMutation(async () => {
+        const current = await getJob();
+        if (!current) return null;
+        current.status = 'stopped';
+        current.stoppedAt = new Date().toISOString();
+        await saveJob(current);
+        return current;
+      });
       if (!job) return null;
-      job.status = 'stopped';
-      job.stoppedAt = new Date().toISOString();
-      await saveJob(job);
       chromeApi.alarms.clear(ALARM_NAME);
       sendProgress(job.progress, job.status);
       return job;
@@ -368,7 +406,9 @@
       if (message?.type === 'HEALTH') { sendResponse({ ok: true, health: { ...controller.health(), startupError } }); return true; }
       if (message?.type === 'GET_JOB') {
         // 서비스 워커가 잠들었다면 이 메시지가 깨운다. 깨어난 김에 작업도 이어간다.
-        controller.getJob().then((job) => { if (job?.status === 'running') void controller.resume(); sendResponse({ ok: true, job }); });
+        controller.getJob()
+          .then((job) => { if (job?.status === 'running') void controller.resume(); sendResponse({ ok: true, job }); })
+          .catch((error) => sendResponse({ ok: false, error: error.message }));
         return true;
       }
       return false;
