@@ -69,8 +69,8 @@
 
     // 대기가 얼마나 남았는지 팝업이 보여줄 수 있게 알려준다.
     async function rateLimit(config, job) {
-      const min = Math.max(800, Number(config?.minDelayMs) || 1500);
-      const max = Math.max(min, Number(config?.maxDelayMs) || 3500);
+      const min = Math.max(800, Number(config?.minDelayMs) || 800);
+      const max = Math.max(min, Number(config?.maxDelayMs) || 1100);
       const waitMs = Math.round(min + random() * (max - min));
       if (job) {
         job.progress = { ...(job.progress || {}), waitMs, waitUntil: Date.now() + waitMs };
