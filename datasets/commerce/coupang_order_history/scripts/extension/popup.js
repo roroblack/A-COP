@@ -5,7 +5,7 @@
   const elements = {
     min: document.querySelector('#minDelay'), max: document.querySelector('#maxDelay'), long: document.querySelector('#longDelay'),
     start: document.querySelector('#startButton'), stop: document.querySelector('#stopButton'),
-    openList: document.querySelector('#openListButton'), diagnose: document.querySelector('#diagnoseButton'), detailProbe: document.querySelector('#detailProbeButton'), stateProbe: document.querySelector('#stateProbeButton'), nextProbe: document.querySelector('#nextProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
+    openList: document.querySelector('#openListButton'), probe: document.querySelector('#probe'), diagnose: document.querySelector('#diagnoseButton'), detailProbe: document.querySelector('#detailProbeButton'), stateProbe: document.querySelector('#stateProbeButton'), nextProbe: document.querySelector('#nextProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
     trackingDownload: document.querySelector('#trackingDownloadButton'), trackingReason: document.querySelector('#trackingDownloadReason'),
     status: document.querySelector('#status'), scopeSummary: document.querySelector('#scopeSummary')
   };
@@ -79,6 +79,12 @@ ${ORDER_LIST_URL}`); return tab; }
     };
   }
   function message(payload) { return new Promise((resolve, reject) => chrome.runtime.sendMessage(payload, (response) => { if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message)); else if (!response?.ok) reject(new Error(response?.error || '요청에 실패했습니다.')); else resolve(response); })); }
+  // 진단 출력은 진행 표시와 따로 둔다. 같은 자리에 쓰면 곧바로 덮어써진다.
+  function setProbe(text) {
+    elements.probe.hidden = !text;
+    elements.probe.textContent = text || '';
+  }
+
   function bar(done, total, width = 14) {
     if (!total) return '';
     const filled = Math.max(0, Math.min(width, Math.round((done / total) * width)));
@@ -150,7 +156,7 @@ ${ORDER_LIST_URL}`); return tab; }
 
   elements.start.addEventListener('click', async () => { try { await ensureHostPermission(); const tab = await ensureOrderListTab(); setStatus('수집 작업을 시작합니다.'); const response = await message({ type: 'START', tabId: tab.id, config: config() }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
   elements.stop.addEventListener('click', async () => { try { const response = await message({ type: 'STOP' }); render(response.job); } catch (error) { setStatus(`오류: ${error.message}`); } });
-  elements.diagnose.addEventListener('click', async () => { elements.diagnose.disabled = true; try { const tab = await activeOrderListTab(); await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }); const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__coupangOrderCollector?.diagnoseStructure() }); const diagnosis = results?.[0]?.result; if (!diagnosis) throw new Error('진단 결과를 받지 못했습니다.'); setStatus(Object.entries(diagnosis).map(([key, value]) => `${key}: ${value}`).join('\n')); } catch (error) { setStatus(`오류: ${error.message}`); } finally { elements.diagnose.disabled = false; } });
+  elements.diagnose.addEventListener('click', async () => { elements.diagnose.disabled = true; try { const tab = await activeOrderListTab(); await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }); const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__coupangOrderCollector?.diagnoseStructure() }); const diagnosis = results?.[0]?.result; if (!diagnosis) throw new Error('진단 결과를 받지 못했습니다.'); setStatus(Object.entries(diagnosis).map(([key, value]) => `${key}: ${value}`).join('\n')); } catch (error) { setProbe(`오류: ${error.message}`); } finally { elements.diagnose.disabled = false; } });
   async function runInTab(tabId, method, ...args) {
     const results = await chrome.scripting.executeScript({
       target: { tabId },
@@ -249,10 +255,10 @@ ${ORDER_LIST_URL}`); return tab; }
         if (health.startupError) lines.push(`시작오류: ${health.startupError}`);
       }
       const text = lines.join('\n');
-      setStatus(text);
+      setProbe(text);
       console.log(text);
     } catch (error) {
-      setStatus(`오류: ${error.message}`);
+      setProbe(`오류: ${error.message}`);
     } finally {
       elements.stateProbe.disabled = false;
     }
@@ -295,7 +301,7 @@ ${ORDER_LIST_URL}`); return tab; }
   elements.openList.addEventListener('click', async () => {
     elements.openList.disabled = true;
     try { await ensureOrderListTab(); setStatus('주문목록 페이지입니다. 수집 시작을 누르세요.'); }
-    catch (error) { setStatus(`오류: ${error.message}`); }
+    catch (error) { setProbe(`오류: ${error.message}`); }
     finally { elements.openList.disabled = false; }
   });
 

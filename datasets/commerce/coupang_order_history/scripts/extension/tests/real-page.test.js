@@ -206,3 +206,30 @@ test('실측 진행막대: 도달한 단계만 담고 현재 단계를 가려낸
   assert.deepEqual(tracking.DeliverySteps, ['결제완료', '상품준비중', '배송시작'], '도달하지 않은 단계까지 담았다');
   assert.equal(tracking.DeliveryStep, '배송시작');
 });
+
+test('다음이 한 번 안 통했다고 마지막 페이지로 보지 않는다', () => {
+  // 클릭 한 번이 흘러가면 뒤 페이지를 통째로 잃는다. 실제로 2021년 주문이 빠졌다.
+  const document = asDocument(parseFragment(html));
+  global.document = document;
+  const state = {
+    phase: 'LIST', scope: 'list', yearScope: 'current',
+    years: [{ label: '2026', done: false }], yearIndex: 0, page: 2,
+    orders: [], tracking: [], queue: [], cursor: 0, warnings: [],
+    listKey: null, seenKeys: [], pageRetries: 0
+  };
+  // 먼저 한 번 읽어 listKey 를 채운다
+  const first = runStep(state);
+  const seen = first.state;
+  // 같은 페이지가 다시 나온 상황
+  const retry = runStep({ ...seen, phase: 'LIST' });
+  assert.equal(retry.state.phase, 'NEXT_PAGE', `바로 끝냈다: ${retry.state.phase}`);
+  assert.equal(retry.state.pageRetries, 1);
+
+  const retry2 = runStep({ ...retry.state, phase: 'LIST' });
+  assert.equal(retry2.state.pageRetries, 2);
+
+  // 세 번째에는 포기하고 사유를 남긴다
+  const giveUp = runStep({ ...retry2.state, phase: 'LIST' });
+  assert.equal(giveUp.state.phase, 'NEXT_YEAR');
+  assert.match(giveUp.state.warnings.at(-1), /넘어가지 않아|마지막 페이지/);
+});

@@ -115,6 +115,19 @@
         opacity: 0.5;
       }
 
+      #probe {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 7px;
+        background: #fffbeb;
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
       #status {
         min-height: 44px;
         margin: 14px 0;
@@ -202,6 +215,7 @@
     <p id="buildLine" class="help"></p>
     <div id="status" role="status" aria-live="polite">주문목록 페이지에서 수집을 시작하세요.</div>
 
+    <div id="probe" role="status" hidden></div>
     <p class="help">0건이면 구조 진단으로 선택자 매칭 수를 확인하세요. 결과는 외부 서버로 전송하지 않습니다.</p>
 
     <script>globalThis.__coupangPopup = true;</script>

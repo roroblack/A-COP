@@ -17,6 +17,9 @@
     // 페이지 이동은 더 오래 기다린다. 테스트가 짧게 잡았으면 그걸 따른다.
     const navigationTimeoutMs = options.navigationTimeoutMs ?? options.changeTimeoutMs ?? NAVIGATION_TIMEOUT_MS;
     const callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
+    // 팝업이 열려 있으면 팝업이 돌린다. 서비스 워커는 죽어도 팝업은 살아 있다.
+    const driver = options.driver || 'worker';
+    const HEARTBEAT_MS = 15000;
     let loopPromise = null;
 
     // 같은 워커에서 시작된 storage 작업은 호출 순서대로 끝낸다.
@@ -284,9 +287,17 @@
         iterations += 1;
         lastLoopAt = new Date().toISOString();
         try {
-        console.debug('[수집] 걸음', iterations);
+        console.debug('[수집] 걸음', iterations, driver);
         const job = await getJob();
         if (!job || job.status !== 'running') return job;
+        const beatAge = Date.now() - (job.driverAt || 0);
+        if (driver === 'worker' && job.driver === 'popup' && beatAge < HEARTBEAT_MS) {
+          // 팝업이 돌리는 중이다. 워커가 끼어들면 같은 걸음을 두 번 밟는다.
+          await sleep(1000);
+          continue;
+        }
+        if (driver === 'popup') { job.driver = 'popup'; job.driverAt = Date.now(); }
+        else if (job.driver === 'popup' && beatAge >= HEARTBEAT_MS) { job.driver = 'worker'; }
 
         let step;
         try {
