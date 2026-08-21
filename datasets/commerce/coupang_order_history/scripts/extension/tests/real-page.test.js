@@ -137,3 +137,26 @@ test('실측 목록: document로 넘겨도 목록으로 본다', () => {
   global.document = document;
   assert.equal(isOrderListPage(document), true);
 });
+
+test('실측 목록: script 안의 JSON에 상세 라벨이 있어도 목록으로 본다', () => {
+  // 쿠팡 SSR 페이지는 script에 JSON을 심는다. body.textContent에는 그 문자열도 들어온다.
+  // 통짜 텍스트로 표지를 찾으면 목록에서도 상세 라벨이 전부 잡힌다.
+  const withScript = html.replace(
+    '<main>',
+    '<main><script>window.__DATA__={"labels":["주문목록 돌아가기","받는사람 정보","결제 정보","주문번호","송장번호","배송 조회"]}</script>'
+  );
+  const document = asDocument(parseFragment(withScript));
+  global.document = document;
+
+  assert.equal(isOrderListPage(document), true, 'script 텍스트에 속아 목록이 아니라고 했다');
+  const facts = pageFacts();
+  assert.equal(facts.isList, true);
+  assert.equal(facts.hasTrackingTable, false, 'script 안의 송장번호를 실제 표로 착각했다');
+});
+
+test('실측 상세: script가 있어도 상세로 본다', () => {
+  const withScript = detailHtml.replace('<div', '<script>var x="주문 상세보기"</script><div');
+  const document = asDocument(parseFragment(withScript));
+  global.document = document;
+  assert.equal(isOrderListPage(document), false, 'script 안의 주문 상세보기를 버튼으로 착각했다');
+});

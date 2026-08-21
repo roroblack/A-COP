@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-22e';
+  const BUILD = '2026-08-22f';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -30,8 +30,15 @@
   function safeUrl(element) { const href = element?.getAttribute?.('href'); if (!href) return null; try { const url = new URL(href, 'https://www.coupang.com'); return url.protocol === 'https:' && ALLOWED_HOSTS.has(url.hostname) ? url.href : null; } catch { return null; } }
   const vendorId = (href) => String(href || '').match(/[?&]vendorItemId=(\d+)(?:&|$)/)?.[1] || null;
   function ancestors(element) { const all = []; for (let current = element; current; current = current.parentElement) all.push(current); return all; }
+  // body.textContent 에는 script 안의 JSON 문자열까지 들어온다. 쿠팡 SSR 페이지가 그렇다.
+  // 그래서 페이지 통짜 텍스트로 표지를 찾으면 목록에서도 상세 라벨이 다 잡힌다.
+  const NON_TEXT_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE']);
+  const visibleElements = (root) => [...(textSource(root)?.querySelectorAll?.('*') || [])].filter((element) => !NON_TEXT_TAGS.has(element.tagName));
+  // 라벨과 값이 한 요소에 붙어 있기도 한다. 그럴 땐 리프 안에서 찾는다.
+  const hasLeafMatching = (root, pattern) => visibleElements(root).some((element) => !(element.children?.length) && pattern.test(compact(element)));
+  const hasElementWithText = (root, wanted) => visibleElements(root).some((element) => compact(element) === wanted);
   const DETAIL_ACTION_TEXT = /^주문상세보기$/;
-  function detailActionLeaves(node) { return [...(node?.querySelectorAll?.('*') || [])].filter((element) => !(element.children?.length) && DETAIL_ACTION_TEXT.test(compact(element))); }
+  function detailActionLeaves(node) { return visibleElements(node).filter((element) => !(element.children?.length) && DETAIL_ACTION_TEXT.test(compact(element))); }
   function orderCardOf(element) {
     let fallback = null;
     for (const candidate of ancestors(element)) {
@@ -110,7 +117,7 @@
   const isPaginationButtonDisabled = (button) => !button || Boolean(button.disabled) || button.hasAttribute?.('disabled') || button.getAttribute?.('aria-disabled') === 'true';
   function yearEntries(root) { return [...(root?.querySelectorAll?.('*') || [])].map((element) => ({ element, label: text(element) })).filter(({ element, label }) => /^\d{4}$/.test(label || '') && ![...(element.children || [])].some((child) => /^\d{4}$/.test(text(child) || ''))); }
   const extractYearTabs = (root) => yearEntries(root).map(({ label }) => Number(label));
-  const isOrderListPage = (root) => detailActionLeaves(root).length > 0 && !/주문목록\s*돌아가기/.test(compact(root) || '') && !/받는사람\s*정보/.test(compact(root) || '');
+  const isOrderListPage = (root) => detailActionLeaves(root).length > 0 && !hasElementWithText(root, '주문목록돌아가기') && !hasElementWithText(root, '받는사람정보');
   const rows = (root) => [...(root?.querySelectorAll?.('tr') || [])];
   function rowValue(root, label) { const row = rows(root).find((item) => compact(item).startsWith(label.replace(/\s+/g, ''))); return text([...(row?.querySelectorAll?.('td') || [])].at(-1)); }
   function parseDetailPage(root, pageUrl = '') {
@@ -254,8 +261,8 @@
       isList: isOrderListPage(root),
       listKey: listPositionKey(root),
       cards: discoverCards(root).length,
-      hasTrackingTable: /송장번호/.test(compacted),
-      hasOrderNumber: /주문번호/.test(compacted),
+      hasTrackingTable: hasLeafMatching(root, /송장번호/),
+      hasOrderNumber: hasLeafMatching(root, /주문번호/),
       url: globalThis.location?.href || ''
     };
   }
@@ -269,11 +276,11 @@
       isList: isOrderListPage(root),
       detailLeaves: detailActionLeaves(root).length,
       cards: discoverCards(root).length,
-      hasBackToList: /주문목록\s*돌아가기/.test(compacted),
-      hasRecipientBlock: /받는사람\s*정보/.test(compacted),
-      hasOrderNumberLabel: /주문번호/.test(compacted),
-      hasPaymentBlock: /결제\s*정보/.test(compacted),
-      hasTrackingButton: /배송\s*조회/.test(compacted),
+      hasBackToList: hasElementWithText(root, '주문목록돌아가기'),
+      hasRecipientBlock: hasElementWithText(root, '받는사람정보'),
+      hasOrderNumberLabel: hasLeafMatching(root, /주문번호/),
+      hasPaymentBlock: hasLeafMatching(root, /^결제정보/),
+      hasTrackingButton: hasLeafMatching(root, /^배송조회$/),
       nextButton: Boolean(findNextButton(globalThis.document)),
       nextCandidates: [...(root?.querySelectorAll?.('button') || [])]
         .filter((button) => compact(button).includes('다음'))
