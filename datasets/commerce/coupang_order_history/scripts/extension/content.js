@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-22m';
+  const BUILD = '2026-08-22n';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -129,14 +129,29 @@
   }
   function mergeDetail(order, detail) { const product = { ...(detail.products?.find((item) => item.VendorItemId && item.VendorItemId === order.VendorItemId) || detail.products?.find((item) => item.ProductName === order.ProductName) || {}) }; delete product._cardIndex; delete product._productIndex; Object.assign(order, product, Object.fromEntries(Object.entries(detail).filter(([key, value]) => key !== 'products' && value !== null))); return order; }
   function relativeTime(value, at, warnings) { const raw = String(value || '').trim(); const match = raw.match(/^(오늘|어제)\s+(\d{1,2}):(\d{2})$/); if (!match) { if (raw) warnings.push(`배송 시각을 변환하지 못했습니다: ${raw}`); return raw; } const date = new Date(at); if (match[1] === '어제') date.setDate(date.getDate() - 1); date.setHours(Number(match[2]), Number(match[3]), 0, 0); return date.toISOString(); }
+  const STEP_NAMES = ['결제완료', '상품준비중', '배송시작', '배송중', '배송완료'];
+  // 진행 막대는 다섯 단계를 항상 다 그린다. 도달한 단계와 아닌 단계는 라벨 클래스가 다르다.
+  // 첫 단계는 언제나 도달했으므로 그 클래스를 기준으로 앞에서부터 세어 나간다.
+  function deliveryStepInfo(root) {
+    const nodes = visibleElements(root).filter((element) => !(element.children?.length) && STEP_NAMES.includes(compact(element)));
+    if (!nodes.length) return { all: [], done: [], current: null };
+    const all = nodes.map((element) => compact(element));
+    const reachedClass = nodes[0].getAttribute?.('class') || '';
+    const done = [];
+    for (const element of nodes) {
+      if ((element.getAttribute?.('class') || '') !== reachedClass) break;
+      done.push(compact(element));
+    }
+    return { all, done, current: done[done.length - 1] || null };
+  }
   function parseTrackingPage(root, collectedAt = new Date(), orderStatus = '') {
     const warnings = []; const trackingNumber = rowValue(root, '송장번호')?.replace(/\s+/g, '') || null;
     const trackingRow = rows(root).find((row) => compact(row).startsWith('송장번호')); const courier = text(trackingRow?.closest?.('table')?.querySelector?.('tr')?.querySelector?.('td'));
     const eventTable = [...(root.querySelectorAll?.('table') || [])].find((table) => /시간.*현재위치.*배송상태/.test(compact(table))); const rawTimes = [];
     const events = [...(eventTable?.querySelectorAll?.('tbody tr') || [])].map((row) => { const cells = [...row.querySelectorAll('td')]; const raw = text(cells[0]) || ''; rawTimes.push(raw); return { timeString: relativeTime(raw, collectedAt, warnings), where: text(cells[1]), kind: text(cells[2]) }; }).filter((event) => event.kind || event.where);
     if (trackingNumber && !eventTable) warnings.push('배송 이력 표를 찾지 못했습니다.');
-    const parts = [...(root.querySelectorAll?.('*') || [])].map(text).filter(Boolean); const promise = parts.filter((value) => /(?:오늘|내일|어제).*(?:도착|보장|완료)/.test(value) && value.length < 60).sort((a, b) => a.length - b.length)[0] || null; const message = parts.filter((value) => /고객님|준비시작|배송중입니다/.test(value) && value.length < 80).sort((a, b) => a.length - b.length)[0] || null; const steps = ['결제완료', '상품준비중', '배송시작', '배송중', '배송완료'].filter((step) => parts.some((value) => value === step)); const pre = !trackingNumber && events.length === 0;
-    return sanitizeValue({ CourierCompany: courier, TrackingNumber: trackingNumber, ShipmentStarted: !pre, TrackingStatus: pre ? '아직 배송이 시작되지 않아 이력이 없습니다.' : null, DeliveryPromise: promise, DeliveryMessage: message, DeliverySteps: steps, DeliveryStepIndex: steps.indexOf(orderStatus) >= 0 ? steps.indexOf(orderStatus) : (pre ? 1 : null), TrackingEvents: events, TrackingEventRaw: rawTimes, ReceiptMethod: rowValue(root, '상품수령방법'), Warnings: warnings });
+    const parts = [...(root.querySelectorAll?.('*') || [])].map(text).filter(Boolean); const promise = parts.filter((value) => /(?:오늘|내일|어제).*(?:도착|보장|완료)/.test(value) && value.length < 60).sort((a, b) => a.length - b.length)[0] || null; const message = parts.filter((value) => /고객님|준비시작|배송중입니다/.test(value) && value.length < 80).sort((a, b) => a.length - b.length)[0] || null; const stepInfo = deliveryStepInfo(root); const steps = stepInfo.done; const pre = !trackingNumber && events.length === 0;
+    return sanitizeValue({ CourierCompany: courier, TrackingNumber: trackingNumber, ShipmentStarted: !pre, TrackingStatus: pre ? '아직 배송이 시작되지 않아 이력이 없습니다.' : null, DeliveryPromise: promise, DeliveryMessage: message, DeliverySteps: steps, DeliveryStep: stepInfo.current, DeliveryStepsAll: stepInfo.all, DeliveryStepIndex: steps.indexOf(orderStatus) >= 0 ? steps.indexOf(orderStatus) : (pre ? 1 : null), TrackingEvents: events, TrackingEventRaw: rawTimes, ReceiptMethod: rowValue(root, '상품수령방법'), Warnings: warnings });
   }
   function buildExportPayloads(orders, meta = {}) {
     const exportedAt = meta.exportedAt || new Date().toISOString(); const trackingData = [];

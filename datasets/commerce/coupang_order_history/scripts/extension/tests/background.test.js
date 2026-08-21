@@ -343,3 +343,31 @@ test('대기는 대개 짧고 가끔 길다', async () => {
   assert.ok(waits.some((ms) => ms > 1100), '긴 쉼이 한 번도 없었다');
   assert.ok(waits.some((ms) => ms <= 1100), '짧은 대기가 한 번도 없었다');
 });
+
+test('페이지 호출이 응답하지 않아도 루프가 멈추지 않는다', async () => {
+  // 탭이 숨겨지거나 버려지면 executeScript가 끝내 응답하지 않을 수 있다.
+  let calls = 0;
+  const data = { [JOB_KEY]: structuredClone(runningJob({ phase: 'LIST', orders: [], warnings: [] })) };
+  const api = {
+    storage: { local: { get(key, cb) { cb({ [key]: data[key] }); }, set(v, cb) { Object.assign(data, structuredClone(v)); cb?.(); } } },
+    scripting: { async executeScript(details) {
+      if (details.files) return [{ result: true }];
+      calls += 1;
+      if (calls === 1) return new Promise(() => {});   // 영원히 응답 없음
+      const [method, value] = details.args;
+      if (method === 'pageFacts') return [{ result: LIST }];
+      if (method === 'runStep') {
+        return [{ result: { state: { ...value, phase: 'DONE', done: true, result: { orderData: { orders: [] }, trackingData: [] } }, action: { type: 'done' }, progress: {} } }];
+      }
+      return [{ result: undefined }];
+    } },
+    tabs: { async update() { return {}; } },
+    alarms: { create() {}, clear() {}, onAlarm: { addListener() {} } },
+    runtime: { lastError: null, sendMessage(_m, cb) { cb?.(); }, onMessage: { addListener() {} } }
+  };
+  const controller = createController(api, { sleep: async () => {}, pollMs: 0, changeTimeoutMs: 20, callTimeoutMs: 10, random: () => 0 });
+
+  await controller.resume(5);
+
+  assert.equal(data[JOB_KEY].status, 'completed', '응답 없는 호출에 걸려 멈췄다');
+});

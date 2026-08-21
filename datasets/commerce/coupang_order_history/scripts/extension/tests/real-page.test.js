@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { parseFragment } = require('./test-dom.js');
-const { diagnoseStructure, isOrderListPage, pageFacts, parseDocument, performAction, runStep } = require('../content.js');
+const { diagnoseStructure, isOrderListPage, pageFacts, parseDocument, parseTrackingPage, performAction, runStep } = require('../content.js');
 
 // 사용자가 실제 쿠팡 주문목록에서 복사한 HTML이다. raw/find.md에서 뽑았다.
 const html = fs.readFileSync(path.join(__dirname, 'fixtures/order_list_real.html'), 'utf8');
@@ -193,4 +193,16 @@ test('상세가 실패해도 배송 조회는 시도한다', () => {
   assert.equal(step.state.queue[0].detailDone, true, '상세는 포기해야 한다');
   assert.equal(step.state.queue[0].trackingDone, false, '배송 조회까지 같이 포기했다');
   assert.equal(step.state.cursor, 0, '아직 다음 주문으로 넘어가면 안 된다');
+});
+
+test('실측 진행막대: 도달한 단계만 담고 현재 단계를 가려낸다', () => {
+  // 진행 막대는 다섯 단계를 항상 다 그린다. 있다고 다 담으면 배송중인데 배송완료까지 나온다.
+  const stepper = fs.readFileSync(path.join(__dirname, 'fixtures/tracking_stepper_real.html'), 'utf8');
+  const document = asDocument(parseFragment(stepper));
+  global.document = document;
+  const tracking = parseTrackingPage(document, new Date('2026-08-21T12:00:00+09:00'), '배송중');
+
+  assert.deepEqual(tracking.DeliveryStepsAll, ['결제완료', '상품준비중', '배송시작', '배송중', '배송완료']);
+  assert.deepEqual(tracking.DeliverySteps, ['결제완료', '상품준비중', '배송시작'], '도달하지 않은 단계까지 담았다');
+  assert.equal(tracking.DeliveryStep, '배송시작');
 });

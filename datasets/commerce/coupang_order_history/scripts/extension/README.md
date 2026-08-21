@@ -125,6 +125,10 @@ styled-components 클래스는 빌드마다 바뀔 수 있다.
 
 각 배송 이벤트는 `kind`, `where`, `timeString`, `raw`를 포함한다.
 
+진행 막대는 다섯 단계를 항상 다 그린다. 도달한 단계만 `DeliverySteps`에 담는다.
+
+`DeliveryStep`은 현재 단계다. `DeliveryStepsAll`은 막대에 그려진 전체 단계다.
+
 `오늘 HH:mm`과 `어제 HH:mm`은 수집 시각의 로컬 날짜를 기준으로 ISO 시각으로 바꾼다.
 
 알 수 없는 시각 표기는 원문을 유지하고 `Warnings`에 기록한다.

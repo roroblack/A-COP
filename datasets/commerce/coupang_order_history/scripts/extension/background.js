@@ -6,6 +6,7 @@
   const DEFAULT_POLL_MS = 400;
   const DEFAULT_CHANGE_TIMEOUT_MS = 15000;
   const NAVIGATION_TIMEOUT_MS = 30000;
+  const CALL_TIMEOUT_MS = 10000;
 
   function createController(chromeApi, options = {}) {
     const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -14,6 +15,7 @@
     const changeTimeoutMs = options.changeTimeoutMs ?? DEFAULT_CHANGE_TIMEOUT_MS;
     // 페이지 이동은 더 오래 기다린다. 테스트가 짧게 잡았으면 그걸 따른다.
     const navigationTimeoutMs = options.navigationTimeoutMs ?? options.changeTimeoutMs ?? NAVIGATION_TIMEOUT_MS;
+    const callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
     let loopPromise = null;
 
     const storageGet = (key) => new Promise((resolve) => chromeApi.storage.local.get(key, resolve));
@@ -29,8 +31,16 @@
       return job;
     }
 
+    // executeScript 가 끝내 응답하지 않으면 루프가 통째로 멈춘다. 탭이 숨겨지거나
+    // 버려졌을 때 그런 일이 생긴다. 어떤 호출도 무한정 기다리지 않게 한다.
+    function withTimeout(promise, ms, label) {
+      let timer = null;
+      const guard = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} 응답이 없습니다.`)), ms); });
+      return Promise.race([promise, guard]).finally(() => clearTimeout(timer));
+    }
+
     async function inject(tabId) {
-      await chromeApi.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+      await withTimeout(chromeApi.scripting.executeScript({ target: { tabId }, files: ['content.js'] }), callTimeoutMs, '수집 스크립트 주입');
     }
 
     // 중첩된 undefined도 직렬화를 깨뜨린다. 한 번 걸러서 보낸다.
@@ -42,7 +52,7 @@
     async function callCollector(tabId, method, argument) {
       const payload = serializable(argument);
       const run = async () => {
-        const results = await chromeApi.scripting.executeScript({
+        const results = await withTimeout(chromeApi.scripting.executeScript({
           target: { tabId },
           // args에 undefined가 들어가면 Chrome이 직렬화하지 못하고 예외를 던진다.
           // 인자 없는 함수를 부를 때가 그렇다. null로 바꿔 보내고 저쪽에서 되살린다.
@@ -52,7 +62,7 @@
             return value === null ? collector[name]() : collector[name](value);
           },
           args: [method, payload]
-        });
+        }), callTimeoutMs, method);
         return results?.[0]?.result;
       };
 
@@ -291,7 +301,8 @@
         return true;
       }
       if (message?.type === 'GET_JOB') {
-        controller.getJob().then((job) => sendResponse({ ok: true, job }));
+        // 서비스 워커가 잠들었다면 이 메시지가 깨운다. 깨어난 김에 작업도 이어간다.
+        controller.getJob().then((job) => { if (job?.status === 'running') void controller.resume(); sendResponse({ ok: true, job }); });
         return true;
       }
       return false;
