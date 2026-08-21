@@ -14,6 +14,10 @@ function fakeChrome(handler, initialJob = null) {
     } },
     scripting: { async executeScript(details) {
       if (details.files) return [{ result: true }];
+      // 진짜 Chrome은 args에 undefined가 있으면 이 오류로 거절한다.
+      for (const [index, value] of (details.args || []).entries()) {
+        if (value === undefined) throw new Error(`Error at property 'args': Error at index ${index}: Value is unserializable.`);
+      }
       return handler(details.args[0], details.args[1]);
     } },
     tabs: { async update() { return {}; } },
@@ -163,4 +167,31 @@ test('조건이 늦게 참이 되면 기다렸다가 성공으로 본다', async
 
   assert.equal(outcome.ok, true);
   assert.equal(outcome.attempt, 0, '한 번에 됐으면 방법을 올리지 않아야 한다');
+});
+
+test('인자 없는 함수를 불러도 args에 undefined를 넣지 않는다', async () => {
+  // 이 결함이 수집만 실패시켰다. 팝업 버튼은 인자를 배열로 넘겨 살아 있었다.
+  const seenArgs = [];
+  const { api } = fakeChrome(async (method, value) => {
+    seenArgs.push([method, value]);
+    if (method === 'pageFacts') return [{ result: LIST }];
+    return undefined;
+  }, runningJob({ phase: 'LIST', orders: [], warnings: [] }));
+
+  const facts = await controllerFor(api).callCollector(7, 'pageFacts');
+
+  assert.deepEqual(facts, LIST);
+  assert.deepEqual(seenArgs, [['pageFacts', null]], 'undefined 대신 null을 보내야 한다');
+});
+
+test('상태에 undefined가 섞여 있어도 직렬화해서 보낸다', async () => {
+  let received = null;
+  const { api } = fakeChrome(async (method, value) => {
+    if (method === 'runStep') { received = value; return [{ result: { state: value, action: { type: 'none' }, progress: {} } }]; }
+    return undefined;
+  }, runningJob({ phase: 'LIST', orders: [], warnings: [] }));
+
+  await controllerFor(api).callCollector(7, 'runStep', { page: 1, broken: undefined, orders: [{ name: 'a', missing: undefined }] });
+
+  assert.deepEqual(received, { page: 1, orders: [{ name: 'a' }] });
 });

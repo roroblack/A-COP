@@ -30,16 +30,24 @@
       await chromeApi.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
     }
 
+    // 중첩된 undefined도 직렬화를 깨뜨린다. 한 번 걸러서 보낸다.
+    function serializable(value) {
+      if (value === undefined) return null;
+      try { return JSON.parse(JSON.stringify(value)); } catch { return null; }
+    }
+
     async function callCollector(tabId, method, argument) {
       await inject(tabId);
       const results = await chromeApi.scripting.executeScript({
         target: { tabId },
+        // args에 undefined가 들어가면 Chrome이 직렬화하지 못하고 예외를 던진다.
+        // 인자 없는 함수를 부를 때가 그렇다. null로 바꿔 보내고 저쪽에서 되살린다.
         func: (name, value) => {
           const collector = globalThis.__coupangOrderCollector;
           if (!collector || typeof collector[name] !== 'function') return undefined;
-          return collector[name](value);
+          return value === null ? collector[name]() : collector[name](value);
         },
-        args: [method, argument]
+        args: [method, serializable(argument)]
       });
       return results?.[0]?.result;
     }
