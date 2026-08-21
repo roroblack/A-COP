@@ -44,26 +44,6 @@
       return results?.[0]?.result;
     }
 
-    async function readSignature(tabId) {
-      const signature = await callCollector(tabId, 'pageSignature');
-      if (typeof signature !== 'string') throw new Error('페이지 서명을 받지 못했습니다.');
-      return signature;
-    }
-
-    async function waitForPageChange(tabId, before) {
-      const startedAt = Date.now();
-      do {
-        await sleep(pollMs);
-        try {
-          const current = await readSignature(tabId);
-          if (current !== before) return true;
-        } catch {
-          // 전체 문서 이동 중에는 주입 컨텍스트가 잠시 없을 수 있다.
-        }
-      } while (Date.now() - startedAt < changeTimeoutMs);
-      return false;
-    }
-
     async function rateLimit(config) {
       const min = Math.max(800, Number(config?.minDelayMs) || 1500);
       const max = Math.max(min, Number(config?.maxDelayMs) || 3500);
@@ -74,34 +54,58 @@
       try {
         chromeApi.runtime.sendMessage({ type: 'COUPANG_JOB_PROGRESS', progress, status }, () => void chromeApi.runtime.lastError);
       } catch {
-        // 팝업이 닫힌 경우에도 작업은 저장소를 기준으로 계속된다.
+        // 팝업이 닫혀도 작업은 저장소를 기준으로 계속된다.
       }
     }
 
-    async function executeAction(job, action) {
-      if (action.type === 'none' || action.type === 'done') return true;
-      // 페이지가 아직 바뀌지 않았다는 신호다. 잠시 기다렸다가 다시 본다.
-      if (action.type === 'wait') { await sleep(Math.max(600, Number(action.ms) || 900)); return true; }
-      if (action.type === 'navigate') {
-        let before = '';
-        try { before = await readSignature(job.tabId); } catch { /* 현재 문서가 없는 경우 */ }
-        await chromeApi.tabs.update(job.tabId, { url: action.url });
-        return waitForPageChange(job.tabId, before);
-      }
-      if (action.type === 'click') {
-        const before = await readSignature(job.tabId);
-        // 클릭 실패 사유를 버리면 원인을 알 수 없다. 상태에 남긴다.
-        const report = await callCollector(job.tabId, 'performAction', action);
-        if (report && report.ok === false) {
-          job.state.warnings ||= [];
-          job.state.warnings.push(`클릭 실패: ${report.reason || '사유 없음'}`);
-          job.lastClick = report;
-          return false;
+    async function readFacts(tabId) {
+      const facts = await callCollector(tabId, 'pageFacts');
+      if (!facts || typeof facts !== 'object') throw new Error('페이지 정보를 받지 못했습니다.');
+      return facts;
+    }
+
+    // "무언가 바뀌었나"가 아니라 "원하는 상태가 됐나"를 본다.
+    async function awaitCondition(tabId, isSatisfied, timeoutMs = changeTimeoutMs) {
+      const startedAt = Date.now();
+      do {
+        await sleep(pollMs);
+        try {
+          if (isSatisfied(await readFacts(tabId))) return true;
+        } catch {
+          // 페이지 이동 중에는 주입 컨텍스트가 잠시 없다. 다음 폴링에서 다시 본다.
         }
-        if (report) job.lastClick = report;
-        return waitForPageChange(job.tabId, before);
-      }
+      } while (Date.now() - startedAt < timeoutMs);
       return false;
+    }
+
+    function conditionFor(action, before) {
+      if (action.expect === 'leftList') return (facts) => !facts.isList;
+      if (action.expect === 'listChanged') return (facts) => facts.isList && facts.listKey !== before.listKey;
+      if (action.expect === 'backOnList') return (facts) => facts.isList;
+      if (action.expect === 'tracking') return (facts) => !facts.isList && facts.hasTrackingTable;
+      return (facts) => facts.listKey !== before.listKey || facts.isList !== before.isList;
+    }
+
+    async function executeAction(job, action) {
+      if (action.type === 'none' || action.type === 'done') return { ok: true };
+      if (action.type === 'navigate') {
+        await chromeApi.tabs.update(job.tabId, { url: action.url });
+        const ok = await awaitCondition(job.tabId, (facts) => facts.isList);
+        return { ok, reason: ok ? null : '주소 이동 뒤 목록이 나타나지 않았습니다.' };
+      }
+      if (action.type !== 'click') return { ok: false, reason: `모르는 액션 ${action.type}` };
+
+      const before = await readFacts(job.tabId);
+      const satisfied = conditionFor(action, before);
+      // 방법을 바꿔가며 네 번까지 눌러본다. 기다리기만 하지 않는다.
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const report = await callCollector(job.tabId, 'performAction', { ...action, attempt });
+        job.lastClick = { ...(report || {}), attempt, target: action.target, expect: action.expect || null };
+        await saveJob(job);
+        if (report?.ok === false) continue;
+        if (await awaitCondition(job.tabId, satisfied)) return { ok: true, attempt };
+      }
+      return { ok: false, reason: `${action.target} 클릭이 네 번 다 통하지 않았습니다.` };
     }
 
     async function loop(maxIterations = Infinity) {
@@ -140,24 +144,20 @@
         }
 
         if (step.action.type !== 'none') {
+          let outcome;
           try {
-            const changed = await executeAction(job, step.action);
-            if (changed) job.state.stalls = 0;
-            if (!changed) {
-              // 같은 액션이 계속 먹히지 않으면 그 주문을 건너뛰고 진행한다.
-              job.state.stalls = (job.state.stalls || 0) + 1;
-              if (job.state.stalls >= 3) { job.state.forceSkip = true; job.state.stalls = 0; }
-              job.state.warnings ||= [];
-              job.state.warnings.push('페이지 변화 확인 시간이 초과되었습니다. 같은 단계를 다시 확인합니다.');
-              await saveJob(job);
-            }
-          } catch {
-            // 이동 중 컨텍스트 소실은 다음 반복에서 재주입하여 복구한다.
-            // 예외가 계속 나면 진행이 멈추므로 정체로 센다.
-            job.state.stalls = (job.state.stalls || 0) + 1;
-            if (job.state.stalls >= 3) { job.state.forceSkip = true; job.state.stalls = 0; }
-            await saveJob(job);
+            outcome = await executeAction(job, step.action);
+          } catch (error) {
+            outcome = { ok: false, reason: `실행 중 예외: ${error.message}` };
           }
+          job.lastOutcome = outcome;
+          if (!outcome.ok) {
+            // 네 가지 방법이 다 실패했다. 이 걸음은 포기하고 다음으로 넘긴다.
+            job.state.skipCurrent = true;
+            job.state.warnings ||= [];
+            job.state.warnings.push(outcome.reason || '행동이 통하지 않았습니다.');
+          }
+          await saveJob(job);
           await rateLimit(job.config);
         }
       }
@@ -197,7 +197,7 @@
       return job;
     }
 
-    return { start, stop, resume, getJob, saveJob, waitForPageChange, callCollector };
+    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector };
   }
 
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {

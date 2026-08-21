@@ -126,7 +126,7 @@
           ...(page.value.nextCandidates || []).map((line) => `  ${line}`),
         ].join('\n'),
         `작업 ${job?.status} / ${state.phase} / ${state.page}페이지`,
-        `대기 ${state.waits || 0} 정체 ${state.stalls || 0} 건너뛰기 ${Boolean(state.forceSkip)}`,
+        `마지막결과 ${job?.lastOutcome ? JSON.stringify(job.lastOutcome) : '없음'} 건너뛰기=${Boolean(state.skipCurrent)}`,
         `큐 ${state.cursor || 0}/${(state.queue || []).length} returning=${item?.returning ?? '-'} detailDone=${item?.detailDone ?? '-'}`,
         `마지막클릭 ${job?.lastClick ? JSON.stringify(job.lastClick) : '없음'}`,
         `주문 ${(state.orders || []).length}행, 주문번호확보 ${(state.orders || []).filter((o) => o && o._idSource === 'orderNumber').length}행`,

@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const BUILD = '2026-08-21h';
+  const BUILD = '2026-08-22a';
   const SELECTORS = Object.freeze({
     productTitleLink: 'a[href*="MyCoupang_my_orders_list_product_title"]',
     productDetailTitleLink: 'a[href*="MyCoupang_order_detail_product_title"]',
@@ -137,12 +137,15 @@
   function listPositionKey(root = globalThis.document) { return shortHash(parseDocument(root).orders.map((order) => `${order.OrderedAt}|${order.VendorItemId}|${order.ProductName}`).join('||')); }
   function pageSignature(root = globalThis.document, href = globalThis.location?.href || '') { const ids = parseDocument(root).orders.map((order) => `${order.OrderedAt}|${order.VendorItemId}|${order.ProductName}`).join('||'); return `${href}|${shortHash(ids)}`; }
   const progress = (state, message) => ({ stage: state.phase, page: state.page, count: state.orders.length, orderCount: new Set(state.orders.map((order) => order.OrderId).filter(Boolean)).size, year: state.years[state.yearIndex]?.label || null, remaining: Math.max(0, state.queue.length - state.cursor), message });
-  function initialState(config = {}) { return { phase: 'INIT', scope: config.collectionScope || config.scope || 'tracking', years: [], yearIndex: 0, page: 1, orders: [], tracking: [], queue: [], cursor: 0, warnings: [], done: false, yearScope: config.yearScope || 'current', pageCount: 0, listSignature: null, listUrl: null, listKey: null, restore: null, seenKeys: [], stalls: 0, forceSkip: false, waits: 0 }; }
+  function initialState(config = {}) { return { phase: 'INIT', scope: config.collectionScope || config.scope || 'tracking', years: [], yearIndex: 0, page: 1, orders: [], tracking: [], queue: [], cursor: 0, warnings: [], done: false, yearScope: config.yearScope || 'current', pageCount: 0, listSignature: null, listUrl: null, listKey: null, restore: null, seenKeys: [], skipCurrent: false }; }
   function finish(state) { state.phase = 'DONE'; state.done = true; state.result = buildExportPayloads(state.orders, { collectionScope: state.scope, pageCount: state.pageCount, warning: state.warnings.length ? state.warnings.join(' ') : null }); state.tracking = state.result.trackingData; return { state, action: { type: 'done' }, progress: progress(state, '수집이 완료되었습니다.') }; }
   function runStep(input = {}) {
     const out = runStepInner(input);
     // 정체 횟수를 클릭 후보 단계로 쓴다. 0이면 리프, 1이면 부모, ...
-    if (out?.action?.type === 'click') out.action.attempt = Math.min(input.stalls || 0, 3);
+    if (out?.action?.type === 'click') {
+      const expects = { detail: 'leftList', tracking: 'tracking', nextPage: 'listChanged', yearTab: 'listChanged', backToList: 'backOnList' };
+      out.action.expect = expects[out.action.target] || null;
+    }
     // 중단되거나 탭이 닫혀도 누적분을 내려받을 수 있게 매 걸음 부분 결과를 갱신한다.
     if (out?.state && !out.state.done) out.state.result = buildExportPayloads(out.state.orders, { collectionScope: out.state.scope, pageCount: out.state.pageCount, warning: out.state.warnings.length ? out.state.warnings.join(' ') : null, partial: true });
     return out;
@@ -152,17 +155,11 @@
     if (!root) return { state, action: { type: 'none' }, progress: progress(state, '문서를 기다리고 있습니다.') };
     if (state.done || state.phase === 'DONE') return finish(state);
     if (state.phase === 'INIT') { if (!isOrderListPage(root)) return { state, action: { type: 'navigate', url: ORDER_LIST_URL }, progress: progress(state, '주문 목록으로 이동합니다.') }; const entries = yearEntries(root); state.years = (state.yearScope === 'current' ? entries.slice(0, 1) : entries).map(({ label }) => ({ label, done: false })); if (!state.years.length) state.years = [{ label: null, done: false }]; state.phase = 'LIST'; return { state, action: { type: 'none' }, progress: progress(state, '주문 목록을 확인했습니다.') }; }
-    if (state.phase === 'LIST') { if (!isOrderListPage(root)) return { state, action: { type: 'navigate', url: state.listUrl || ORDER_LIST_URL }, progress: progress(state, '주문 목록으로 돌아갑니다.') }; const signature = pageSignature(root); const key = listPositionKey(root); state.seenKeys = state.seenKeys || []; if (key === state.listKey || state.seenKeys.includes(key)) { state.waits = (state.waits || 0) + 1; if (state.waits <= 6) return { state, action: { type: 'wait' }, progress: progress(state, `목록이 바뀌기를 기다립니다(${state.waits}).`) }; state.waits = 0; state.warnings.push(`${state.years[state.yearIndex]?.label || ''} ${state.page}페이지에서 같은 주문 목록이 다시 나와 이 연도를 마칩니다.`.trim()); state.queue = []; state.cursor = 0; state.phase = 'NEXT_YEAR'; return { state, action: { type: 'none' }, progress: progress(state, '같은 페이지가 반복되어 다음 연도로 넘어갑니다.') }; } if (signature !== state.listSignature) { const parsed = parseDocument(root); const base = state.orders.length; state.orders.push(...parsed.orders); state.queue = [...new Set(parsed.orders.map((order) => order._cardIndex))].map((cardIndex) => ({ cardIndex, orderIndexes: parsed.orders.map((order, index) => order._cardIndex === cardIndex ? base + index : -1).filter((index) => index >= 0), detailDone: state.scope === 'list', trackingDone: state.scope !== 'tracking', returning: null })); state.cursor = 0; state.waits = 0; state.pageCount += 1; state.listSignature = signature; state.listKey = key; state.seenKeys = [...state.seenKeys.slice(-40), key]; state.listUrl = globalThis.location?.href || ORDER_LIST_URL; } state.phase = state.scope === 'list' ? 'NEXT_PAGE' : 'DETAIL'; return { state, action: { type: 'none' }, progress: progress(state, '현재 페이지의 주문을 읽었습니다.') }; }
+    if (state.phase === 'LIST') { if (!isOrderListPage(root)) return { state, action: { type: 'navigate', url: state.listUrl || ORDER_LIST_URL }, progress: progress(state, '주문 목록으로 돌아갑니다.') }; const signature = pageSignature(root); const key = listPositionKey(root); state.seenKeys = state.seenKeys || []; if (key === state.listKey || state.seenKeys.includes(key)) { state.warnings.push('마지막 페이지에 도달했습니다.'); state.queue = []; state.cursor = 0; state.phase = 'NEXT_YEAR'; return { state, action: { type: 'none' }, progress: progress(state, '마지막 페이지입니다.') }; } if (signature !== state.listSignature) { const parsed = parseDocument(root); const base = state.orders.length; state.orders.push(...parsed.orders); state.queue = [...new Set(parsed.orders.map((order) => order._cardIndex))].map((cardIndex) => ({ cardIndex, orderIndexes: parsed.orders.map((order, index) => order._cardIndex === cardIndex ? base + index : -1).filter((index) => index >= 0), detailDone: state.scope === 'list', trackingDone: state.scope !== 'tracking', returning: null })); state.cursor = 0; state.pageCount += 1; state.listSignature = signature; state.listKey = key; state.seenKeys = [...state.seenKeys.slice(-40), key]; state.listUrl = globalThis.location?.href || ORDER_LIST_URL; } state.phase = state.scope === 'list' ? 'NEXT_PAGE' : 'DETAIL'; return { state, action: { type: 'none' }, progress: progress(state, '현재 페이지의 주문을 읽었습니다.') }; }
     if (state.phase === 'DETAIL') {
-      const item = state.queue[state.cursor]; if (item && state.forceSkip) { state.forceSkip = false; const reason = '페이지가 반응하지 않아 이 주문을 건너뜁니다.'; for (const index of item.orderIndexes) { const order = state.orders[index]; if (order) order.Warnings = [...(order.Warnings || []), reason]; } item.detailDone = true; item.trackingDone = true; item.returning = null; state.cursor += 1; return { state, action: { type: 'none' }, progress: progress(state, reason) }; } if (!item) { state.phase = 'NEXT_PAGE'; return { state, action: { type: 'none' }, progress: progress(state, '현재 페이지의 상세 수집을 마쳤습니다.') }; }
+      const item = state.queue[state.cursor]; if (item && state.skipCurrent) { state.skipCurrent = false; const reason = '페이지가 반응하지 않아 이 주문을 건너뜁니다.'; for (const index of item.orderIndexes) { const order = state.orders[index]; if (order) order.Warnings = [...(order.Warnings || []), reason]; } item.detailDone = true; item.trackingDone = true; item.returning = null; state.cursor += 1; return { state, action: { type: 'none' }, progress: progress(state, reason) }; } if (!item) { state.phase = 'NEXT_PAGE'; return { state, action: { type: 'none' }, progress: progress(state, '현재 페이지의 상세 수집을 마쳤습니다.') }; }
       if (!isOrderListPage(root)) { if (item.returning === 'detail') { const detail = parseDetailPage(root, globalThis.location?.href || ''); for (const index of item.orderIndexes) mergeDetail(state.orders[index], detail); item.detailDone = true; item.returning = 'fromDetail'; } else if (item.returning === 'tracking') { const tracking = parseTrackingPage(root, new Date(), state.orders[item.orderIndexes[0]]?.OrderStatus); for (const index of item.orderIndexes) { Object.assign(state.orders[index], tracking); state.orders[index]._TrackingOutcome = tracking.ShipmentStarted ? 'collected' : 'preShipment'; } const added = buildExportPayloads(item.orderIndexes.map((index) => state.orders[index])).trackingData; const known = new Set(state.tracking.map((entry) => `${entry.order_id}|${entry.tracking_number}`)); state.tracking.push(...added.filter((entry) => !known.has(`${entry.order_id}|${entry.tracking_number}`))); item.trackingDone = true; item.returning = 'fromTracking'; } return { state, action: { type: 'click', target: 'backToList', index: item.cardIndex }, progress: progress(state, '주문 목록으로 돌아갑니다.') }; }
-      if (item.returning === 'detail' || item.returning === 'tracking') {
-      // 클릭은 했는데 아직 목록이다. 페이지가 안 바뀜 것이니 기다린다.
-      state.waits = (state.waits || 0) + 1;
-      if (state.waits <= 6) return { state, action: { type: 'wait' }, progress: progress(state, `페이지가 바뀌기를 기다립니다(${state.waits}).`) };
-      state.waits = 0; item.returning = null;
-    }
-    if (state.listKey && listPositionKey(root) !== state.listKey) { state.restore = { yearDone: false, attempts: 0 }; state.phase = 'RESTORE'; return { state, action: { type: 'none' }, progress: progress(state, '목록 위치가 달라져 복원합니다.') }; }
+      if (state.listKey && listPositionKey(root) !== state.listKey) { state.restore = { yearDone: false, attempts: 0 }; state.phase = 'RESTORE'; return { state, action: { type: 'none' }, progress: progress(state, '목록 위치가 달라져 복원합니다.') }; }
     if (item.returning === 'fromDetail') item.returning = null; if (item.returning === 'fromTracking') { item.returning = null; state.cursor += 1; return { state, action: { type: 'none' }, progress: progress(state, '다음 주문을 확인합니다.') }; }
       if (!item.detailDone) { item.returning = 'detail'; return { state, action: { type: 'click', target: 'detail', index: item.cardIndex }, progress: progress(state, '주문 상세를 엽니다.') }; }
       if (!item.trackingDone) { const order = state.orders[item.orderIndexes[0]]; if (!findOrderTrackingAction(root, order)) { for (const index of item.orderIndexes) { state.orders[index].Warnings = [...(state.orders[index].Warnings || []), '배송 조회 버튼이 없는 주문입니다(취소/환불 등).']; state.orders[index]._TrackingOutcome = 'buttonMissing'; } item.trackingDone = true; state.cursor += 1; return { state, action: { type: 'none' }, progress: progress(state, '배송 조회가 없는 주문을 건너뜁니다.') }; } item.returning = 'tracking'; return { state, action: { type: 'click', target: 'tracking', index: item.cardIndex }, progress: progress(state, '배송 조회를 엽니다.') }; }
@@ -185,12 +182,19 @@
     if (state.phase === 'NEXT_YEAR') { const nextIndex = state.yearIndex + 1; if (nextIndex >= state.years.length) return finish(state); const label = state.years[nextIndex].label; const tabIndex = yearEntries(root).findIndex((entry) => entry.label === label); if (tabIndex < 0) { state.warnings.push(`${label} 연도 탭을 찾지 못했습니다.`); state.yearIndex = nextIndex; return { state, action: { type: 'none' }, progress: progress(state, '다음 연도 탭을 찾습니다.') }; } state.yearIndex = nextIndex; state.page = 1; state.phase = 'LIST'; return { state, action: { type: 'click', target: 'yearTab', index: tabIndex }, progress: progress(state, `${label} 연도로 이동합니다.`) }; }
     return finish(state);
   }
-  function clickElement(element) {
+  // 클릭이 안 먹히는 페이지가 있다. 대상과 방법을 함께 올려가며 시도한다.
+  // 0: 리프+이벤트, 1: 리프+native, 2: 부모+이벤트, 3: 부모+native
+  function clickElement(element, native = false) {
     if (!element) return false;
+    if (native) {
+      if (typeof element.click !== 'function') return false;
+      element.click();
+      return true;
+    }
     const view = globalThis.window;
     if (view && typeof view.MouseEvent === 'function') {
       for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
-        try { element.dispatchEvent(new view.MouseEvent(type, { bubbles: true, cancelable: true, view })); } catch { /* 지원하지 않는 이벤트는 건너뀜다 */ }
+        try { element.dispatchEvent(new view.MouseEvent(type, { bubbles: true, cancelable: true, view })); } catch { /* 지원 안 하는 이벤트는 건너뛴다 */ }
       }
       return true;
     }
@@ -210,10 +214,12 @@
     if (action.target === 'backToList') candidates = actionCandidates(root, ['주문목록 돌아가기', '주문 목록 돌아가기', '주문목록']);
     if (!candidates.length) return { ok: false, reason: `${action.target} 요소를 찾지 못했습니다.` };
     // 재시도할수록 바깥쪽 조상을 누른다. 후보가 모자라면 마지막 것을 쓴다.
-    const target = candidates[Math.min(attempt, candidates.length - 1)];
+    const depth = Math.min(attempt >> 1, candidates.length - 1);
+    const native = (attempt % 2) === 1;
+    const target = candidates[depth];
     if (action.target === 'nextPage' && isPaginationButtonDisabled(target)) return { ok: false, reason: '다음 버튼이 비활성 상태입니다.' };
-    if (!clickElement(target)) return { ok: false, reason: '클릭할 수 없는 요소입니다.' };
-    return { ok: true, depth: Math.min(attempt, candidates.length - 1), tag: target.tagName || null };
+    if (!clickElement(target, native)) return { ok: false, reason: '클릭할 수 없는 요소입니다.' };
+    return { ok: true, attempt, depth, native, tag: target.tagName || null };
   }
   // 지금 페이지에서 무엇을 누를지 그대로 보여준다. 클릭은 하지 않는다.
   function describeTarget(target, index = 0, attempt = 0) {
@@ -238,6 +244,19 @@
     };
   }
   // 지금 이 문서가 무엇으로 보이는지 그대로 보고한다.
+  // 지금 문서의 사실만 모아 준다. 판단은 호출한 쪽에서 한다.
+  function pageFacts() {
+    const root = globalThis.document;
+    const compacted = compact(root) || '';
+    return {
+      isList: isOrderListPage(root),
+      listKey: listPositionKey(root),
+      cards: discoverCards(root).length,
+      hasTrackingTable: /송장번호/.test(compacted),
+      hasOrderNumber: /주문번호/.test(compacted),
+      url: globalThis.location?.href || ''
+    };
+  }
   function describePage() {
     const root = globalThis.document;
     const compacted = compact(root) || '';
@@ -265,7 +284,7 @@
   async function collectDetailsOnCurrentPage(orders, scope, collectedAt, page, visited, start, end, deps = {}) { for (const order of orders) { order.Warnings ||= []; order.TrackingEvents ||= []; order.TrackingEventRaw ||= []; const root = deps.getDocument?.() || globalThis.document; const detail = deps.findOrderDetailAction?.(root, order) ?? findOrderDetailAction(root, order); if (detail && deps.clickAndWait && !await deps.clickAndWait(detail)) order.Warnings.push('주문 상세 수집 실패: 페이지가 전환되지 않았습니다.'); if (scope === 'tracking') { const tracking = deps.findOrderTrackingAction?.(deps.getDocument?.() || root, order) ?? findOrderTrackingAction(deps.getDocument?.() || root, order); if (!tracking) { order.Warnings.push('배송 조회 버튼이 없는 주문입니다(취소/환불 등).'); order._TrackingOutcome = 'buttonMissing'; } else if (deps.clickAndWait && await deps.clickAndWait(tracking)) { const priorWarnings = order.Warnings; const parsed = (deps.parseTrackingPage || parseTrackingPage)(deps.getDocument?.() || globalThis.document, collectedAt, order.OrderStatus); Object.assign(order, parsed); order.Warnings = [...priorWarnings, ...(parsed.Warnings || [])]; } } await deps.returnToOrderList?.(); await deps.randomDelay?.(); } return orders; }
   async function collectOrders(config = {}) { let state = initialState(config); const runtime = config.runtime || {}; for (let count = 0; count < (runtime.maxTransitions || 1000); count += 1) { const result = runStep(state); state = result.state; runtime.reportProgress?.(result.progress); if (result.action.type === 'done') return state.result; if (result.action.type === 'navigate') { if (globalThis.location) globalThis.location.href = result.action.url; } else if (result.action.type === 'click') { const performed = performAction(result.action); if (!performed.ok) throw new Error(performed.reason); } await runtime.randomDelay?.(); } throw new Error('상태 기계 반복 상한을 초과했습니다.'); }
 
-  const api = { BUILD, SELECTORS, describePage, describeTarget, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
+  const api = { BUILD, SELECTORS, pageFacts, describePage, describeTarget, buildExportPayloads, collectDetailsOnCurrentPage, collectOrders, diagnoseStructure, extractYearTabs, findNextButton, findOrderTrackingAction, isOrderListPage, isPaginationButtonDisabled, mergeDetail, nearbyActionElement, pageSignature, parseDocument, parseDetailPage, parseProduct, parseTrackingPage, performAction, runStep, sanitizeValue };
   globalThis.__coupangOrderCollector = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();
