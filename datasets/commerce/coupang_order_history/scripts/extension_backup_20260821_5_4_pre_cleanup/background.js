@@ -4,7 +4,10 @@
   const JOB_KEY = 'coupangJob';
   const ALARM_NAME = 'coupangCollectorKeepAlive';
   const DEFAULT_POLL_MS = 400;
-  const ENGINE_VERSION = 'document-navigation-v2';
+  const DEFAULT_CHANGE_TIMEOUT_MS = 15000;
+  const NAVIGATION_TIMEOUT_MS = 30000;
+  const ORDER_LIST_URL = 'https://mc.coupang.com/ssr/desktop/order/list';
+  const ENGINE_VERSION = 'document-navigation-v1';
   const CALL_TIMEOUT_MS = 5000;
   const FIRST_ALARM_DELAY_MS = 100;
 
@@ -12,7 +15,13 @@
     const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     const random = options.random || Math.random;
     const pollMs = options.pollMs ?? DEFAULT_POLL_MS;
+    const changeTimeoutMs = options.changeTimeoutMs ?? DEFAULT_CHANGE_TIMEOUT_MS;
+    // 페이지 이동은 더 오래 기다린다. 테스트가 짧게 잡았으면 그걸 따른다.
+    const navigationTimeoutMs = options.navigationTimeoutMs ?? options.changeTimeoutMs ?? NAVIGATION_TIMEOUT_MS;
     const callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
+    // driver 분기는 이전 테스트 상태와의 호환용이다. 실제 구동자는 worker 하나다.
+    const driver = options.driver || 'worker';
+    const HEARTBEAT_MS = 15000;
     let loopPromise = null;
     let resumeTimer = null;
     let generationController = new AbortController();
@@ -59,11 +68,11 @@
 
     function freshState(config = {}) {
       return {
-        phase: 'INIT', scope: config.collectionScope || 'tracking',
+        mode: 'nextData', phase: 'INIT', scope: config.collectionScope || 'tracking',
         years: [], yearIndex: 0, page: 1, orders: [], tracking: [], queue: [], cursor: 0,
         warnings: [], done: false, yearScope: config.yearScope || 'current', pageCount: 0,
-        listUrl: null, seenKeys: [], listCoordinates: [], orderKeys: [], expectedListUrl: null,
-        pagination: null, skipCurrent: false, pageRetries: 0
+        listSignature: null, listUrl: null, listKey: null, seenKeys: [], orderKeys: [],
+        expectedListUrl: null, pagination: null, listingDone: false, skipCurrent: false
       };
     }
 
@@ -109,45 +118,21 @@
           // args에 undefined가 들어가면 Chrome이 직렬화하지 못하고 예외를 던진다.
           // 인자 없는 함수를 부를 때가 그렇다. null로 바꿔 보내고 저쪽에서 되살린다.
           func: (name, value) => {
-            try {
-              const collector = globalThis.__coupangOrderCollector;
-              if (!collector) return { __collectorEnvelope: true, ok: false, error: 'collector not installed' };
-              const fn = collector[name];
-              if (typeof fn !== 'function') return { __collectorEnvelope: true, ok: false, error: `collector method not found: ${name}`, build: collector.BUILD || null };
-              const result = value === null ? fn.call(collector) : fn.call(collector, value);
-              const json = JSON.stringify(result);
-              if (json === undefined) return { __collectorEnvelope: true, ok: false, error: `${name} returned undefined`, build: collector.BUILD || null };
-              // Chrome's executeScript result transport can silently lose a large/deep object.
-              // A JSON string has a deterministic transport shape and also rejects bad values here.
-              return { __collectorEnvelope: true, ok: true, json, build: collector.BUILD || null };
-            } catch (error) {
-              return {
-                __collectorEnvelope: true,
-                ok: false,
-                error: error?.message || String(error),
-                stack: error?.stack || null,
-                build: globalThis.__coupangOrderCollector?.BUILD || null
-              };
-            }
+            const collector = globalThis.__coupangOrderCollector;
+            if (!collector) return undefined;
+            const fn = collector[name];
+            if (typeof fn !== 'function') return undefined;
+            return value === null ? fn.call(collector) : fn.call(collector, value);
           },
           args: [method, payload]
         }), timeout, method);
-        const raw = results?.[0]?.result;
-        // Keep the controller test seam compatible with mocks that return the step directly.
-        if (!raw?.__collectorEnvelope) return raw;
-        if (!raw.ok) {
-          const build = raw.build ? ` [build ${raw.build}]` : '';
-          const stack = raw.stack ? `\n${raw.stack}` : '';
-          throw new Error(`${raw.error || `${method} failed`}${build}${stack}`);
-        }
-        try { return JSON.parse(raw.json); }
-        catch (error) { throw new Error(`${method} result JSON parse failed: ${error.message}`); }
+        return results?.[0]?.result;
       };
 
       // 이미 주입돼 있으면 그대로 쓴다. 폴링마다 37KB를 다시 넣으면 느리다.
       try {
         const result = await run();
-        if (result !== undefined) { lastCallError = null; return result; }
+        if (result !== undefined) return result;
       } catch (error) {
         lastCallError = `${method}: ${error.message}`;
       }
@@ -155,7 +140,6 @@
         await inject(tabId);
         const result = await run();
         if (result === undefined) { callFailCount += 1; lastCallError = `${method}: 결과 없음`; }
-        if (result !== undefined) lastCallError = null;
         return result;
       } catch (error) {
         callFailCount += 1;
@@ -199,33 +183,115 @@
       }
     }
 
-    async function executeAction(job, action) {
-      currentAction = `${action.type}${action.target ? ':' + action.target : ''}`;
-      currentActionAt = Date.now();
-      try { return await runAction(job, action); } finally { currentAction = null; currentActionAt = 0; }
+    async function readFacts(tabId) {
+      const facts = await callCollector(tabId, 'pageFacts');
+      if (!facts || typeof facts !== 'object') throw new Error('페이지 정보를 받지 못했습니다.');
+      return facts;
     }
 
-    async function runAction(job, action) {
+    // "무언가 바뀌었나"가 아니라 "원하는 상태가 됐나"를 본다.
+    async function awaitCondition(tabId, isSatisfied, timeoutMs = changeTimeoutMs, signal) {
+      const startedAt = Date.now();
+      do {
+        if (!await cancellableSleep(pollMs, signal)) return false;
+        try {
+          if (isSatisfied(await readFacts(tabId))) return true;
+        } catch {
+          // 페이지 이동 중에는 주입 컨텍스트가 잠시 없다. 다음 폴링에서 다시 본다.
+        }
+      } while (Date.now() - startedAt < timeoutMs);
+      return false;
+    }
+
+    // 조건은 "행동 전과 달라졌는가" 를 함께 봐야 한다.
+    // 목록이 아니라는 것만 보면, 이미 목록 밖일 때 클릭도 없이 성공으로 친다.
+    // 그러면 상태만 앞으로 가고 실제 페이지는 그대로다.
+    function conditionFor(action, before) {
+      const moved = (facts) => facts.url !== before.url;
+      if (action.expect === 'leftList') return (facts) => !facts.isList && moved(facts);
+      if (action.expect === 'tracking') return (facts) => !facts.isList && moved(facts);
+      if (action.expect === 'listChanged') return (facts) => facts.isList && facts.listKey !== before.listKey;
+      if (action.expect === 'backOnList') return (facts) => facts.isList;
+      return (facts) => facts.listKey !== before.listKey || facts.isList !== before.isList;
+    }
+
+    async function isSatisfiedNow(tabId, satisfied) {
+      try { return satisfied(await readFacts(tabId)); } catch { return false; }
+    }
+
+    async function executeAction(job, action, signal) {
+      currentAction = `${action.type}${action.target ? ':' + action.target : ''}${action.expect ? '(' + action.expect + ')' : ''}`;
+      currentActionAt = Date.now();
+      try { return await runAction(job, action, signal); } finally { currentAction = null; currentActionAt = 0; }
+    }
+
+    async function runAction(job, action, signal) {
       if (action.type === 'none' || action.type === 'done') return { ok: true };
-      if (action.type !== 'navigate') return { ok: false, reason: `모르는 액션 ${action.type}` };
-      if (!action.url) return { ok: false, reason: '이동할 주소가 없습니다.' };
-      job.pendingNavigation = {
-        actionId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        target: action.target || null,
-        url: action.expectedUrl || action.url,
-        expectedOrderId: action.expectedOrderId || null,
-        expectedShipmentBoxId: action.expectedShipmentBoxId || null,
-        issuedAt: Date.now()
-      };
-      if (!await saveIfRunning(job)) return { ok: false, stopped: true, reason: '수집이 중단되었습니다.' };
-      try {
-        await chromeApi.tabs.update(job.tabId, { url: action.url, active: true });
-        // 다음 걸음이 정확한 URL·주문번호·배송박스를 검증한다. 이전 문서를 성공으로 보지 않는다.
-        return { ok: true, pending: true, target: action.target || null, url: action.url };
-      } catch (error) {
-        delete job.pendingNavigation;
-        return { ok: false, reason: `주소로 이동하지 못했습니다: ${error.message}` };
+      if (action.type === 'navigate') {
+        if (!action.url) return { ok: false, reason: '이동할 주소가 없습니다.' };
+        job.pendingNavigation = {
+          actionId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          target: action.target || null,
+          url: action.expectedUrl || action.url,
+          expectedOrderId: action.expectedOrderId || null,
+          expectedShipmentBoxId: action.expectedShipmentBoxId || null,
+          issuedAt: Date.now()
+        };
+        if (!await saveIfRunning(job)) return { ok: false, stopped: true, reason: '수집이 중단되었습니다.' };
+        try {
+          await chromeApi.tabs.update(job.tabId, { url: action.url, active: true });
+          // 다음 걸음이 정확한 URL·주문번호·배송박스를 검증한다. 이전 문서를 성공으로 보지 않는다.
+          return { ok: true, pending: true, target: action.target || null, url: action.url };
+        } catch (error) {
+          delete job.pendingNavigation;
+          return { ok: false, reason: `주소로 이동하지 못했습니다: ${error.message}` };
+        }
       }
+      if (action.type !== 'click') return { ok: false, reason: `모르는 액션 ${action.type}` };
+
+      const before = await readFacts(job.tabId);
+      const satisfied = conditionFor(action, before);
+      // 페이지 이동을 기대하는 행동은 더 오래 기다린다.
+      // 한 시도에 오래 매달리면 다른 방법을 시도할 기회가 없다. 짧게 끊고 올린다.
+      const timeout = Math.min(changeTimeoutMs, 8000);
+
+      // 목록 복귀는 주소로 바로 간다.
+      // 뒤로가기는 우리가 방문한 상세 페이지들을 거꾸로 되짚어 엉뚱한 곳으로 간다.
+      // 배송조회 화면에는 돌아가기 버튼이 아예 없다. 클릭으로 풀 문제가 아니다.
+      if (action.target === 'backToList') {
+        if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt: 0, note: '이미 목록입니다.' };
+        const url = job.state?.listUrl || ORDER_LIST_URL;
+        try {
+          await chromeApi.tabs.update(job.tabId, { url, active: true });
+        } catch (error) {
+          return { ok: false, reason: `주문목록으로 이동하지 못했습니다: ${error.message}` };
+        }
+        if (await awaitCondition(job.tabId, satisfied, navigationTimeoutMs, signal)) {
+          return { ok: true, attempt: 0, note: '목록 주소로 이동했습니다.' };
+        }
+        return { ok: false, reason: '주문목록 주소로 갔지만 목록이 나타나지 않았습니다.' };
+      }
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        // 재시도도 사람 속도로 한다. 연달아 네 번 누르면 봇으로 보인다.
+        if (attempt > 0 && !await rateLimit(job.config, job, signal)) {
+          return { ok: false, stopped: true, reason: '수집이 중단되었습니다.' };
+        }
+        // 이미 원하는 상태면 또 누르지 않는다. 늦게 반영된 이동을 다시 누르면 망가진다.
+        if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt, note: attempt ? '이미 이동해 있었습니다.' : null };
+
+        const report = await callCollector(job.tabId, 'performAction', { ...action, attempt });
+        job.lastClick = { ...(report || {}), attempt, target: action.target, expect: action.expect || null };
+        if (!await saveIfRunning(job)) return { ok: false, stopped: true, reason: '수집이 중단되었습니다.' };
+
+        if (report?.ok === false) {
+          // 요소가 사라진 것은 이미 넘어갔다는 뜻일 수 있다.
+          if (await isSatisfiedNow(job.tabId, satisfied)) return { ok: true, attempt, note: '요소는 없었지만 이미 이동해 있었습니다.' };
+          continue;
+        }
+        if (await awaitCondition(job.tabId, satisfied, timeout, signal)) return { ok: true, attempt };
+      }
+      return { ok: false, reason: `${action.target} 클릭이 네 번 다 통하지 않았습니다.` };
     }
 
     // MV3 워커는 영구 루프를 유지하지 않는다. 짧은 다음 걸음은 타이머로 예약하고,
@@ -253,7 +319,9 @@
       });
     }
 
-    // 탭이 닫히거나 Edge 절전 탭으로 버려졌을 때 저장된 체크포인트를 이어간다.
+    // 클릭이 새 탭을 열거나 탭이 닫히면 우리가 보던 탭이 사라진다.
+    // Edge 의 절전 탭은 배경 탭을 잠재워 프레임을 없앤다. 그러면 모든 호출이
+    // "Frame with ID 0 was removed" 로 실패하고 영영 진행되지 않는다.
     async function recoverTab(job) {
       const tab = await new Promise((resolve) => {
         try { chromeApi.tabs.get(job.tabId, (found) => resolve(chromeApi.runtime.lastError ? null : found || null)); }
@@ -261,16 +329,15 @@
       });
 
       if (!tab) {
+        const found = await new Promise((resolve) => {
+          try { chromeApi.tabs.query({ url: 'https://mc.coupang.com/*' }, (tabs) => resolve((tabs || [])[0] || null)); }
+          catch { resolve(null); }
+        });
+        if (!found?.id) return false;
+        job.tabId = found.id;
         job.state.warnings ||= [];
-        job.state.warnings.push('수집 탭이 닫혀 작업을 중단했습니다. 주문목록 탭에서 다시 시작하세요.');
-        job.status = 'stopped';
-        job.stoppedAt = new Date().toISOString();
-        const saved = await saveIfRunning(job);
-        if (saved) {
-          chromeApi.alarms.clear(ALARM_NAME);
-          sendProgress(job.progress, job.status);
-        }
-        return saved;
+        job.state.warnings.push('탭이 바뀌어 새 탭으로 이어서 진행합니다.');
+        return saveIfRunning(job);
       }
 
       // 누적 executeScript 오류만으로 멀쩡한 탭을 새로고침하면 현재 문서를 파괴한다.
@@ -303,7 +370,7 @@
         iterations += 1;
         lastLoopAt = new Date().toISOString();
         try {
-        console.debug('[수집] 걸음', iterations);
+        console.debug('[수집] 걸음', iterations, driver);
         const job = await getJob();
         if (!job || job.status !== 'running') return job;
         // 5.3.x의 fetch/helper 상태를 새 엔진이 이어받으면 다시 같은 정체에 빠진다.
@@ -323,6 +390,15 @@
         }
         const waitRemaining = Number(job.progress?.waitUntil || 0) - Date.now();
         if (waitRemaining > 0 && !await cancellableSleep(waitRemaining, signal)) return getJob();
+        const beatAge = Date.now() - (job.driverAt || 0);
+        if (driver === 'worker' && job.driver === 'popup' && beatAge < HEARTBEAT_MS) {
+          // 팝업이 돌리는 중이다. 워커가 끼어들면 같은 걸음을 두 번 밟는다.
+          if (!await cancellableSleep(1000, signal)) return getJob();
+          continue;
+        }
+        if (driver === 'popup') { job.driver = 'popup'; job.driverAt = Date.now(); }
+        else if (job.driver === 'popup' && beatAge >= HEARTBEAT_MS) { job.driver = 'worker'; }
+
         let step;
         try {
           step = await callCollector(job.tabId, 'runStep', job.state);
@@ -364,7 +440,7 @@
         if (step.action.type !== 'none') {
           let outcome;
           try {
-            outcome = await executeAction(job, step.action);
+            outcome = await executeAction(job, step.action, signal);
           } catch (error) {
             outcome = { ok: false, reason: `실행 중 예외: ${error.message}` };
           }
@@ -381,7 +457,7 @@
           // 문서 이동은 상태를 먼저 저장하고 한 이벤트를 끝낸다. 로드 완료 이벤트가
           // 정확한 문서를 다음 걸음에서 파싱하게 하므로 이전 DOM을 읽는 경합이 없다.
           if (step.action.type === 'navigate' && outcome.ok) {
-            if (autoSchedule) scheduleResume(5000);
+            if (autoSchedule) scheduleResume(Math.min(navigationTimeoutMs, 5000));
             return getJob();
           }
         } else {
@@ -436,7 +512,7 @@
       }
     }
 
-    async function start(tabId, config = {}) {
+    async function start(tabId, config = {}, startOptions = {}) {
       renewGeneration();
       if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
       await ensureAccess(tabId);
@@ -453,7 +529,7 @@
       // START 응답 직후 워커가 끝나도 다음 이벤트가 곧 다시 깨운다.
       // 반복 주기는 그대로 두고 첫 실행만 즉시 예약한다.
       chromeApi.alarms.create(ALARM_NAME, { periodInMinutes: 0.5, when: Date.now() + FIRST_ALARM_DELAY_MS });
-      void resume();
+      if (startOptions.autoRun !== false && options.autoRun !== false) void resume();
       return job;
     }
 
@@ -474,12 +550,12 @@
       return job;
     }
 
-    return { start, stop, resume, getJob, health: () => ({ timeoutCount, lastTimeoutAt, lastLoopAt, loopErrorCount, lastLoopError, callFailCount, lastCallError, currentAction, currentActionMs: currentActionAt ? Date.now() - currentActionAt : 0, looping: Boolean(loopPromise), eventDriven: true, wakeScheduled: Boolean(resumeTimer) }) };
+    return { start, stop, resume, getJob, saveJob, awaitCondition, executeAction, callCollector, rateLimit, health: () => ({ timeoutCount, lastTimeoutAt, lastLoopAt, loopErrorCount, lastLoopError, callFailCount, lastCallError, currentAction, currentActionMs: currentActionAt ? Date.now() - currentActionAt : 0, looping: Boolean(loopPromise), keepAlive: false, eventDriven: true, wakeScheduled: Boolean(resumeTimer) }) };
   }
 
   let startupError = null;
   // 이 파일은 서비스 워커에서만 실행한다. 팝업에는 별도 수집 컨트롤러를 만들지 않는다.
-  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+  if (!globalThis.__coupangPopup && typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
     const controller = createController(chrome);
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message?.type === 'START') {
@@ -545,5 +621,6 @@
     // 모두 같은 controller.resume()을 호출하므로 한 워커 안에서는 loopPromise로 합쳐진다.
   }
 
+  globalThis.__coupangController = { createController, JOB_KEY, ALARM_NAME };
   if (typeof module !== 'undefined' && module.exports) module.exports = { createController, JOB_KEY, ALARM_NAME };
 })();

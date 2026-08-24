@@ -5,7 +5,7 @@
   const elements = {
     min: document.querySelector('#minDelay'), max: document.querySelector('#maxDelay'), long: document.querySelector('#longDelay'),
     start: document.querySelector('#startButton'), stop: document.querySelector('#stopButton'),
-    openList: document.querySelector('#openListButton'), probe: document.querySelector('#probe'), diagnose: document.querySelector('#diagnoseButton'), stateProbe: document.querySelector('#stateProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
+    openList: document.querySelector('#openListButton'), probe: document.querySelector('#probe'), diagnose: document.querySelector('#diagnoseButton'), detailProbe: document.querySelector('#detailProbeButton'), stateProbe: document.querySelector('#stateProbeButton'), nextProbe: document.querySelector('#nextProbeButton'), buildLine: document.querySelector('#buildLine'), orderDownload: document.querySelector('#orderDownloadButton'),
     trackingDownload: document.querySelector('#trackingDownloadButton'), trackingReason: document.querySelector('#trackingDownloadReason'),
     status: document.querySelector('#status'), scopeSummary: document.querySelector('#scopeSummary')
   };
@@ -14,7 +14,7 @@
   function setStatus(message) { elements.status.textContent = message; }
   function selected(name) { return document.querySelector(`input[name="${name}"]:checked`)?.value; }
   function isOrderListUrl(value) { try { const url = new URL(value); return url.origin === 'https://mc.coupang.com' && url.pathname.startsWith('/ssr/desktop/order/list'); } catch { return false; } }
-  const REQUIRED_ORIGINS = ['https://mc.coupang.com/*'];
+  const REQUIRED_ORIGINS = ['https://mc.coupang.com/*', 'https://www.coupang.com/*'];
 
   // 사이트 액세스가 "클릭할 때"면 확장은 아이콘을 누른 순간에만 접근할 수 있고
   // 페이지를 이동하면 회수된다. 팝업은 되는데 배경 수집은 멈추는 이유가 이것이다.
@@ -101,7 +101,7 @@ ${ORDER_LIST_URL}`); return tab; }
     const lines = [
       `${head} · ${position} (지금까지 ${progress.pageCount || 0}페이지)`,
       total ? `상세·배송 ${done}/${total}건  ${bar(done, total)}` : '주문 목록을 읽는 중',
-      `상품 ${progress.count || 0}건 · 주문번호 ${progress.orderCount ?? 0}개 · 배송조회 ${progress.trackingCount || 0}건`
+      `누적 주문 ${progress.orderCount ?? 0}건 (상품 행 ${progress.count || 0}개) · 배송 ${progress.trackingCount || 0}건`
     ];
     const remain = (progress.waitUntil || 0) - Date.now();
     if (job.status === 'running' && remain > 0) {
@@ -110,6 +110,7 @@ ${ORDER_LIST_URL}`); return tab; }
       lines.push(`${kind} ${(remain / 1000).toFixed(1)}초 남음 (추첨 ${total.toFixed(1)}초) ${bar(total - remain / 1000, total, 10)}`);
     }
     lines.push(progress.message || '');
+    if (job.lastClick && job.lastClick.ok === false) lines.push(`마지막 클릭 실패: ${job.lastClick.reason}`);
     return lines.filter(Boolean).join('\n');
   }
 
@@ -139,7 +140,7 @@ ${ORDER_LIST_URL}`); return tab; }
     elements.orderDownload.disabled = running || orderCount === 0;
     elements.trackingDownload.disabled = running || trackingCount === 0;
     const partialNote = !completed && orderCount > 0 ? ' (중단 시점까지의 부분 결과)' : '';
-    elements.trackingReason.textContent = trackingCount > 0 ? `배송조회 ${trackingCount}건을 내려받을 수 있습니다.${partialNote}` : running ? '수집 중에는 내려받을 수 없습니다.' : '수집된 배송조회 결과가 없습니다.';
+    elements.trackingReason.textContent = trackingCount > 0 ? `배송 이력 ${trackingCount}건을 내려받을 수 있습니다.${partialNote}` : running ? '수집 중에는 내려받을 수 없습니다.' : '수집된 배송 이력이 없습니다.';
     if (!job) return;
     showProgress(job);
   }
@@ -171,6 +172,50 @@ ${ORDER_LIST_URL}`); return tab; }
     return results?.[0]?.result || { error: '응답이 없습니다.' };
   }
 
+  // 현재 페이지에서 상세 열기를 실제로 한 번 해보고 단계별로 보고한다.
+  elements.detailProbe.addEventListener('click', async () => {
+    elements.detailProbe.disabled = true;
+    const lines = [];
+    const show = () => setStatus(lines.join('\n'));
+    try {
+      const tab = await activeOrderListTab();
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+      lines.push(`확장 ${chrome.runtime.getManifest().version}`);
+
+      const before = await runInTab(tab.id, 'describeTarget', 'detail', 0, 0);
+      if (before.error) throw new Error(before.error);
+      const info = before.value;
+      lines.push(`content.js 빌드 ${info.build}`);
+      lines.push(`목록 페이지 ${info.isList ? 'ok' : '아님'}`);
+      lines.push(`카드 ${info.cardCount}개`);
+      lines.push(`클릭 후보 ${info.candidateCount}개: ${info.chain.join(' < ') || '없음'}`);
+      lines.push(`누를 것 ${info.pickTag || '없음'} "${info.pickText || ''}"`);
+      show();
+      if (!info.pickTag) throw new Error('클릭할 요소를 찾지 못했습니다.');
+
+      const clicked = await runInTab(tab.id, 'performAction', { type: 'click', target: 'detail', index: 0, attempt: 0 });
+      lines.push(`클릭 ${clicked.error ? `예외 ${clicked.error}` : JSON.stringify(clicked.value)}`);
+      show();
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const after = await runInTab(tab.id, 'describeTarget', 'detail', 0, 0);
+      if (after.error) {
+        lines.push('3초 후: 스크립트가 사라짐 (페이지가 이동했다는 뜻)');
+      } else {
+        const now = after.value;
+        lines.push(`3초 후 주소 ${now.url === info.url ? '그대로' : '바뀜'}`);
+        lines.push(`3초 후 서명 ${now.signature === info.signature ? '그대로' : '바뀜'}`);
+        lines.push(`3초 후 목록페이지 ${now.isList ? 'ok (안 열림)' : '아님 (상세로 보임)'}`);
+      }
+      show();
+    } catch (error) {
+      lines.push(`오류: ${error.message}`);
+      show();
+    } finally {
+      elements.detailProbe.disabled = false;
+    }
+  });
+
   // 수집이 멈춘 순간 무슨 상태인지 그대로 찍는다. 수집 중에도 눌러도 된다.
   elements.stateProbe.addEventListener('click', async () => {
     elements.stateProbe.disabled = true;
@@ -190,16 +235,17 @@ ${ORDER_LIST_URL}`); return tab; }
         page.error ? `페이지: 오류 ${page.error}` : [
           `빌드 ${page.value.build}`,
           `주소 ${String(page.value.url).replace('https://mc.coupang.com', '')}`,
-          `문서 ${page.value.readyState || '-'} · 경로 ${page.value.path || '-'}`,
-          `목록판정 ${page.value.isList} · NextData ${page.value.nextDataFound ? '있음' : '없음'} · 주문 ${page.value.orderIds ?? '-'}건 (${page.value.nextDataRows ?? '-'}행)`,
-          `페이지좌표 ${page.value.pagination ? JSON.stringify(page.value.pagination) : '없음'} · 상세준비=${page.value.detailReady} 배송준비=${page.value.trackingReady}`,
-          page.value.blockedReason ? `차단표지 ${page.value.blockedReason}` : null,
+          `목록판정 ${page.value.isList} (상세보기 ${page.value.detailLeaves}개, 카드 ${page.value.cards}개)`,
+          `표지 돌아가기=${page.value.hasBackToList} 받는사람정보=${page.value.hasRecipientBlock} 주문번호=${page.value.hasOrderNumberLabel} 결제정보=${page.value.hasPaymentBlock} 배송조회=${page.value.hasTrackingButton}`,
+          `다음버튼 ${page.value.nextButton} 후보 ${(page.value.nextCandidates || []).length}개`,
+          ...(page.value.nextCandidates || []).map((line) => `  ${line}`),
         ].join('\n'),
         `작업 ${job?.status} / ${state.phase} / ${state.page}페이지`,
         `탭 수집대상=${job?.tabId ?? '-'} 현재보는탭=${tab.id}${job?.tabId !== tab.id ? '  ← 다름' : ''}`,
         `마지막결과 ${job?.lastOutcome ? JSON.stringify(job.lastOutcome) : '없음'} 건너뛰기=${Boolean(state.skipCurrent)}`,
         `대기 문서 ${job?.pendingNavigation ? `${job.pendingNavigation.target || '-'} ${String(job.pendingNavigation.url || '').replace('https://mc.coupang.com', '')}` : '없음'}`,
         `큐 ${state.cursor || 0}/${(state.queue || []).length} returning=${item?.returning ?? '-'} detailDone=${item?.detailDone ?? '-'}`,
+        `마지막클릭 ${job?.lastClick ? JSON.stringify(job.lastClick) : '없음'}`,
         `주문 ${(state.orders || []).length}행, 주문번호확보 ${(state.orders || []).filter((o) => o && o._idSource === 'orderNumber').length}행`,
         `경고 ${(state.warnings || []).slice(-2).join(' | ') || '없음'}`
       ];
@@ -219,6 +265,40 @@ ${ORDER_LIST_URL}`); return tab; }
       setProbe(`오류: ${error.message}`);
     } finally {
       elements.stateProbe.disabled = false;
+    }
+  });
+
+  // 팝업에서 직접 다음 버튼을 눌러본다. 서비스 워커 경로와 비교하기 위한 것이다.
+  elements.nextProbe.addEventListener('click', async () => {
+    elements.nextProbe.disabled = true;
+    const lines = [];
+    const show = () => setStatus(lines.join('\n'));
+    try {
+      const tab = await activeOrderListTab();
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+      const before = await runInTab(tab.id, 'describePage');
+      if (before.error) throw new Error(before.error);
+      lines.push(`빌드 ${before.value.build}`);
+      lines.push(`누르기 전 카드 ${before.value.cards}개`);
+      lines.push(`다음 후보 ${(before.value.nextCandidates || []).join(' / ') || '없음'}`);
+      show();
+
+      const clicked = await runInTab(tab.id, 'performAction', { type: 'click', target: 'nextPage', index: 0, attempt: 0 });
+      lines.push(`클릭 반환 ${clicked.error ? `예외 ${clicked.error}` : JSON.stringify(clicked.value)}`);
+      show();
+
+      for (const seconds of [1, 2, 4]) {
+        await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+        const after = await runInTab(tab.id, 'describePage');
+        if (after.error) { lines.push(`${seconds}초: 스크립트 사라짐 (페이지 이동)`); show(); continue; }
+        lines.push(`${seconds}초: 카드 ${after.value.cards}개, 서명 ${after.value.signature === before.value.signature ? '그대로' : '바뀜'}`);
+        show();
+      }
+    } catch (error) {
+      lines.push(`오류: ${error.message}`);
+      show();
+    } finally {
+      elements.nextProbe.disabled = false;
     }
   });
 

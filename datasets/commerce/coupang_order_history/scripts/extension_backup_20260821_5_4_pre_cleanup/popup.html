@@ -158,7 +158,7 @@
       </label>
       <label>
         <input type="radio" name="collectionScope" value="detail">
-        <strong>목록 + 상세</strong> <span>결제정보 포함</span>
+        <strong>목록 + 상세</strong> <span>주문번호·결제정보 포함</span>
       </label>
       <label>
         <input type="radio" name="collectionScope" value="tracking" checked>
@@ -170,12 +170,12 @@
       <legend>연도 범위</legend>
       <label>
         <input type="radio" name="yearScope" value="current" checked>
-        <strong>다음 목록으로 끝까지</strong>
-        <span class="help">연도 필터를 붙이지 않고 서버의 다음 페이지 좌표를 그대로 따라간다.</span>
+        <strong>다음 버튼으로 끝까지</strong>
+        <span class="help">연도 탭을 건드리지 않는다. 다음만 눌러도 지난 연도까지 나온다.</span>
       </label>
       <label>
         <input type="radio" name="yearScope" value="all">
-        <strong>연도를 하나씩</strong>
+        <strong>연도 탭을 하나씩</strong>
         <span class="help">위로 끝까지 갔는데 빠진 해가 있을 때만 쓴다.</span>
       </label>
     </fieldset>
@@ -203,6 +203,8 @@
       <button id="startButton" type="button">수집 시작</button>
       <button id="stopButton" class="stop" type="button" disabled>중단</button>
       <button id="stateProbeButton" type="button">지금 상태</button>
+      <button id="nextProbeButton" type="button">다음 누르기 시험</button>
+      <button id="detailProbeButton" type="button">상세 열기 시험</button>
       <button id="diagnoseButton" type="button">구조 진단</button>
       <button id="orderDownloadButton" class="secondary" type="button" disabled>주문 JSON 내려받기</button>
       <button id="trackingDownloadButton" class="secondary" type="button" disabled>배송 JSON 내려받기</button>
@@ -215,7 +217,7 @@
 
     <div id="probe" role="status" hidden></div>
     <p class="help">수집은 백그라운드에서 진행됩니다. 팝업을 닫아도 이어집니다.</p>
-    <p class="help">0건이면 구조 진단으로 NextData와 페이지 좌표를 확인하세요. 결과는 외부 서버로 전송하지 않습니다.</p>
+    <p class="help">0건이면 구조 진단으로 선택자 매칭 수를 확인하세요. 결과는 외부 서버로 전송하지 않습니다.</p>
 
     <script src="content.js"></script>
     <script src="popup.js"></script>

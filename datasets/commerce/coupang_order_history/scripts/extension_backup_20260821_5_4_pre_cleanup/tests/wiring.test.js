@@ -31,6 +31,7 @@ function loadWorker({ initialJob = null, onRunStep, setDelays = [], getError = n
         return [{ result: true }];
       }
       const [method, value] = details.args;
+      if (method === 'pageFacts') return [{ result: { isList: true, listKey: 'p1', cards: 3, hasTrackingTable: false, hasOrderNumber: false, url: '/list' } }];
       if (method === 'runStep') { calls.runStep += 1; return [{ result: await onRunStep(value, calls.runStep) }]; }
       return [{ result: undefined }];
     } },
@@ -211,6 +212,20 @@ test('대기 중 STOP이 와도 대기 종료 저장이 작업을 되살리지 �
   await new Promise((resolve) => setTimeout(resolve, 450));
 
   assert.equal(data.coupangJob.status, 'stopped', '대기 종료 저장이 중단 작업을 되살렸다');
+});
+
+test('예전 팝업 구동 플래그가 와도 워커 하나가 수집한다', async () => {
+  const { data, send, calls } = loadWorker({ onRunStep: (state) => DONE_STEP(state) });
+
+  const response = await send({
+    type: 'START', tabId: 7, popupDrives: true,
+    config: { collectionScope: 'list', minDelayMs: 300, maxDelayMs: 300, longDelayMs: 300 }
+  });
+  assert.equal(response?.ok, true, response?.error);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+
+  assert.equal(calls.runStep, 1, '팝업 플래그 때문에 워커 수집이 꺼졌다');
+  assert.equal(data.coupangJob.status, 'completed');
 });
 
 test('상세 페이지 로드가 끝나면 저장된 작업을 이어간다', async () => {

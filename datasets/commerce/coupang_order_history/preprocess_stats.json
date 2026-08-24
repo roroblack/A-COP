@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-08-21T11:24:13.156142+00:00",
+  "inputs": {
+    "orders": {
+      "path": "raw/coupang_order_history_20260821_195756.json",
+      "sha256": "a839aea2135a03216baab32c7402c89e71441367ec7c4d9d80a867b7af563c13"
+    },
+    "tracking": {
+      "path": "raw/coupang_tracking_20260821_195756.json",
+      "sha256": "9c991fad4f57eb7f2244aade1b288cdea61f1ecc7fa89755f39066fc09b81bfd"
+    }
+  },
+  "output": {
+    "order_rows": 9,
+    "unique_order_ids": 8,
+    "tracking_rows": 4,
+    "tracking_with_events": 4,
+    "tracking_pre_shipment": 0
+  },
+  "excluded": {
+    "cancelled_tracking_boxes": 3,
+    "tracking_number_missing_boxes": 1
+  }
+}
