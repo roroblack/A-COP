@@ -1,9 +1,102 @@
-# Composer 쓰기 채널 계약 v2
+# Composer 쓰기 채널 계약
 
-`app.composer_staging.composer_service`(`read_current` / `validate_candidate` /
+★2026-08-19: 이 문서는 이제 v2(아래, 지금 sample·cs가 실제로 돌리는 계약)와
+v3(§0, `program/plan/A-COP_Composer_v3_설계_토글전용_UI이관.md`가 설계하고
+사용자가 채택을 확정한 목표 계약) **둘 다** 담는다. v3가 목표 상태이고 v2는
+과도기/레거시다 — 실제 전환 시점(즉시 교체 vs 병행 vs 유지, `program/plan/
+A-COP_Composer_v3_불일치_해소안.md`의 안 A/B/C)은 별도 결정 사항으로 남아
+있다. `acop_composer.service`(`read_current`/`validate_candidate`/
 `apply_candidate`)가 `config/project.yaml`(또는 주입된 대체 경로)을 검증·저장하는
-**유일한** 통로다. `GET /composer/current`, `POST /composer/validate`,
-`POST /composer/apply`가 이 서비스를 HTTP로 노출한다.
+v2의 **유일한** 통로다. `GET /composer/current`, `POST /composer/validate`,
+`POST /composer/apply`(`acop_composer.api`)가 이 서비스를 HTTP로 노출하고,
+`acop_composer.auth`가 `/auth/token`을 담당한다(2026-08-19 이전엔 이 경로가
+`app.composer_staging.composer_service` 등 다른 위치에 있었다 — 지금은 전부
+`acop_composer` 패키지 안에 있다, `docs/handoff/15`).
+
+## §0. v3 — 토글 전용 계약 (목표 상태, 미구현)
+
+★**sample은 이 설계의 구현 대상이 아니다**(`program/plan/A-COP_Composer_v3_
+설계_토글전용_UI이관.md` §3). 아래는 그 문서 §2를 그대로 옮긴 **계약 원문**이다
+— cs(대상 endpoint 구현)와 `final_project_ui`(판단·화면·요청 전송)가 각자
+구현할 때 어긋나지 않도록 여기 한 곳에 canonical 사본을 둔다. 이 절 자체를
+수정하려면 원본 설계 문서를 먼저 고치고 여기에 반영한다 — 반대 방향(여기를
+먼저 고치는 것)은 하지 않는다.
+
+**책임 분배**(원문 §3):
+
+| 프로젝트 | v3 책임 | 하지 않는 것 |
+|---|---|---|
+| `final_project_ui` | 등록 ID·현재 상태를 introspection에서 읽고, 화면에서 판단하며, 최소 토글 요청을 인증해 전송 | Core 계약 모델 import·복제, 대상 파일 직접 쓰기, 대상 Python import |
+| `final_project_cs`(릴리즈 대상) | 등록 ID 확인 → flag 원자적 변경 → 감사 로그를 수행하는 최소 endpoint만 보유하거나 향후 제거 | Composer 화면·판단 로직·전체 선언 검증·Composer 관련 공용 파일 보유 |
+| `final_project_sample` | pip 배포용 basement 소스와 Team 모듈 예제 라이브러리(`examples/`) 제공 | 이번 v3 UI 이관 설계의 구현 대상이 아님 |
+
+### 대상이 제공하는 것 (introspection 확장)
+
+기존 read-only introspection 응답을 확장해 등록 항목의 ID와 현재 상태를 낸다.
+
+```json
+{
+  "contract_version": "introspection.v3",
+  "config_revision": "<content-hash>",
+  "registered_ids": {
+    "modules": ["vector_rag", "graph_store", "a2a_executor", "mcp", "voc", "ops_ui"],
+    "teams": ["order_shipping", "return_exchange"],
+    "ports": ["team_executor", "message_broker", "graph_store"]
+  },
+  "modules": {"vector_rag": {"enabled": true}},
+  "teams": {"order_shipping": {"active": true}},
+  "ports": {"team_executor": {"active": true}}
+}
+```
+
+### UI가 보내는 요청 — `POST /composer/toggle`
+
+```json
+{
+  "target_type": "module",
+  "target_id": "vector_rag",
+  "active": false,
+  "base_revision": "<config_revision>",
+  "reason": "운영 점검 중 임시 비활성화"
+}
+```
+
+`target_type`은 `module`·`team`·`port` 중 하나이고 `target_id`는 응답의
+`registered_ids`에 있어야 한다. 인증은 읽기는 기존 introspection/Composer
+read scope, 쓰기는 `composer:write`를 재사용한다.
+
+### 대상이 처리하는 것 (4단계로 한정)
+
+1. `target_type`·`target_id`를 현재 등록 목록과 대조 — 없으면 거부(422).
+2. `base_revision`이 현재 `config_revision`과 다르면 `409 revision_conflict`.
+3. 해당 등록 항목의 flag만 원자적으로 바꾼다. 전체 `ProjectConfig`를 재구성
+   하지 않는다. 기존 v2의 `os.replace()`·백업 안전장치를 재사용한다.
+4. 요청자·대상 종류·대상 ID·이전/새 상태·revision·사유·결과를 append-only
+   감사 로그(v2와 같은 `var/audit/composer_events.jsonl` 형식 재사용)에 남긴다.
+
+성공 응답: `{"target_type": "...", "target_id": "...", "active": bool,
+"config_revision": "<new-hash>", "audit_id": "..."}`.
+
+### 명시적으로 안 되는 것
+
+새 `implementation_ref` 임의 제출·registry 등록, 등록 목록 자체의 추가/삭제,
+`ProjectConfig`/`TeamManifest`/`ContextPack` 구조 변경, 전체 선언 덮어쓰기,
+UI의 대상 검증 모델 복제. 이 작업들은 코드/배포 변경이 필요한 별도 작업이며
+v3 토글의 범위가 아니다.
+
+### 실행 순서 (원문 §6, 아직 착수 안 됨)
+
+1. ~~대상 endpoint 계약을 확정한다~~ — 이 절로 완료(2026-08-19).
+2. introspection 응답에 `registered_ids`가 이미 있는지 확인, 부족하면 최소
+   확장만 정의(다음 단계, 미착수).
+3. `final_project_cs`에 최소 4단계 endpoint 구현(별도 세션, 미착수).
+4. `final_project_ui`에 토글 화면·판단·요청 어댑터 구현(별도 세션, 미착수).
+5~8. 기존 v2 Composer 화면/코드 정리, 실패 케이스 검증, 릴리즈 대상에서
+   물리적 제거 확인, v2 담당 세션과 최종 명명 대조 — 전부 미착수.
+
+---
+
+## v2 — 전체 선언 검증·적용 계약 (지금 실제로 도는 것)
 
 ★왜 필요한가 — `/ui/composer` HTML 폼은 `composer_ui` 모듈로 끌 수 있다(릴리스 시
 끈다, [[12_introspection_계약]]이 설명하는 것과 같은 이유로 개발자 전용 화면이다).
@@ -170,6 +263,20 @@ append-only DB 테이블로 옮기되 동일한 이벤트 계약을 유지한다
 - 임의 `implementation_ref` import를 폐기하고 registry ID allowlist를 확정했다.
 - final_project_ui는 인증된 Composer API만 호출하고 대상 파일/DB/Python을 직접
   만지지 않는 예외 경계를 문서화할 수 있도록 했다.
+
+### 2026-08-19 — v3(토글 전용) 목표 계약 §0 추가, 옛 모듈 경로 정정
+
+- `program/plan/A-COP_Composer_v3_설계_토글전용_UI이관.md`의 채택이 사용자
+  채팅으로 확정돼, 그 문서 §2(계약 원문)를 이 문서 §0에 canonical 사본으로
+  옮겼다. v3 §6의 1단계("대상 endpoint 계약 확정")를 이걸로 완료 처리한다.
+  2~8단계(introspection 확장, cs 최소 endpoint, ui 화면, 정리)는 **아직
+  착수 안 함** — 각각 별도 세션의 몫이다(cs·`final_project_ui`).
+- 1번 줄의 `app.composer_staging.composer_service`가 실제로 존재하지 않는
+  경로였음을 발견해 정정 — `acop_basement`/`acop_composer` 패키지 분리
+  (v0.3.0, 같은 날) 이후 실제 경로는 `acop_composer.service`/`api`/`auth`다.
+- v2와 v3의 실제 전환 방식(즉시 교체/병행/유지 — `program/plan/
+  A-COP_Composer_v3_불일치_해소안.md`의 안 A/B/C)은 아직 결정 안 됨 —
+  이 문서는 두 계약을 병기할 뿐 전환 시점을 정하지 않는다.
 ## 배포 경계와 운영상 제약
 
 - `_WRITE_LOCK`은 **프로세스 로컬**이다. 배포는 writer 프로세스가 정확히
