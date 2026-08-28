@@ -29,13 +29,15 @@ datasets/<도메인>/<데이터셋명>/
 | `commerce/naver_order_history/` | 네이버 주문·배송 이력, Commerce Ops Pack 전처리용 (크롤링 진행 전, 정규화 파이프라인만 구성) | 팀 내부 네이버 주문내역 크롤러 출력 | 개인 데이터, 재배포 금지 | 진행 중 |
 | `commerce/courier_tracking/` | 공개 택배 조회 페이지에서 단계별 배송 이력을 수집하는 Playwright 어댑터와 결과 스키마 | CJ대한통운·롯데택배·한진택배·로젠택배·우체국택배 공개 조회 페이지 | 택배사별 이용 조건 확인 필요 | 진행 중 |
 | `voc/naver_shopping_sentiment/` | 네이버쇼핑 리뷰 199,908건, 긍정/부정 이분류(별점 3 없음) | [bab2min/corpus](https://github.com/bab2min/corpus) `sentiment/naver_shopping.txt` | Public Domain | 2026-08-20 |
-| `mt/olist_reviews_mt_bench/` | Olist 리뷰 300쌍 기준 번역모델 15종 PT→EN/PT→KO 벤치마크 (둘 다 완료) | [Olist Brazilian E-Commerce](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) (원문) + 팀 내 en-translated(출처 미확인) | CC BY-NC-SA 4.0 (원문) | 2026-08-20 |
+| `mt/olist_reviews_mt_bench/` | Olist 리뷰 300쌍 기준 번역모델 15종 PT→EN/PT→KO(완료) + EN→KO/PT→KO 확장(완료, GPU 서버 재검증으로 Seed-X/HY-MT/MADLAD/NLLB/ke-t5 복구, TranslateGemma-27B(게이트)·opus-mt(어휘사전 결함)만 미해결) | [Olist Brazilian E-Commerce](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) (원문) + 팀 내 en-translated(출처 미확인) | CC BY-NC-SA 4.0 (원문) | 2026-08-20, 확장 2026-08-21, 재검증 2026-08-24 |
 | `voc/aihub_71603_aspect_sentiment/` | 속성기반 감정분석(상품 리뷰, 원천+라벨링 원본 zip, 미압축해제), 63MB | AI Hub `dataSetSn=71603` | R&D 무료(상업 임베드 별도협의) | 2026-08-20 |
 | `voc/aihub_30716_callcenter_qa/` | 민원 콜센터 QA 라벨링데이터만(음성 원천 제외), 83MB | AI Hub `dataSetSn=98`(구 `aidata/30716`) | AI Hub 표준 | 2026-08-20 |
 | `voc/aihub_71844_llm_instruction_tuning/` | 민간 민원상담 LLM instruction tuning용, 원천+라벨링 원본 zip, 209MB | AI Hub `dataSetSn=71844` | AI Hub 표준 | 2026-08-20 |
-| `voc/data_go_kr_consumer_complaints/` | 공정위·한국소비자원 소비자상담 7종(73만/13만/332만/19만/1.7만/50/678건), EUC-KR 인코딩. 자유서술 사건내용+답변 원문은 15098320 하나뿐 | data.go.kr (공정거래위원회·한국소비자원) | 승인 불필요, 이용허락범위 제한 없음 | 2026-08-20 |
+| `voc/data_go_kr_consumer_complaints/` | 공정위·한국소비자원 소비자상담 7종(73만/13만/332만/19만/1.7만/50/678건), EUC-KR 인코딩. 자유서술 사건내용+답변 원문은 15098320 하나뿐. `processed/`에 15090382(678건) 중 배송/이행 53건·반품/환불/교환 89건(중복 49건, 합집합 93건) 분리 완료 | data.go.kr (공정거래위원회·한국소비자원) | 승인 불필요, 이용허락범위 제한 없음 | 2026-08-20, processed 2026-08-21 |
 | `voc/aihub_102_smb_order_qa/` | 소상공인 고객 주문 질의응답, 라벨링데이터만(원본 zip, 미압축해제), 189MB. 원 데이터셋 500만건(백화점·홈쇼핑·e-commerce 콜센터, 감성+인텐트+개체명) | AI Hub `dataSetSn=102` | AI Hub 표준 | 2026-08-20 |
 | `voc/kaggle_customer_support/` | Kaggle 5종(CRM티켓·이커머스리뷰100K·감성데이터셋·IT티켓·KR3 한국음식점리뷰), 463MB. 스키마·번역 재료용, 학습 본체 아님 | Kaggle (각 슬러그는 REPORT.md 참고) | MIT/Apache 2.0/CC BY 4.0 4종 + KR3만 **CC BY-NC-SA 4.0**(비영리 제한) | 2026-08-20 |
+| `voc/ecmc_dispute_casebook_2024/` | 전자거래분쟁조정사례집 PDF(67페이지) 추출. 실제 조정사례 8건 중 B2C 쇼핑몰-고객 관련 2건만 해당(나머지는 C2C 개인간거래) — 대량 데이터 아님, 참고용 | usr.ecmc.or.kr (전자문서·전자거래분쟁조정위원회, KISA) | 공개 게시물, 판권 KISA(무단전재 금지 고지) | 2026-08-21 |
+| `voc/nikl_ne_2022/` | 개체명 분석 말뭉치(NE, 개체 연결 아님) — CSV 3종(428MB)·JSON 3종(1.5GB), 원본 zip 그대로 보관, 미압축해제. REV PII 정규식 recall 실측용, 아직 착수 안 함 | 국립국어원 모두의말뭉치(신청 승인 후 사용자 직접 다운로드) | 모두의말뭉치 표준 이용약관 | 2026-08-23 |
 
 ## 등록된 조사 카탈로그 (raw/processed 없음 — 아직 안 받은 후보 소스 목록)
 
