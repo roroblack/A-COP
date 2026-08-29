@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-24T03:04:17.118087+00:00",
+  "generated_at": "2026-08-29T03:02:53.453482+00:00",
   "inputs": {
     "orders": {
-      "path": "raw/coupang_order_history_20260821_195756.json",
+      "path": "raw/coupang_order_history_20260821_195756_cyw.json",
       "sha256": "a839aea2135a03216baab32c7402c89e71441367ec7c4d9d80a867b7af563c13"
     },
     "tracking": {
-      "path": "raw/coupang_tracking_20260821_195756.json",
+      "path": "raw/coupang_tracking_20260821_195756_cyw.json",
       "sha256": "9c991fad4f57eb7f2244aade1b288cdea61f1ecc7fa89755f39066fc09b81bfd"
     }
   },
