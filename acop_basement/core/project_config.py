@@ -281,7 +281,15 @@ def _cached_load(path: str, mtime_ns: int) -> ProjectConfig:
 
 
 def load_project_config(path: str | Path | None = None) -> ProjectConfig:
-    """Load a declaration; absence and schema errors are never silently defaulted."""
+    """Load a declaration from a **file**; absence and schema errors are never
+    silently defaulted.
+
+    ★중앙 저장소를 포함한 "설정이 정한 출처" 로 읽으려면
+      `acop_basement.application.config_source.load_active_config()` 를 쓴다.
+      그 해석기가 core 가 아니라 application 층에 있는 이유는, core 가
+      `infrastructure`(DB 드라이버)를 import 할 수 없기 때문이다 —
+      `tests/contract/test_core_isolation.py` 가 강제한다.
+    """
     selected = Path(path) if path is not None else DEFAULT_PROJECT_CONFIG
     selected = selected if selected.is_absolute() else (REPO_ROOT / selected)
     try:
@@ -295,5 +303,5 @@ __all__ = [
     "DEFAULT_PROJECT_CONFIG", "ModuleConfig", "PortConfig", "ProjectConfig",
     "ProjectConfigError", "TeamConfig", "KNOWN_IMPLEMENTATION_REFS", "load_project_config",
     "DECLARATIVE_TEAM_REF", "DECLARATIVE_TOOL_PREFIX", "DeclarativeTeamParameters",
-    "config_from_declaration",
+    "config_from_declaration", "configured_store",
 ]
