@@ -1,11 +1,27 @@
 # Composer 쓰기 채널 계약
 
-★2026-08-19: 이 문서는 이제 v2(아래, 지금 sample·cs가 실제로 돌리는 계약)와
-v3(§0, `program/plan/A-COP_Composer_v3_설계_토글전용_UI이관.md`가 설계하고
-사용자가 채택을 확정한 목표 계약) **둘 다** 담는다. v3가 목표 상태이고 v2는
-과도기/레거시다 — 실제 전환 시점(즉시 교체 vs 병행 vs 유지, `program/plan/
-A-COP_Composer_v3_불일치_해소안.md`의 안 A/B/C)은 별도 결정 사항으로 남아
-있다. `acop_composer.service`(`read_current`/`validate_candidate`/
+★2026-08-29 정정 — **v3(토글 전용)는 "전체 대체 계약"이 아니다.** 2026-08-19에
+이 문서가 v3를 "채택 확정된 목표 계약"이라고 적었으나, 그 뒤 사용자 요구가
+"등록된 항목을 켜고 끄기"보다 넓다는 것이 확인됐다 — 운영 화면에서 Team·모듈
+**인스턴스를 이름과 설정만 입력해 만들고 지우는 것**이 실제 요구다
+(`program/plan/A-COP_Composer_범위재검토.md`, Codex 교차검증). 토글만으로는
+그 요구를 충족할 수 없다.
+
+지금 이 저장소의 계약 지형은 셋이다.
+
+| 계약 | 지위 | 엔드포인트 |
+|---|---|---|
+| **카탈로그 기반 CRUD** | ★**정본 관리 계약**(2026-08-28 구현) | `GET /composer/catalog`, `POST /composer/changes` |
+| 토글 | 보조 명령. v3 §2.2 이름 그대로, 저장 경로는 CRUD 와 공유 | `POST /composer/toggle` |
+| v2 전체 선언 적용 | 호환·bulk migration 경로. 제거하지 않는다 | `GET /composer/current`, `POST /composer/validate`, `POST /composer/apply` |
+
+셋 다 **같은** 저장·revision·감사 경로를 쓴다(`acop_composer.service` 의
+`_WRITE_LOCK` → 임시파일 → `os.replace()`). 같은 일을 하는 코드를 두 벌
+만들지 않는다.
+
+아래 §0(v3 원문)은 **UI·cs 가 부를 엔드포인트 이름과 payload 를 맞추기 위한
+계약 사본**으로 계속 유효하다. 다만 "이것이 Composer 전체를 대체한다"는 지위만
+철회한다. `acop_composer.service`(`read_current`/`validate_candidate`/
 `apply_candidate`)가 `config/project.yaml`(또는 주입된 대체 경로)을 검증·저장하는
 v2의 **유일한** 통로다. `GET /composer/current`, `POST /composer/validate`,
 `POST /composer/apply`(`acop_composer.api`)가 이 서비스를 HTTP로 노출하고,
@@ -13,14 +29,25 @@ v2의 **유일한** 통로다. `GET /composer/current`, `POST /composer/validate
 `app.composer_staging.composer_service` 등 다른 위치에 있었다 — 지금은 전부
 `acop_composer` 패키지 안에 있다, `docs/handoff/15`).
 
-## §0. v3 — 토글 전용 계약 (목표 상태, 미구현)
+## §0. v3 토글 계약 (엔드포인트 이름·payload 계약. sample 구현 완료)
 
-★**sample은 이 설계의 구현 대상이 아니다**(`program/plan/A-COP_Composer_v3_
-설계_토글전용_UI이관.md` §3). 아래는 그 문서 §2를 그대로 옮긴 **계약 원문**이다
-— cs(대상 endpoint 구현)와 `final_project_ui`(판단·화면·요청 전송)가 각자
-구현할 때 어긋나지 않도록 여기 한 곳에 canonical 사본을 둔다. 이 절 자체를
-수정하려면 원본 설계 문서를 먼저 고치고 여기에 반영한다 — 반대 방향(여기를
-먼저 고치는 것)은 하지 않는다.
+아래는 `program/plan/A-COP_Composer_v3_설계_토글전용_UI이관.md` §2 를 그대로
+옮긴 **계약 원문**이다 — cs 와 `final_project_ui` 가 각자 구현할 때 어긋나지
+않도록 여기 한 곳에 canonical 사본을 둔다. 이 절 자체를 수정하려면 원본 설계
+문서를 먼저 고치고 여기에 반영한다 — 반대 방향(여기를 먼저 고치는 것)은
+하지 않는다.
+
+★**구현 상태(2026-08-29)**: `POST /composer/toggle` 은 sample 에 구현돼 있다
+(`acop_composer/api.py`). `/changes` 의 `enable`/`disable` 과 **같은 저장·
+revision·감사 경로**를 공유하고, 감사 이벤트만 `composer.toggle` 로 구분된다.
+응답에는 v3 가 정한 필드에 더해 `activation_state` 를 함께 낸다 — 저장됐다고
+이미 떠 있는 런타임이 그 설정으로 도는 것이 아니기 때문이다(아래 "배포 경계"
+절 참고).
+
+★소유권: 2026-08-28 에 `A-COP_Composer_소유권_정정.md` 와
+`final_project_ui/CLAUDE.md` §0.3 이 정정됐다 — **sample 이 UI 가 가져다 쓸
+Composer 판단·요청 로직을 만든다.** 이전 판의 "sample 은 이 설계의 구현
+대상이 아니다" 는 더 이상 유효하지 않다.
 
 **책임 분배**(원문 §3):
 
@@ -28,7 +55,7 @@ v2의 **유일한** 통로다. `GET /composer/current`, `POST /composer/validate
 |---|---|---|
 | `final_project_ui` | 등록 ID·현재 상태를 introspection에서 읽고, 화면에서 판단하며, 최소 토글 요청을 인증해 전송 | Core 계약 모델 import·복제, 대상 파일 직접 쓰기, 대상 Python import |
 | `final_project_cs`(릴리즈 대상) | 등록 ID 확인 → flag 원자적 변경 → 감사 로그를 수행하는 최소 endpoint만 보유하거나 향후 제거 | Composer 화면·판단 로직·전체 선언 검증·Composer 관련 공용 파일 보유 |
-| `final_project_sample` | pip 배포용 basement 소스와 Team 모듈 예제 라이브러리(`examples/`) 제공 | 이번 v3 UI 이관 설계의 구현 대상이 아님 |
+| `final_project_sample` | pip 배포용 basement 소스, Team 모듈 예제 라이브러리(`examples/`), **그리고 UI가 가져다 쓸 Composer 판단·요청 로직**을 만든다 | 대상 제품의 Team 도메인 구현 |
 
 ### 대상이 제공하는 것 (introspection 확장)
 
@@ -84,15 +111,23 @@ read scope, 쓰기는 `composer:write`를 재사용한다.
 UI의 대상 검증 모델 복제. 이 작업들은 코드/배포 변경이 필요한 별도 작업이며
 v3 토글의 범위가 아니다.
 
-### 실행 순서 (원문 §6, 아직 착수 안 됨)
+### 실행 순서 (원문 §6, 진행 상태 2026-08-29)
 
-1. ~~대상 endpoint 계약을 확정한다~~ — 이 절로 완료(2026-08-19).
-2. introspection 응답에 `registered_ids`가 이미 있는지 확인, 부족하면 최소
-   확장만 정의(다음 단계, 미착수).
-3. `final_project_cs`에 최소 4단계 endpoint 구현(별도 세션, 미착수).
-4. `final_project_ui`에 토글 화면·판단·요청 어댑터 구현(별도 세션, 미착수).
-5~8. 기존 v2 Composer 화면/코드 정리, 실패 케이스 검증, 릴리즈 대상에서
-   물리적 제거 확인, v2 담당 세션과 최종 명명 대조 — 전부 미착수.
+1. ~~대상 endpoint 계약을 확정한다~~ — 완료(2026-08-19).
+2. introspection 응답에 `registered_ids` 확장 — **미착수.** cs 의
+   `app/introspection/contract.py` 가 `contract_version`·`config_revision`·
+   `modules`·`ports`·`teams` 는 내지만 `registered_ids` 는 없다(2026-08-24
+   실측). sample 은 카탈로그를 `GET /composer/catalog` 로 따로 낸다 — 두
+   경로를 하나로 맞출지는 UI 착수 때 정한다.
+3. `final_project_cs` 에 최소 endpoint 구현 — **cs 에는 이미 독자 구현이
+   있다**(`app/presentation/api/composer.py`, `/toggle` 포함). 다만 sample
+   패키지를 pip 로 쓰는 것이 아니라 v2 계약을 따로 재구현한 포크다
+   (2026-08-24 실측). 통합 여부는 별도 결정 사항.
+4. `final_project_ui` 에 토글 화면·판단·요청 어댑터 구현 — **미착수.**
+   호출할 서버 쪽은 sample 에 준비됐다(`/catalog`·`/changes`·`/toggle`).
+5~8. 기존 v2 Composer 화면/코드 정리, 릴리즈 대상에서 물리적 제거 확인,
+   최종 명명 대조 — 미착수. ★단 v2 엔드포인트 자체는 **제거하지 않기로**
+   정리됐다(문서 상단 표) — bulk migration 경로로 남긴다.
 
 ---
 

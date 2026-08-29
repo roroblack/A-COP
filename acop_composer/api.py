@@ -84,8 +84,52 @@ class ChangePayload(BaseModel):
     idempotency_key: str | None = None
 
 
+class TogglePayload(BaseModel):
+    """v3 계약(`program/plan/A-COP_Composer_v3_설계_토글전용_UI이관.md` §2.2).
+
+    ★`/changes` 의 `enable`/`disable` 로도 같은 일을 할 수 있다. 그런데도 이
+      엔드포인트를 따로 두는 이유는 **UI 가 부르는 이름이 계약으로 정해져
+      있기** 때문이다(v3 §2.2, `final_project_cs` 도 같은 이름으로 구현). 다만
+      **저장·revision·감사 경로는 `/changes` 와 공유한다** — 같은 일을 하는
+      코드를 두 벌 만들면 한쪽만 고쳐지는 날이 온다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    target_type: Literal["module", "team"]
+    target_id: str = Field(min_length=1)
+    active: bool
+    base_revision: str
+    reason: str = Field(min_length=1)
+
+
 def _error(status: int, code: str, message: str, **extra: Any) -> HTTPException:
     return HTTPException(status_code=status, detail={"error": {"code": code, "message": message, **extra}})
+
+
+@router.post("/toggle")
+def toggle(payload: TogglePayload, request: Request,
+           _principal=Depends(require_composer_scope("composer:write"))) -> dict[str, Any]:
+    """등록된 module/team 의 활성 상태만 바꾼다 — v3 토글 계약."""
+    outcome = _perform_change(
+        request, _principal,
+        ChangePayload(
+            operation="enable" if payload.active else "disable",
+            resource_type=payload.target_type,
+            instance_id=payload.target_id,
+            base_revision=payload.base_revision,
+            reason=payload.reason,
+        ),
+        event_name="composer.toggle")
+    return {
+        "target_type": payload.target_type,
+        "target_id": payload.target_id,
+        "active": payload.active,
+        "config_revision": outcome["desired_revision"],
+        "audit_id": outcome["change_id"],
+        # ★v3 계약에는 없지만 함께 낸다 — 저장됐다고 이미 떠 있는 런타임이 그
+        #   설정으로 도는 것이 아니다. 이 사실을 응답에서 감추지 않는다.
+        "activation_state": outcome["activation_state"],
+    }
 
 
 @router.get("/catalog")
@@ -188,6 +232,12 @@ def changes(payload: ChangePayload, request: Request,
       떠 있는 런타임이 그 설정으로 도는 것이 아니다. "적용 완료" 처럼
       응답하면 그건 조용한 성공 위장이다(`CLAUDE.md` §0.1).
     """
+    return _perform_change(request, _principal, payload)
+
+
+def _perform_change(request: Request, _principal: Any, payload: ChangePayload,
+                    event_name: str = "composer.change") -> dict[str, Any]:
+    """`/changes` 와 `/toggle` 이 공유하는 단일 저장 경로."""
     target = _path(request)
     audit_path = _audit_path(request)
 
@@ -228,7 +278,7 @@ def changes(payload: ChangePayload, request: Request,
     result = {"change_id": str(uuid4()), "desired_revision": applied.revision,
               "activation_state": "pending_restart", "dry_run": False, "errors": []}
     event = {
-        "event": "composer.change", "actor": _principal["sub"], "subject": str(target),
+        "event": event_name, "actor": _principal["sub"], "subject": str(target),
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "operation": payload.operation, "resource_type": payload.resource_type,
         "instance_id": payload.instance_id, "implementation_id": payload.implementation_id,

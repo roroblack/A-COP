@@ -213,6 +213,59 @@ def test_changes_requires_write_scope(config_dir):
     assert response.status_code == 403
 
 
+# ── v3 토글 계약 ─────────────────────────────────────────────────────
+def test_toggle_matches_the_v3_contract_shape(config_dir):
+    """v3 §2.2 가 정한 요청·응답 필드를 그대로 쓴다."""
+    path = _declaration(config_dir)
+    client = _client(path)
+
+    response = client.post("/composer/toggle", headers=_auth(), json={
+        "target_type": "team", "target_id": "feedback_analytics", "active": False,
+        "base_revision": _revision(client), "reason": "점검 중 임시 비활성화"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["target_type"] == "team"
+    assert body["target_id"] == "feedback_analytics"
+    assert body["active"] is False
+    assert body["config_revision"] and body["audit_id"]
+    # ★저장됐다고 런타임이 그 설정으로 도는 것이 아니다 — 감추지 않는다.
+    assert body["activation_state"] == "pending_restart"
+    assert yaml.safe_load(path.read_text(encoding="utf-8"))["teams"][0]["active"] is False
+
+
+def test_toggle_shares_the_revision_guard_with_changes(config_dir):
+    client = _client(_declaration(config_dir))
+    response = client.post("/composer/toggle", headers=_auth(), json={
+        "target_type": "team", "target_id": "feedback_analytics", "active": False,
+        "base_revision": "stale-revision", "reason": "충돌 확인"})
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "revision_conflict"
+
+
+def test_toggle_rejects_targets_that_are_not_declared(config_dir):
+    client = _client(_declaration(config_dir))
+    response = client.post("/composer/toggle", headers=_auth(), json={
+        "target_type": "module", "target_id": "does_not_exist", "active": True,
+        "base_revision": _revision(client), "reason": "미등록 대상"})
+    assert response.status_code == 422
+
+
+def test_toggle_is_recorded_as_its_own_audit_event(config_dir):
+    """`/changes` 와 저장 경로는 같아도 감사에서는 구분돼야 한다."""
+    path = _declaration(config_dir)
+    client = _client(path)
+    client.post("/composer/toggle", headers=_auth(), json={
+        "target_type": "team", "target_id": "feedback_analytics", "active": False,
+        "base_revision": _revision(client), "reason": "감사 확인"})
+
+    events = [json.loads(line) for line in
+              path.with_name("composer_events.jsonl").read_text(encoding="utf-8").splitlines()
+              if line.strip()]
+    assert events[-1]["event"] == "composer.toggle"
+    assert events[-1]["instance_id"] == "feedback_analytics"
+
+
 # ── 스트림 A+B 통합 ──────────────────────────────────────────────────
 def test_declarative_team_created_through_the_api_loads_and_assembles(config_dir):
     """★두 스트림을 잇는 증명 — UI 가 보낸 명령만으로 새 Team 이 생긴다.
