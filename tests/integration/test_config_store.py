@@ -109,8 +109,19 @@ def test_file_store_reports_a_missing_file_instead_of_returning_empty(tmp_path):
 
 
 def test_file_store_leaves_no_temporary_file_behind(tmp_path):
+    """임시 파일은 안 남는다. ★`.bak` 은 임시 파일이 아니라 계약이다
+    (`docs/handoff/13` — 직전 상태 복구용)."""
     path = tmp_path / "project.yaml"
     path.write_text("modules: {}\n", encoding="utf-8")
     FileConfigStore(path).write(DECLARATION, base_revision="a", new_revision="b")
 
-    assert [p.name for p in tmp_path.iterdir()] == ["project.yaml"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["project.yaml", "project.yaml.bak"]
+    assert not list(tmp_path.glob(".project.*")), "staged 임시 파일이 남았다"
+
+
+def test_file_store_keeps_the_previous_content_in_the_backup(tmp_path):
+    path = tmp_path / "project.yaml"
+    path.write_text("modules: {}\n", encoding="utf-8")
+    FileConfigStore(path).write(DECLARATION, base_revision="a", new_revision="b")
+
+    assert path.with_suffix(".yaml.bak").read_text(encoding="utf-8") == "modules: {}\n"

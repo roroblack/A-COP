@@ -22,6 +22,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Protocol
+from uuid import uuid4
 
 import yaml
 
@@ -81,12 +82,22 @@ class FileConfigStore:
         # ★원자적 교체 — 쓰다가 죽어도 원본이 반쪽으로 남지 않는다.
         #   revision 대조는 호출자(`acop_composer.service`)가 잠금 아래에서
         #   이미 했다. 파일 모드는 단일 writer 전제이기 때문이다.
-        staged = self.path.with_name(f".{self.path.stem}.store.{os.getpid()}.yaml")
+        #
+        # ★버그사냥 2026-08-17 (라운드 07) — `os.replace()` 가 실패하면(디스크
+        #   오류·권한 문제) staged 파일이 안 지워지고 남았다. `finally` 로
+        #   정리한다. 성공했으면 이미 옮겨져 없으므로 `missing_ok=True` 가
+        #   조용히 넘어간다.
+        staged = self.path.with_name(f".{self.path.stem}.store.{uuid4().hex}.yaml")
         try:
+            # 직전 상태 복구용 백업(`docs/handoff/13`). 이력·행위자 기록이
+            # 아니므로 감사의 근거로 쓰지 않는다 — 그건 감사 로그가 한다.
+            backup = self.path.with_suffix(self.path.suffix + ".bak")
+            backup.write_bytes(self.path.read_bytes())
+
             staged.write_text(
                 yaml.safe_dump(declaration, sort_keys=False, allow_unicode=True),
                 encoding="utf-8")
-            os.replace(staged, self.path)
+            os.replace(staged, self.path)  # POSIX·Windows 모두 원자적
         finally:
             staged.unlink(missing_ok=True)
 
