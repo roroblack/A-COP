@@ -32,7 +32,7 @@ def central(monkeypatch):
     """중앙 저장소에 이 테스트 전용 대상 하나를 등록한다."""
     deployment_id = "test-central-" + uuid4().hex
     declaration = _repo_declaration()
-    PostgresConfigStore(get_connection, deployment_id).create(declaration, revision="seed")
+    PostgresConfigStore(get_connection, deployment_id).create(declaration)
 
     settings = get_settings()
     monkeypatch.setattr(settings, "config_source", "central")
@@ -71,7 +71,9 @@ def test_central_mode_sees_a_change_made_in_the_store(central):
 
     changed = {**declaration, "modules": {**declaration["modules"],
                                           "graph_store": {"enabled": False}}}
-    store.write(changed, base_revision="seed", new_revision="rev-next")
+    # ★base_revision 은 지금 저장된 내용에서 계산된 값이다. 임의 문자열을 쓰면
+    #   CAS 가 막는다 — 그게 이 설계가 의도한 동작이다(2026-08-30 실측).
+    store.write(changed, base_revision=before, new_revision="rev-next")
 
     after = load_active_config()
     assert after.revision != before

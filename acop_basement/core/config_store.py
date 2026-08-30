@@ -162,12 +162,24 @@ class PostgresConfigStore:
                 f"중앙 저장소에 이 대상의 선언이 없다: {self.deployment_id}")
         raise RevisionMismatch(str(row[0]))
 
-    def create(self, declaration: dict[str, Any], *, revision: str) -> None:
+    def create(self, declaration: dict[str, Any], *, revision: str | None = None) -> None:
         """대상을 처음 등록한다. 이미 있으면 `ConfigStoreError`.
 
         ★관리 화면의 일상 경로가 아니라 **온보딩** 경로다. 실수로 남의 선언을
           덮어쓰지 않도록 갱신과 분리해 둔다.
+
+        ★revision 을 안 주면 **선언 내용에서 계산한다**(2026-08-30). 예전에는
+          호출자가 아무 문자열이나 넣을 수 있었는데, 그 값이 내용과 어긋나면
+          이후 모든 쓰기가 CAS 에서 영구히 409 로 막힌다 — `read` 는 내용에서
+          계산한 revision 을 돌려주는데 `write` 는 컬럼과 대조하기 때문이다.
+          실제로 설정 서비스 테스트에서 이 증상이 났다. 계산 방법은
+          `ProjectConfig.compute_revision` 하나뿐이어야 하므로 그것을 쓴다.
         """
+        if revision is None:
+            from acop_basement.core.project_config import config_from_declaration
+
+            revision = config_from_declaration(
+                declaration, source=f"<create:{self.deployment_id}>").revision
         payload = json.dumps(declaration, ensure_ascii=False)
         with self.connection_factory() as conn:
             with conn.transaction(), conn.cursor() as cur:
