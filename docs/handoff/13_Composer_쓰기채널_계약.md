@@ -20,13 +20,33 @@
 
 ---
 
-## §00. 2026-08-30 — 선언을 어디에 두는가 (중앙 설정 저장소)
+## §00. 2026-08-30 — 두 운영 방식과 선언 저장 위치
 
 정본: `program/plan/A-COP_Composer_중앙설정저장소_결정.md`.
 
 **대상마다의 로컬 파일에서 중앙 저장소로 옮길 수 있게 됐다.** 배포 대상이
 수천 개면 파일 모델이 성립하지 않는다 — 파일을 고치는 코드(Composer)가 대상
 안에 있어야 하는데, 고객 릴리즈에 쓰기 코드를 넣을 수 없기 때문이다.
+
+### 두 방식 — 계약은 하나, 고르는 것은 콘솔
+
+| 방식 | Composer 가 어디 사나 | UI 가 부르는 곳 | 대상 지정 |
+|---|---|---|---|
+| **direct** | 대상 제품에 pip 로 함께 설치 | 그 대상의 `/composer/*` | 필요 없음(대상이 자기 하나) |
+| **central** | **중앙 설정 서비스 한 곳** | `acop_composer.service_app` | `X-Deployment-Id` 헤더 |
+
+★**요청·응답 모양이 같다.** 주소와 헤더 하나만 다르다. 그래서 엔드포인트
+계약(`/catalog`·`/changes`·`/toggle`·v2 3종)은 방식과 무관하게 동일하고,
+전환에 대상 코드도 화면 코드도 바뀌지 않는다.
+
+고르는 주체는 `final_project_ui` 다 — `CONSOLE_COMPOSER_MODE=direct|central`,
+`central` 이면 `CONSOLE_COMPOSER_DEPLOYMENT_ID` 가 필수다. 클라이언트
+(`acop_composer_ui.ComposerClient`)는 `deployment_id` 를 받으면 헤더를 붙이고,
+없으면 붙이지 않는다(`ComposerClient.mode` 로 확인할 수 있다).
+
+★**direct 를 고르면 §2 의 충돌이 그대로 살아난다** — 대상에 쓰기 코드가
+들어간다. 수천 규모에서는 여전히 central 이 답이다. direct 는 대상이 적을
+때(개발·단일 배포·소규모)의 선택지다.
 
 ### 두 가지 저장 모드
 
