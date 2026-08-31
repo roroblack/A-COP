@@ -98,6 +98,10 @@ class CrawlStats:
     new_orders: int = 0
     intervals: int = 0
     duplicates_skipped: int = 0
+    #: ★상세 링크가 하나도 없는 카드. 이런 카드는 아무 기록도 남기지 않고
+    #:  사라진다(안쪽 for 문이 0회 돈다). 세지 않으면 분모가 줄어 "전량 수집"
+    #:  처럼 보인다 — 조용한 스킵을 만들지 않는다.
+    cards_without_link: int = 0
 
 
 class CrawlLogger:
@@ -588,7 +592,20 @@ def crawl(
                     check_authentication(page)
                     card = cards.nth(index)
                     detail_links = card.locator(DETAIL_LINK_SELECTOR)
-                    for link_index in range(detail_links.count()):
+                    link_count = detail_links.count()
+                    if link_count == 0:
+                        # ★이 카드는 여기서 통째로 사라진다. 주문번호는 상세 URL
+                        #   에서만 나오므로(ORDER_ID_PATTERN) 링크가 없으면 그
+                        #   주문을 식별할 방법 자체가 없다. 최소한 몇 건을 못 봤는지는
+                        #   남긴다.
+                        stats.cards_without_link += 1
+                        logger.log(
+                            f"{page_number}페이지 {index + 1}번째 카드에 상세 링크가 "
+                            "없어 주문을 하나도 읽지 못함",
+                            error=True,
+                        )
+                        continue
+                    for link_index in range(link_count):
                         page_order_index += 1
                         try:
                             record, detail_url = extract_list_record(
@@ -805,8 +822,20 @@ def main() -> int:
         f"상세 성공 {stats.detail_success}, 상세 실패 {stats.detail_failure}, "
         f"총 구간 {stats.intervals}, 구간당 평균 수집 {average_per_interval:.1f}건, "
         f"중복으로 건너뛴 건수 {stats.duplicates_skipped}, "
+        f"상세 링크 없는 카드 {stats.cards_without_link}, "
         f"소요 시간 {elapsed:.1f}초"
     )
+    # ★"카드 수 = 주문 링크 수" 이면 **카드마다 주문이 하나만 보인 것**이다.
+    #   화면에 주문이 둘 든 카드가 있어도 링크가 하나뿐이면 나머지는 여기서
+    #   보이지 않는다(주문번호가 상세 URL 에서만 나오기 때문이다). 실제로
+    #   2026-08-20 수집에서 그렇게 4건이 빠졌다 — 그때 로그도 모든 페이지에서
+    #   카드 수와 링크 수가 같았다. 그래서 이 사실을 로그에 남긴다.
+    if stats.cards and stats.cards == stats.order_links:
+        logger.log(
+            "주의: 모든 카드에서 주문 링크가 정확히 1개였다. 한 카드에 주문이 "
+            "여러 개인 경우 나머지는 수집되지 않았을 수 있다 — 계정의 실제 "
+            "주문 수와 대조하기 전에는 '전량 수집'이라고 말할 수 없다."
+        )
     logger.log(f"저장 파일: {output_path}")
     return 0
 
