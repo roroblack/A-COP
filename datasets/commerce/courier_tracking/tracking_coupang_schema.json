@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://a-cop.local/schemas/courier_tracking/tracking_coupang_schema.json",
+  "title": "쿠팡 주문목록 화면에서 수집한 배송 정보",
+  "description": "★네이버 API 조회 결과(tracking_schema.json)와 다른 자료다. 여기 값은 조회 API 응답이 아니라 주문목록/배송조회 화면에서 읽은 것이라, 상태가 enum 이 아니라 화면 문구이고 배송 완료 후에는 이력이 화면에서 사라진다. 두 파일을 합치면 '배송 상태'라는 말의 뜻이 두 가지가 되므로 합치지 않는다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "order_id",
+    "shipment_box_id",
+    "tracking_number",
+    "courier",
+    "status_label",
+    "events",
+    "queried_at",
+    "source"
+  ],
+  "properties": {
+    "order_id": {"type": "string"},
+    "shipment_box_id": {"type": "string"},
+    "tracking_number": {"type": "string"},
+    "courier": {
+      "type": "string",
+      "description": "'로켓배송' · '택배사' 가 실제 값이다. 배송 시작 전 주문은 화면 안내 문구가 그대로 들어오는 경우가 있다(실측 1건)."
+    },
+    "status_label": {
+      "type": "string",
+      "description": "★enum 이 아니다. '8/2(금) 도착' · '배송완료' · '도착일 판매자에게 문의' 같은 화면 문구 그대로다. 네이버 쪽 status 와 같은 이름을 쓰지 않는 이유가 이것이다."
+    },
+    "events": {
+      "type": "array",
+      "description": "화면에 이력이 남아 있는 건에만 있다. 전체의 일부인 것이 정상이다 — 없는 것을 '조회 실패'로 읽지 않는다.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "where", "timeString", "raw"],
+        "properties": {
+          "kind": {"type": "string"},
+          "where": {"type": "string"},
+          "timeString": {"type": "string"},
+          "raw": {"type": "string"}
+        }
+      }
+    },
+    "queried_at": {"type": "string"},
+    "source": {
+      "type": "string",
+      "description": "어느 제출본에서 왔는지. 사람마다 수집 시점과 계정이 달라 섞이면 되돌릴 수 없다."
+    }
+  }
+}
