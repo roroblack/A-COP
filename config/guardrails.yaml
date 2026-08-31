@@ -111,6 +111,10 @@ security:
     - composer:write
     - composer:read
     - composer:validate
+    # ★바뀐 선언을 실행 중인 프로세스에 반영시키는 scope(`POST /admin/reload`).
+    #   composer:write(저장)와 분리한다 — 저장하는 사람과 반영 시점을 정하는
+    #   사람이 같아야 할 이유가 없고, 반영은 살아 있는 트래픽을 건드린다.
+    - ops:reload
   # ★MCP 에는 mcp:read 외 어떤 scope 도 부여하지 않는다
   mcp_allowed_scopes:
     - mcp:read

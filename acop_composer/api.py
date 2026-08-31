@@ -183,6 +183,22 @@ def _error(status: int, code: str, message: str, **extra: Any) -> HTTPException:
     return HTTPException(status_code=status, detail={"error": {"code": code, "message": message, **extra}})
 
 
+def _declaration(config: Any) -> dict[str, Any]:
+    """저장·비교·응답에 쓰는 선언 dict.
+
+    ★코드형 Team 의 `parameters: null` 은 빼고 낸다. 넣어도 뜻은 같지만
+      (`revision` 은 내용 기준이라 흔들리지 않는다), 토글 한 번에 선언 파일마다
+      의미 없는 `parameters: null` 이 한 줄씩 붙어 diff 가 지저분해진다
+      — 2026-08-31 실측에서 실제로 붙는 것을 봤다. 선언형 Team 의 실제
+      `parameters` 는 그대로 남는다.
+    """
+    payload = config.model_dump(mode="json", exclude={"revision"})
+    for team in payload.get("teams") or []:
+        if team.get("parameters") is None:
+            team.pop("parameters", None)
+    return payload
+
+
 @router.post("/toggle")
 def toggle(payload: TogglePayload, request: Request,
            _principal=Depends(require_composer_scope("composer:write"))) -> dict[str, Any]:
@@ -268,12 +284,16 @@ def _apply_change(declaration: dict[str, Any], payload: ChangePayload) -> dict[s
             raise KeyError(f"team '{target}' 이 이미 있다")
         if payload.implementation_id is None:
             raise ValueError("create 에는 implementation_id 가 필요하다")
-        teams.append({
+        created = {
             "team_id": target,
             "active": True if payload.active is None else payload.active,
             "implementation_ref": catalog_mod.ref_for(payload.implementation_id),
-            "parameters": payload.parameters,
-        })
+        }
+        # ★코드형 Team 에는 `parameters` 키를 아예 만들지 않는다 — `_declaration()`
+        #   과 같은 이유다(의미 없는 `parameters: null` 이 선언에 쌓인다).
+        if payload.parameters is not None:
+            created["parameters"] = payload.parameters
+        teams.append(created)
         return result
 
     if index is None:
@@ -320,7 +340,7 @@ def _perform_change(request: Request, _principal: Any, payload: ChangePayload,
         return cached
 
     previous = _read_current(request)
-    declaration = previous.model_dump(mode="json", exclude={"revision"})
+    declaration = _declaration(previous)
 
     try:
         candidate = _apply_change(declaration, payload)
@@ -358,7 +378,7 @@ def _perform_change(request: Request, _principal: Any, payload: ChangePayload,
         "instance_id": payload.instance_id, "implementation_id": payload.implementation_id,
         "previous_revision": previous.revision, "revision": applied.revision,
         "changed_fields": _changed_fields(declaration,
-                                          applied.model_dump(mode="json", exclude={"revision"})),
+                                          _declaration(applied)),
         "reason": payload.reason, "idempotency_key": payload.idempotency_key,
         "correlation_id": result["change_id"], "result": result,
     }
@@ -373,7 +393,7 @@ def _perform_change(request: Request, _principal: Any, payload: ChangePayload,
 def current(request: Request, _principal=Depends(require_composer_scope("composer:read"))) -> dict[str, Any]:
     """지금 파일의 revision·내용. apply 를 보내기 전 base_revision 을 여기서 얻는다."""
     config = _read_current(request)
-    return {"revision": config.revision, "config": config.model_dump(mode="json", exclude={"revision"})}
+    return {"revision": config.revision, "config": _declaration(config)}
 
 
 @router.post("/validate")
@@ -413,7 +433,7 @@ def apply(payload: ApplyPayload, request: Request,
         "event": "composer.apply", "actor": _principal["sub"], "subject": str(subject),
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "previous_revision": previous.revision, "revision": applied.revision,
-        "changed_fields": _changed_fields(previous.model_dump(mode="json", exclude={"revision"}), applied.model_dump(mode="json", exclude={"revision"})),
+        "changed_fields": _changed_fields(_declaration(previous), _declaration(applied)),
         "reason": payload.reason, "correlation_id": str(uuid4()),
     }
     try:

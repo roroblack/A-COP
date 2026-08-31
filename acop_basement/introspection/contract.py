@@ -17,7 +17,14 @@ from __future__ import annotations
 from typing import Any
 
 #: ★형식이 바뀌면 올린다. 대시보드는 이 값으로 호환을 판단한다.
-CONTRACT_VERSION = "1.0"
+#:
+#:  1.1 (2026-08-31) — `active_revision`·`desired_revision`·`reload_state` 추가.
+#:      그 전까지 `config_revision` 하나만 있었는데, 그 값은 **저장소를 다시
+#:      읽어** 계산한 것이라 실행 중인 조립의 revision 이 아니었다. Composer 로
+#:      선언을 바꾸면 대상은 아직 옛 조립으로 처리하는데 화면에는 새 revision 이
+#:      보였다. `config_revision` 은 옛 소비자를 위해 남기되, 이제 **active** 를
+#:      가리킨다(모르면 desired 로 떨어진다).
+CONTRACT_VERSION = "1.1"
 
 
 def _manifest(manifest: Any) -> dict[str, Any]:
@@ -34,15 +41,21 @@ def _manifest(manifest: Any) -> dict[str, Any]:
 
 
 def snapshot(*, config: Any | None = None, registry: Any | None = None,
-             executor: Any | None = None) -> dict[str, Any]:
+             executor: Any | None = None, runtime: Any | None = None) -> dict[str, Any]:
     """버전이 붙은 read-only 조립 스냅샷.
 
     ★API key 원문을 내지 않는다 (설계 원칙 §1).
     ★얻지 못한 값은 **생략하지 않고 `None`** 으로 남긴다 —
       빠뜨린 것과 없는 것을 구분해야 대시보드가 "모름" 을 표시할 수 있다.
+
+    ★`runtime` 을 주면 **실행 중인 조립**의 revision 을 함께 낸다. 안 주면
+      `active_revision` 은 `None`(모름)이다 — 저장소에서 읽은 값을 실행 중인
+      것처럼 적지 않는다. 아래 나머지 필드(모듈·Team·Port)는 지금도 저장소의
+      선언을 읽어 계산한 것이라 **desired 쪽**을 설명한다는 점에 주의한다.
     """
     from app import composition
     from acop_basement.core import settings as settings_module
+    from acop_basement.application import runtime as runtime_module
 
     requested_config = config
     config = config or composition.load_active_config()
@@ -56,9 +69,20 @@ def snapshot(*, config: Any | None = None, registry: Any | None = None,
     guardrails = settings_module.get_guardrails().as_dict()
     manifests = [_manifest(item) for item in registry.manifests()]
 
+    desired_revision = getattr(config, "revision", None)
+    active_revision = getattr(runtime, "active_revision", None) if runtime is not None else None
+    reload_state = (runtime.state(desired_revision) if runtime is not None
+                    else runtime_module.STATE_UNKNOWN)
+
     return {
         "contract_version": CONTRACT_VERSION,
-        "config_revision": getattr(config, "revision", None),
+        # ★옛 소비자를 위해 남긴다. 이제 **실행 중인** revision 을 가리킨다 —
+        #   모르면 desired 로 떨어지므로, 정확히 보려면 아래 두 필드를 읽는다.
+        "config_revision": active_revision or desired_revision,
+        "active_revision": active_revision,
+        "desired_revision": desired_revision,
+        "reload_state": reload_state,
+        "reload_error": getattr(runtime, "last_error", None) if runtime is not None else None,
         "modules": {name: bool(value.enabled) for name, value in config.modules.items()},
         "ports": {
             "team_executor": config.ports.team_executor,

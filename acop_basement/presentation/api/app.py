@@ -2,6 +2,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from acop_basement.application.runtime import ControllerProxy, RuntimeComposition
 from acop_basement.introspection import snapshot
 from acop_basement.presentation.api.cases import build_router
 from acop_basement.presentation.api.outbox import build_router as build_outbox_router
@@ -26,10 +27,21 @@ def create_app(controller=None, classifier=None, composer_write_router=None, com
     if classifier is None:
         from app import composition
         classifier = composition.build_classifier()
+    built_revision = None
     if controller is None:
         from app import composition
-        controller = composition.build_controller()
+        # ★조립에 쓴 선언을 **먼저 손에 쥐고** 그것으로 조립한다. 조립 후에 다시
+        #   읽어서 revision 을 적으면, 그 사이 바뀐 선언의 revision 을 실행 중인
+        #   것으로 잘못 적게 된다(중앙 저장소 모드에서 실제로 가능하다).
+        active_config = composition.load_active_config()
+        built_revision = getattr(active_config, "revision", None)
+        controller = composition.build_controller(config=active_config)
     app = FastAPI(title="A-COP S-API")
+    runtime = RuntimeComposition(controller, built_revision)
+    app.state.runtime = runtime
+    # router 는 프록시를 붙잡는다 — reload 로 갈아 끼워도 옛 Controller 를
+    # 계속 쓰지 않게 한다.
+    controller = ControllerProxy(runtime)
     # A classifier-only override is the legacy test seam.  Explicit controller
     # injection and the configured production path both execute the runtime.
     runtime_controller = controller if injected_controller or getattr(classifier, "__module__", "").startswith("app.composition") else None
@@ -62,7 +74,41 @@ def create_app(controller=None, classifier=None, composer_write_router=None, com
     #   /v1 아래에 두지 않는다 — case 리소스가 아니라 운영 메타데이터다(/health 와 같은 급).
     @app.get("/introspection")
     def introspection(_principal=Depends(require_scope("ops:introspect"))):
-        return snapshot()
+        return snapshot(runtime=runtime)
+
+    # ★설정 변경을 **재기동 없이** 반영한다. 2026-08-19 설계검토는 후보 3
+    #   (재기동 요구)을 골랐지만, 재검토 트리거로 "대상과 Composer 가 같은
+    #   durable config store 를 쓰기로 정해진 때" 를 적어 뒀다. 중앙 설정
+    #   저장소(2026-08-30)가 들어오면서 그 조건이 충족됐다.
+    #
+    #   계약: **새 조립이 전부 성공한 뒤에만** 갈아 끼운다. 실패하면 옛 조립을
+    #   그대로 쓰고 `reload_failed` 를 드러낸다 — 실패를 성공 뒤에 숨기지 않는다.
+    @app.post("/admin/reload")
+    def reload_composition(_principal=Depends(require_scope("ops:reload"))):
+        from app import composition
+        try:
+            desired = composition.load_active_config()
+        except Exception as exc:
+            runtime.mark_failed(None, str(exc))
+            raise HTTPException(status_code=409, detail={"error": {
+                "code": "reload_failed", "message": "선언을 읽지 못했다",
+                "reload_state": "reload_failed",
+                "active_revision": runtime.active_revision}})
+        revision = getattr(desired, "revision", None)
+        try:
+            rebuilt = composition.build_controller(config=desired)
+        except Exception as exc:
+            # 옛 조립은 건드리지 않는다. 반쯤 바뀐 상태를 만들지 않는다.
+            runtime.mark_failed(revision, str(exc))
+            raise HTTPException(status_code=409, detail={"error": {
+                "code": "reload_failed", "message": "새 선언으로 조립하지 못했다",
+                "reload_state": "reload_failed",
+                "active_revision": runtime.active_revision,
+                "desired_revision": revision}})
+        runtime.swap(rebuilt, revision)
+        return {"reload_state": runtime.state(revision),
+                "active_revision": runtime.active_revision,
+                "desired_revision": revision}
 
     # ★Composer 는 이제 acop_basement 소속이 아니다 — "관리용 빌드"만
     #   acop_composer 를 설치하고 이 라우터들을 주입한다. 아무것도 안 주면
