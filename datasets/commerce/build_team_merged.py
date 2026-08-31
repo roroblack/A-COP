@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""팀원 제출본을 네이버 주문 · 쿠팡 주문 · 배송 조회 세 파일로 합쳐 `_dist/` 에 넣는다.
+"""팀원 제출본을 쇼핑몰별로 네 파일로 합쳐 `_dist/` 에 넣는다.
+
+    네이버 주문 · 쿠팡 주문 · 네이버 택배 배송 · 쿠팡 택배 배송
 
     python datasets/commerce/build_team_merged.py
     python datasets/commerce/build_team_merged.py --no-mask   # 가리지 않고 그대로
@@ -49,15 +51,21 @@ COUPANG_ORDERS = [
     ("csw", "coupang_order_history/raw/coupang_order_history_20260828_100851_csw.json"),
     ("scy", "coupang_order_history/raw/쿠팡 크롤링데이터 주문_scy.json"),
 ]
-TRACKING = [
-    ("cyw", "naver", "courier_tracking/raw/_incoming_20260829/naver_tracking_2026-08-20_cyw.jsonl"),
-    ("kjh", "naver", "courier_tracking/raw/_incoming_20260829/naver_tracking_2026-08-21_kjh"),
-    ("csw", "naver", "courier_tracking/raw/_incoming_20260829/naver_tracking_2026-08-28_csw.jsonl"),
-    ("syh", "naver", "courier_tracking/raw/_incoming_20260829/naver_tracking_2026-08-28_syh.jsonl"),
-    ("cyw", "coupang", "courier_tracking/raw/_incoming_20260829/coupang_tracking_20260821_195756_cyw.json"),
-    ("syh", "coupang", "courier_tracking/raw/_incoming_20260829/coupang_tracking_20260823_120424_syh.json"),
-    ("csw", "coupang", "courier_tracking/raw/_incoming_20260829/coupang_tracking_20260828_100851_csw.json"),
-    ("scy", "coupang", "courier_tracking/raw/_incoming_20260829/쿠팡 크롤링데이터 배송_scy.json"),
+#: ★택배 배송은 두 쇼핑몰의 레코드 모양이 다르다. 그래서 한 파일에 담지 않는다.
+#   네이버는 조회 API 응답이라 `courier_code`·`level`·`estimate`·`error` 가 있고,
+#   쿠팡은 자사 배송 데이터라 `shipment_box_id`·`order_id` 가 있다. 섞어 두면
+#   읽는 쪽이 매번 `_platform` 으로 갈라야 하고, 없는 필드를 있는 줄 알고 쓴다.
+NAVER_TRACKING = [
+    ("cyw", "courier_tracking/raw/_incoming_20260829/naver_tracking_2026-08-20_cyw.jsonl"),
+    ("kjh", "courier_tracking/raw/_incoming_20260829/naver_tracking_2026-08-21_kjh"),
+    ("csw", "courier_tracking/raw/_incoming_20260829/naver_tracking_2026-08-28_csw.jsonl"),
+    ("syh", "courier_tracking/raw/_incoming_20260829/naver_tracking_2026-08-28_syh.jsonl"),
+]
+COUPANG_TRACKING = [
+    ("cyw", "courier_tracking/raw/_incoming_20260829/coupang_tracking_20260821_195756_cyw.json"),
+    ("syh", "courier_tracking/raw/_incoming_20260829/coupang_tracking_20260823_120424_syh.json"),
+    ("csw", "courier_tracking/raw/_incoming_20260829/coupang_tracking_20260828_100851_csw.json"),
+    ("scy", "courier_tracking/raw/_incoming_20260829/쿠팡 크롤링데이터 배송_scy.json"),
 ]
 
 #: `기타사항 (…)` 안의 자유입력. 쿠팡이 안 가리는 유일한 자리다.
@@ -154,7 +162,8 @@ def build(stamp: str, do_mask: bool) -> list[tuple[str, Path, int, dict]]:
     for name, spec, fixed in [
         ("team_naver_orders", NAVER_ORDERS, "naver"),
         ("team_coupang_orders", COUPANG_ORDERS, "coupang"),
-        ("team_courier_tracking", TRACKING, None),
+        ("team_naver_tracking", NAVER_TRACKING, "naver"),
+        ("team_coupang_tracking", COUPANG_TRACKING, "coupang"),
     ]:
         rows, stats = collect(spec, fixed)
         out = DIST / ("%s_%s.jsonl" % (name, stamp))
