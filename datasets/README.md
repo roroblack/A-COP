@@ -26,8 +26,8 @@ datasets/<도메인>/<데이터셋명>/
 
 | 경로 | 내용 | 출처 | 라이선스 | 수집일 |
 |---|---|---|---|---|
-| `commerce/naver_order_history/` | 네이버 주문·배송 이력, Commerce Ops Pack 전처리용 (크롤링 진행 전, 정규화 파이프라인만 구성) | 팀 내부 네이버 주문내역 크롤러 출력 | 개인 데이터, 재배포 금지 | 진행 중 |
-| `commerce/courier_tracking/` | 공개 택배 조회 페이지에서 단계별 배송 이력을 수집하는 Playwright 어댑터와 결과 스키마 | CJ대한통운·롯데택배·한진택배·로젠택배·우체국택배 공개 조회 페이지 | 택배사별 이용 조건 확인 필요 | 진행 중 |
+| `commerce/naver_order_history/` | 네이버 주문 이력. **팀원 4명 취합 270건**(cyw 68 · kjh 101 · syh 44 · csw 57), `processed/orders.jsonl` 정규화 완료. 첫 수집분에 4건 누락 결함이 남아 있다 | 팀 내부 네이버 주문내역 크롤러 출력 | 개인 데이터, 재배포 금지 | 2026-08-20~21, 취합·정규화 2026-08-29 |
+| `commerce/courier_tracking/` | 공개 택배 조회 결과와 수집 어댑터. **팀원 5명 제출본이 `raw/_incoming_20260829/`에 있고 아직 합치지 않았다** — 네이버 조회분 질의 238건 중 이력 50건, 쿠팡 배송 제출본 4개는 형식이 달라 별도 처리 필요. `processed/tracking.jsonl`은 첫 수집분 57건 그대로다 | CJ대한통운·롯데택배·한진택배·로젠택배·우체국택배 공개 조회 페이지 | 택배사별 이용 조건 확인 필요 | 2026-08-20~28, 제출본 수령 2026-08-29 |
 | `voc/naver_shopping_sentiment/` | 네이버쇼핑 리뷰 199,908건, 긍정/부정 이분류(별점 3 없음) | [bab2min/corpus](https://github.com/bab2min/corpus) `sentiment/naver_shopping.txt` | Public Domain | 2026-08-20 |
 | `mt/olist_reviews_mt_bench/` | Olist 리뷰 300쌍 기준 번역모델 15종 PT→EN/PT→KO(완료) + EN→KO/PT→KO 확장(완료, GPU 서버 재검증으로 Seed-X/HY-MT/MADLAD/NLLB/ke-t5 복구, TranslateGemma-27B(게이트)·opus-mt(어휘사전 결함)만 미해결) | [Olist Brazilian E-Commerce](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) (원문) + 팀 내 en-translated(출처 미확인) | CC BY-NC-SA 4.0 (원문) | 2026-08-20, 확장 2026-08-21, 재검증 2026-08-24 |
 | `voc/aihub_71603_aspect_sentiment/` | 속성기반 감정분석(상품 리뷰, 원천+라벨링 원본 zip, 미압축해제), 63MB | AI Hub `dataSetSn=71603` | R&D 무료(상업 임베드 별도협의) | 2026-08-20 |
@@ -38,6 +38,23 @@ datasets/<도메인>/<데이터셋명>/
 | `voc/kaggle_customer_support/` | Kaggle 5종(CRM티켓·이커머스리뷰100K·감성데이터셋·IT티켓·KR3 한국음식점리뷰), 463MB. 스키마·번역 재료용, 학습 본체 아님 | Kaggle (각 슬러그는 REPORT.md 참고) | MIT/Apache 2.0/CC BY 4.0 4종 + KR3만 **CC BY-NC-SA 4.0**(비영리 제한) | 2026-08-20 |
 | `voc/ecmc_dispute_casebook_2024/` | 전자거래분쟁조정사례집 PDF(67페이지) 추출. 실제 조정사례 8건 중 B2C 쇼핑몰-고객 관련 2건만 해당(나머지는 C2C 개인간거래) — 대량 데이터 아님, 참고용 | usr.ecmc.or.kr (전자문서·전자거래분쟁조정위원회, KISA) | 공개 게시물, 판권 KISA(무단전재 금지 고지) | 2026-08-21 |
 | `voc/nikl_ne_2022/` | 개체명 분석 말뭉치(NE, 개체 연결 아님) — CSV 3종(428MB)·JSON 3종(1.5GB), 원본 zip 그대로 보관, 미압축해제. REV PII 정규식 recall 실측용, 아직 착수 안 함 | 국립국어원 모두의말뭉치(신청 승인 후 사용자 직접 다운로드) | 모두의말뭉치 표준 이용약관 | 2026-08-23 |
+
+## VOC 전처리 현황 (2026-08-31 실측)
+
+폴더를 세어 확인한 값이다. 문서에 적힌 숫자가 아니라 디스크를 셌다.
+
+| 상태 | 데이터셋 | 크기 |
+|---|---|---:|
+| 전처리 완료 | `naver_shopping_sentiment`, `aihub_30716_callcenter_qa`, `data_go_kr_consumer_complaints`, `ecmc_dispute_casebook_2024`, `nikl_ne_2022` | |
+| **미착수** | `aihub_102_smb_order_qa` | 189MB |
+| **미착수** | `aihub_71603_aspect_sentiment` | 63MB |
+| **미착수** | `aihub_71844_llm_instruction_tuning` | 209MB |
+| **미착수** | `kaggle_customer_support` (안에 5종) | 463MB |
+| | **미착수 합계** | **924MB** |
+
+★계획서에 오래 적혀 있던 "VOC 5종 약 681MB"는 근거를 찾지 못했다. 미착수는 4종이고
+924MB다. `kaggle_customer_support` 하나가 그 안에 5종을 담고 있어서 "5종"이 여기서
+나온 것으로 보인다. 이 표가 정본이다.
 
 ## 등록된 조사 카탈로그 (raw/processed 없음 — 아직 안 받은 후보 소스 목록)
 
