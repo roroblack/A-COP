@@ -39,22 +39,20 @@ datasets/<도메인>/<데이터셋명>/
 | `voc/ecmc_dispute_casebook_2024/` | 전자거래분쟁조정사례집 PDF(67페이지) 추출. 실제 조정사례 8건 중 B2C 쇼핑몰-고객 관련 2건만 해당(나머지는 C2C 개인간거래) — 대량 데이터 아님, 참고용 | usr.ecmc.or.kr (전자문서·전자거래분쟁조정위원회, KISA) | 공개 게시물, 판권 KISA(무단전재 금지 고지) | 2026-08-21 |
 | `voc/nikl_ne_2022/` | 개체명 분석 말뭉치(NE, 개체 연결 아님) — CSV 3종(428MB)·JSON 3종(1.5GB), 원본 zip 그대로 보관, 미압축해제. REV PII 정규식 recall 실측용, 아직 착수 안 함 | 국립국어원 모두의말뭉치(신청 승인 후 사용자 직접 다운로드) | 모두의말뭉치 표준 이용약관 | 2026-08-23 |
 
-## VOC 전처리 현황 (2026-08-31 실측)
+## VOC 전처리 현황 (2026-09-01 실측)
 
 폴더를 세어 확인한 값이다. 문서에 적힌 숫자가 아니라 디스크를 셌다.
 
 | 상태 | 데이터셋 | 크기 |
 |---|---|---:|
-| 전처리 완료 | `naver_shopping_sentiment`, `aihub_30716_callcenter_qa`, `data_go_kr_consumer_complaints`, `ecmc_dispute_casebook_2024`, `nikl_ne_2022` | |
-| **미착수** | `aihub_102_smb_order_qa` | 189MB |
-| **미착수** | `aihub_71603_aspect_sentiment` | 63MB |
-| **미착수** | `aihub_71844_llm_instruction_tuning` | 209MB |
+| 전처리 완료 | `naver_shopping_sentiment`, `aihub_30716_callcenter_qa`, `data_go_kr_consumer_complaints`, `ecmc_dispute_casebook_2024`, `nikl_ne_2022`, `aihub_102_smb_order_qa`, `aihub_71603_aspect_sentiment`, `aihub_71844_llm_instruction_tuning` | |
 | **미착수** | `kaggle_customer_support` (안에 5종) | 463MB |
-| | **미착수 합계** | **924MB** |
+| | **미착수 합계** | **463MB** |
 
-★계획서에 오래 적혀 있던 "VOC 5종 약 681MB"는 근거를 찾지 못했다. 미착수는 4종이고
-924MB다. `kaggle_customer_support` 하나가 그 안에 5종을 담고 있어서 "5종"이 여기서
-나온 것으로 보인다. 이 표가 정본이다.
+★계획서에 오래 적혀 있던 "VOC 5종 약 681MB"는 근거를 찾지 못했다. 이전엔
+미착수 4종·924MB였으나 aihub 3종(102·71603·71844, 461MB)이 2026-09-01
+전처리를 마쳤다(`REPORT.md` 3종, `feat(datasets)` 커밋). 남은 미착수는
+`kaggle_customer_support` 하나(463MB, 안에 5종)뿐이다. 이 표가 정본이다.
 
 ## 등록된 조사 카탈로그 (raw/processed 없음 — 아직 안 받은 후보 소스 목록)
 
