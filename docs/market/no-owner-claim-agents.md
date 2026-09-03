@@ -545,3 +545,69 @@ Google Ads circumventing systems처럼 **사전 경고 없이 즉시 정지되�
 - [Google Play 항소 시한 180일](https://support.google.com/googleplay/android-developer/answer/16659089?hl=en) · [항소에서 이기는 법 — 불확실성 감소, Identity Association 오탐](https://www.12apptester.com/guides/google-play-developer-account-terminated-how-to-appeal-and-win)
 - [쿠팡 정지 사유 미고지 실태](https://leereword.com/%EC%BF%A0%ED%8C%A1-%ED%8C%90%EB%A7%A4%EC%9E%90-%EA%B3%84%EC%A0%95-%EC%A0%95%EC%A7%80-%ED%95%B4%EA%B2%B0-%EB%B0%A9%EB%B2%95%EA%B3%BC-%EC%98%88%EB%B0%A9-%EA%BF%80%ED%8C%81-%EB%AA%A8%EB%91%90-%EC%A0%95/) · [개선계획서 작성 실무](https://blog.refundy.co/%EC%BF%A0%ED%8C%A1-%EA%B3%84%EC%A0%95-%EC%A0%95%EC%A7%80-%EB%8C%80%EC%9D%91-%EB%B0%A9%EB%B2%95-%EA%B0%9C%EC%84%A0%EA%B3%84%ED%9A%8D%EC%84%9C-%EC%9E%91%EC%84%B1-%ED%8C%81-43967)
 - [DSA 제17조 statement of reasons](https://www.eu-digital-services-act.com/Digital_Services_Act_Article_17.html) · [DSA Transparency Database](https://transparency.dsa.ec.europa.eu/?lang=en) · [2026 DSA 집행 원년](https://atlasinstitute.org/dsa-enforcement-is-the-new-regulatory-shock-mapping-the-first-wave-of-platform-risk-in-2026/)
+
+---
+
+# 6라운드: DSA 논거의 관할 범위 검증 (2026-09-03)
+
+## 0. 5라운드 결론 정정
+
+5라운드에서 "DSA Transparency Database가 콜드스타트 해법"이라고 썼다. **절반만 맞다.**
+
+DSA는 **EU에서 서비스를 운영하는 사업자**에게 적용된다. 따라서:
+
+| 플랫폼 | DSA DB에 사유서가 쌓이는가 | 우리에게 쓸모 |
+|---|---|---|
+| 메타·구글·아마존 등 | **O** (EU 이용자 대상 결정 한정) | 사유 코드 체계·문구 패턴 학습 가능 |
+| **쿠팡·네이버·배민** | **X** — EU 서비스가 아니므로 DSA 대상이 아님 | **공개 데이터 전무** |
+
+한국 셀러가 쿠팡에서 정지당한 건은 그 DB에 영원히 안 들어간다. **국내 플랫폼에 대해서는 콜드스타트가 그대로 남아 있다.**
+
+## 1. 그런데 규제 방향 논거는 오히려 강해졌다 — EU만의 이야기가 아니다
+
+### 일본 — 이미 5년째 시행 중
+
+「특정 디지털 플랫폼의 투명성 및 공정성 향상에 관한 법률」(투명화법), **2021년 2월 시행.**
+
+- **거래 거절의 판단 기준을 공개**할 의무
+- 거래 조건 변경 시 **15일 전**, **거래 정지 시 30일 전** 통보 의무
+- 경제산업성이 이행 감시 → 시정 권고·개선 명령 → 불응 시 100만 엔 이하 벌금
+
+**즉 "플랫폼은 사유를 안 알려준다"는 것은 보편 법칙이 아니라 관할의 문제다.** 일본에서는 이미 알려줘야 하고, 5년간 시행됐는데 시장이 무너지지 않았다.
+
+### 한국 — 법안은 있으나 아직 통과 전
+
+「온라인 플랫폼 중개거래의 공정화에 관한 법률안」(이정문 의원안, 정무위 단일안 상정):
+
+- 계약 내용 변경·서비스 제한·중지·계약 해지 시 **해당 내용과 사유를 미리 통보**
+- **서비스 제한·중지 7일 전, 계약 해지 30일 전**
+- 사전통지 의무 위반 행위는 **효력을 부인**
+
+2026년 정부·국회가 플랫폼 규제를 본격화하며 온플법과 배달 수수료 상한제를 함께 추진할 전망이다. 다만 **입법은 여전히 정체 상태**이고, 위 조문은 **발의안 기준이라 최종 법률과 다를 수 있다.**
+
+별도로 대규모유통업법은 2024년 개정 방안으로 **국내 중개거래 매출 100억 원 또는 거래규모 1,000억 원 이상**의 온라인 중개사업자를 적용 대상으로 삼았다(티메프 사태 대응).
+
+### 미국 — 해당 의무 없음 (확인된 범위 내)
+
+## 2. 이 검증이 바꾸는 것 — 진입 순서가 뒤집힌다
+
+3~5라운드에서 나는 쿠팡·네이버를 1순위처럼 다뤘다. **데이터 관점에서는 반대다.**
+
+| 순서 | 타깃 | 이유 |
+|---|---|---|
+| **1순위** | **메타 광고계정 · 구글(Ads / Play)** | ① DSA DB로 사유 체계 콜드스타트를 넘을 수 있는 **유일한** 대상 ② 메타는 `account_status`·`disable_reason`을 API로 노출 ③ Google Play는 "불확실성 감소가 승부처"라는 실무 정설이 공개돼 있음 |
+| 2순위 | 쿠팡·네이버 | 공개 데이터 0. 케이스를 직접 쌓은 뒤에나 가능. 또는 온플법 통과 후 |
+| 워치 | 일본 시장 | 이미 사유 통지가 법적 의무라 **소명 재료가 법으로 보장**된 유일한 시장. 다만 진출 난이도는 별개 |
+
+## 3. 정직한 판정
+
+- **"규제가 사유 공개 방향으로 간다"는 논거는 살아있다.** EU 집행 원년 + 일본 5년 시행 + 한국 발의안 — 세 관할이 같은 방향이다
+- **그러나 한국 규제는 베팅 대상이지 전제가 아니다.** 온플법 통과를 가정하고 제품을 설계하면 안 된다
+- **국내 플랫폼 콜드스타트는 해결되지 않았다.** 5라운드에서 해결됐다고 쓴 것은 과장이었다. 국내는 여전히 직접 수집(커뮤니티 사례 + 대행업자 제휴 + 초기 고객 결과)만이 답이다
+
+## 4. 6라운드 출처
+
+- [DSA 적용 범위 — EU 내 운영 서비스 전체](https://www.zunapro.com/europa/en/blog/digital-services-act-impact-eu-ecommerce) · [DSA 투명성 의무 개관](https://cdt.org/insights/overview-of-transparency-obligations-for-digital-services-in-the-dsa/)
+- [일본 투명화법 정령 시행 — 거래거절 판단기준 공개, 정지 30일 전 통보](https://news.kotra.or.kr/user/globalBbs/kotranews/5/globalBbsDataView.do?setIdx=244&dataIdx=187167) · [투명화법 영문 원문](https://www.japaneselawtranslation.go.jp/en/laws/view/4787/en) · [법제처 연구보고서](https://world.moleg.go.kr/web/wli/rsrchReprtReadPage.do?CTS_SEQ=49127&AST_SEQ=160)
+- [온플법 제정안 입법예고(법제처)](https://www.moleg.go.kr/lawinfo/makingInfo.mo?lawSeq=60857&lawCd=0&lawType=TYPE5&mid=a10104010000) · [온플법 입법 정체와 기업 대응](https://thecodit.com/blog/online-platform-act-preparation) · [2026 플랫폼 규제 본격화 전망](https://www.etnews.com/20251227000019)
+- [대규모유통업법 적용 대상 확대](https://www.korea.kr/news/policyNewsView.do?newsId=148935237) · [공정위 개정방안](https://www.kimchang.com/ko/insights/detail.kc?sch_section=4&idx=30824)
