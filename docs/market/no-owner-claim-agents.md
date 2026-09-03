@@ -366,3 +366,101 @@ L2  Respondent Agent  (기업 대리 에이전트)
 - [공정위, 배민·쿠팡이츠 불공정약관 시정 — 이의제기 절차권 신설](https://www.korea.kr/news/policyNewsView.do?newsId=156722071)
 - [폐업 선결제 피해 987건·2.1억](https://www.ebn.co.kr/news/articleView.html?idxno=1682084) · [요가·필라테스 먹튀 대책](https://www.mt.co.kr/living/2026/07/20/2026072008444041585)
 - [사망 후 디지털 유산 처리 현황](https://onyeojeong.com/blog/digital-legacy) · [테무 한국 고객센터](https://brunch.co.kr/@anaskorea16/989) · [알리 한국어 상담 채널](https://pogus.co.kr/%EC%95%8C%EB%A6%AC%EC%9D%B5%EC%8A%A4%ED%94%84%EB%A0%88%EC%8A%A4-%EA%B3%A0%EA%B0%9D%EC%84%BC%ED%84%B0-%EC%A0%84%ED%99%94-%EC%9D%B4%EB%A9%94%EC%9D%BC/)
+
+---
+
+# 4라운드: 구현 가능성 실사 (2026-09-03)
+
+## 0. 결론 먼저
+
+**인프라 없이 만들 수 있다. 단, 제품의 형태가 기술 제약에 의해 강제된다 — 사후 대행이 아니라 상시 모니터링이어야 한다.**
+
+## 1. 설계를 가르는 단 하나의 선: 읽기 / 쓰기 분리
+
+| | 방법 | 가능성 |
+|---|---|---|
+| **읽기(진단)** | 셀러가 자기 계정에서 **공식 판매자 API 키를 직접 발급**해 우리에게 연결 | **정상 경로. 약관 위반 아님** |
+| **쓰기(제출)** | 이의제기 제출 API는 **어느 플랫폼에도 없다** | 우리는 **소명서 초안까지만** 만들고, 제출은 셀러 본인이 한다 |
+
+브라우저 자동화로 대신 제출하는 설계는 하지 않는다. 약관 위반 소지가 있고, 계정이 걸린 고객에게 계정을 더 위험하게 만드는 짓이다. **이 분리가 인프라 부담과 법적 리스크를 동시에 없앤다.**
+
+## 2. 데이터 4종 난이도
+
+### ① 셀러 본인 데이터 — **쉬움 (확인됨)**
+
+| 플랫폼 | 접근 | 실제 제약 |
+|---|---|---|
+| **쿠팡** | WING에서 **별도 제휴 절차 없이** 판매자가 직접 발급. 업체코드 + Access Key + Secret Key | 사업자 인증 선행, 발급 후 사용까지 최대 24시간, **키 유효기간 6개월 → 재발급 필요** |
+| **네이버 커머스API** | 스토어에서 애플리케이션 등록 → App ID + Secret | **호출 IP 최대 3개 화이트리스트** → 고정 IP 필요(서버리스 불가, 작은 VM 1대면 됨). 신규 스토어는 판매중 상품 1개 이상 |
+| **메타** | Marketing API가 **`account_status`** (1 ACTIVE / 2 DISABLED / 3 UNSETTLED / 7 PENDING_RISK_REVIEW / 8 PENDING_SETTLEMENT / 9 IN_GRACE_PERIOD) 와 **`disable_reason`** 을 노출 | **제재를 프로그램으로 사전 감지 가능.** 단 이의제기 제출은 Account Quality에서 **관리자 본인만** |
+| **배민** | 개인정보위와 함께 **배달 플랫폼 표준 API** 제정, 주문·재고 연동 중심 | **제재·정산보류 관련 필드는 미확인** |
+
+메타의 `PENDING_RISK_REVIEW` / `IN_GRACE_PERIOD`는 그 자체로 제품이다. **정지되기 전에 알려주는 것** — 지금 아무도 안 한다.
+
+### ② 플랫폼 정책 문서 — **쉬움**
+
+전부 공개 URL이다. 쿠팡 판매자 약관(`wing.coupang.com/sc-ui/account/privacy/termsService`), 쿠팡 정책 모음(`coupang.com/np/policies/service`), 쿠팡이츠 사업자 약관, 각 사 운영정책. 정적 수집 후 규칙으로 컴파일하면 된다. 인증도 제휴도 필요 없다.
+
+### ③ 제재 사유 코드 체계 — **중간**
+
+메타는 enum이 공개돼 있다. 쿠팡·네이버는 비공개라, **셀러가 받은 통보 메시지 텍스트를 모아 역설계**해야 한다. 초기 고객 수십 명이면 주요 유형은 잡힌다.
+
+### ④ "어떤 소명이 실제로 통했는가" — **어렵지만 얻을 수 있음. 그리고 이게 진짜 자산이다**
+
+아무도 갖고 있지 않은 데이터다. 세 경로로 모은다.
+
+1. **공개 사례 수집** — 아이보스, 셀러 커뮤니티, 크몽 후기, 법무법인 사례글. 노동집약적이지만 수백 건 규모로 가능
+2. **크몽 대행업자·전문 변호사 제휴** — 그들은 케이스를 갖고 있는데 도구가 없다. 우리는 반대다. 교환 가능
+3. **초기 고객의 결과가 자동으로 라벨이 된다** — 승인/거절이 그대로 정답지다. **A-COP의 `judge`/`eval` 구조가 여기 그대로 들어맞는다.** 시간이 갈수록 복리로 쌓이는 유일한 해자
+
+## 3. 필요한 인프라 총량
+
+| 필요 | 불필요 |
+|---|---|
+| 고정 IP VM 1대 (네이버 IP 화이트리스트용) | 대기업 제휴 |
+| 문서·스냅샷 저장소 | 독점 데이터셋 |
+| LLM API | GPU·특수 인프라 |
+| **월 수십만원 수준** | 플랫폼과의 계약 |
+
+A-COP의 `classify` / `explain` / `guardrails` / `judge·eval`이 그대로 엔진이라 새로 만들 코어가 거의 없다.
+
+## 4. 기술 제약이 제품 형태를 강제한다 — 가장 중요한 발견
+
+**계정이 정지되면 그 계정의 API 키도 함께 죽을 가능성이 높다.** (플랫폼별 실측 필요 — 미확인)
+
+이게 사실이면 **사후 대행 모델은 기술적으로 성립하지 않는다.** 정지된 다음에는 소명에 쓸 데이터를 읽어올 수 없기 때문이다.
+
+따라서 제품은 이렇게 될 수밖에 없다:
+
+```
+평상시  →  API로 계정 상태·판매 이력·정산 내역을 상시 스냅샷 저장
+          + 위험 신호 감지 (메타 PENDING_RISK_REVIEW, 쿠팡 점수 하락 등)
+정지 시  →  이미 저장해둔 스냅샷으로 소명서 생성 → 셀러가 제출
+```
+
+**월 구독이 비즈니스 모델상 유리한 게 아니라, 기술적으로 그것밖에 없다.** 그리고 이 구조는 1회성 리텐션 문제를 저절로 푼다. 3라운드에서 "예방 구독으로 무게를 옮겨야 한다"고 쓴 것이 실사 결과 선택이 아니라 필연으로 확인됐다.
+
+## 5. 남은 미확인 3가지 (전부 로컬에서 실측 가능)
+
+1. **정지된 계정의 API 키가 살아있는가** — 가장 치명적. 쿠팡·네이버·메타 각각 확인 필요
+2. **쿠팡 오픈API가 판매자 점수·노출중지·상품 반려 상태를 노출하는가** — `developers.coupang.com`이 이 실행 환경의 네트워크 정책에 차단돼(EGRESS_BLOCKED) 문서를 열지 못했다. 로컬에서 확인해야 한다
+3. **배민 표준 API에 제재·정산보류 필드가 있는가**
+
+## 6. 4주 MVP 설계
+
+| 주차 | 작업 | 검증 |
+|---|---|---|
+| 1주 | 쿠팡·네이버 API 키를 실제 셀러 계정 1개로 발급, 조회 가능 필드 전수 덤프 | 위 미확인 3가지 해소 |
+| 2주 | 4개 플랫폼 정책 문서 수집 → 제재 사유별 규칙 컴파일 | 통보 메시지 20건을 규칙에 매핑 가능한가 |
+| 3주 | 스냅샷 저장 + 위험 신호 알림. 소명서 초안 생성(A-COP `explain` 재사용) | 셀러 3명이 초안을 실제로 제출할 만하다고 하는가 |
+| 4주 | 실제 정지 케이스 3건에 적용 | 소명 통과 여부 |
+
+**1주차에서 API 키가 안 나오거나 필드가 비면 아이템 전체가 죽는다.** 그러니 1주차가 곧 킬 게이트다.
+
+## 7. 4라운드 출처
+
+- [쿠팡 OPEN API 안내](https://developers.coupang.com/ko/getting-started/coupang-open-api) · [쿠팡 API 키 발급 절차](https://guide.bati.ai/service/api/coupang) · [키 유효기간 6개월·재발급](https://support.cafe24.com/hc/ko/articles/29472295175449-%EC%BF%A0%ED%8C%A1-%EB%A7%88%EC%BC%93-OPEN-API-%ED%82%A4-%EC%9E%AC%EB%B0%9C%EA%B8%89-%EB%8C%80%EC%83%81%EA%B3%BC-%EB%B0%A9%EB%B2%95-%EC%95%8C%EB%A0%A4%EC%A3%BC%EC%84%B8%EC%9A%94)
+- [네이버 커머스API 신청·IP 등록](https://www.sellingkok.com/bbs/board.php?bo_table=guide&wr_id=49) · [스마트스토어 연결 가이드](https://guide.windly.cc/how-to-connect-smartstore)
+- [Meta account_status·disable_reason 모니터링](https://www.auditsocials.com/blog/meta-disabled-ad-account-recovery-2026-account-quality-appeals-review-path) · [Meta 제재 예방 가이드](https://adsinfra.io/guides/prevent-meta-ad-account-restrictions)
+- [쿠팡 판매자 서비스 이용약관](https://wing.coupang.com/sc-ui/account/privacy/termsService) · [쿠팡 정책 모음](https://www.coupang.com/np/policies/service) · [쿠팡이츠 사업자 약관](https://store.coupangeats.com/merchant/app/tnc)
+- [배달 플랫폼 표준 API 제정](https://www.etnews.com/20231114000285) · [배민 API 연동 사례](https://cm.asiae.co.kr/article/2025041414255195356)
