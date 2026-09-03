@@ -235,17 +235,15 @@ def test_create_does_not_relabel_a_transition_bug_as_classification_failure(api_
     충돌을 "분류 실패" 로 보고하면 원인을 못 찾는다(CLAUDE.md §3 "오류 메시지가
     사실을 잘못 전하지 않게 한다"). classifier 는 정상 값을 반환했는데도
     이렇게 된다는 게 핵심 — classifier 문제가 아니라 전이 자체의 버그다."""
-    import acop_basement.presentation.api.cases as cases_module
-    real_transition_case = cases_module.transition_case
-    calls = {"n": 0}
+    # ★2026-09-03 — CLASSIFIED 전이가 `cases.py` 에서
+    #   `acop_basement/application/classification.py` 로 옮겨졌다(코어 1 소유).
+    #   그래서 여기를 patch 한다. 지키려는 성질은 그대로다.
+    import acop_basement.application.classification as classification_module
 
-    def flaky_transition_case(*args, **kwargs):
-        calls["n"] += 1
-        if calls["n"] == 2:  # the CLASSIFIED transition — not the classifier call
-            raise StateConflict("simulated non-classifier transition bug")
-        return real_transition_case(*args, **kwargs)
+    def failing_transition_case(*args, **kwargs):
+        raise StateConflict("simulated non-classifier transition bug")
 
-    monkeypatch.setattr(cases_module, "transition_case", flaky_transition_case)
+    monkeypatch.setattr(classification_module, "transition_case", failing_transition_case)
     app = create_app(classifier=lambda _message: {"intent": "billing", "issue_code": "payment_failed", "sentiment": "negative"})
     # ★raise_server_exceptions=False — 진짜 원인이 앱의 500 핸들러까지 도달하는지
     #   보려는 것이지, pytest 프로세스로 예외가 그대로 새는지 보려는 게 아니다.
@@ -258,9 +256,15 @@ def test_create_does_not_relabel_a_transition_bug_as_classification_failure(api_
     # ★진짜 원인(StateConflict)이 정직하게 500 으로 드러나야 한다 — classifier
     #   실패인 것처럼 201 + classification_failed 로 조용히 넘어가면 안 된다.
     assert response.status_code == 500
+    # ★2026-09-03 — 여기 단언이 바뀌었다. 전에는 `count == 0`(트랜잭션 전체
+    #   롤백)이었다. 분류를 **생성 트랜잭션 밖으로** 빼면서 그 성질을 의도적으로
+    #   버렸다: 롤백되면 고객 문의가 통째로 사라지는데, 남으면 되잡을 수 있다.
+    #   그래서 Case 는 만들어진 채 `classifying` 에 남는다 —
+    #   `classification_sweeper` 가 되잡는 대상이 바로 이것이다.
     with get_connection() as conn, conn.cursor() as cur:
-        cur.execute("SELECT count(*) FROM customer_cases WHERE tenant_id=%s", (api_fixture["tenant"],))
-        assert cur.fetchone()[0] == 0, "실패한 전이가 있으면 트랜잭션 전체가 롤백돼야 한다"
+        cur.execute("SELECT status FROM customer_cases WHERE tenant_id=%s", (api_fixture["tenant"],))
+        assert [row[0] for row in cur.fetchall()] == ["classifying"], (
+            "문의는 남아야 한다 — 롤백하면 고객이 보낸 것이 없던 일이 된다")
 
 
 def _put_case_in_waiting_input(api_fixture, case_id: UUID) -> str:

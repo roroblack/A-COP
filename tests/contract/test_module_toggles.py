@@ -44,24 +44,39 @@ def _config(**overrides) -> ProjectConfig:
 
 
 # ── voc ─────────────────────────────────────────────────────────────────────
-def test_disabled_voc_refuses_the_inline_classifier():
-    """★분류를 건너뛰지 않고 실패한다.
+def test_inline_classification_is_not_gated_by_voc(monkeypatch):
+    """★인라인 분류는 `voc` 소관이 아니다 — 진입·분류 층의 공통 처리다.
 
-    조용히 넘어가면 `intent`·`sentiment` 가 빈 채로 Case 가 만들어지고
-    그 빈 값이 근거 조합을 거쳐 고객 답변까지 간다(`CLAUDE.md` §1).
+    계획서 v7.1 이 그렇게 정했고 v8 §0 표·§7-B 에 그대로 있다. 2026-09-03 에
+    `final_project_cs` 에서 이 정정을 이식했다.
+
+    ★"인라인 분류는 선택 기능이 아니다" 는 여전히 맞다 — 그건 **끌 수 없다**는
+      뜻이지 **voc 소관**이라는 뜻이 아니다. 실행 절차는 코어 1 이 갖는다
+      (`acop_basement/application/classification.py`).
     """
-    with pytest.raises(ProjectConfigError, match="voc.*disabled"):
-        build_classifier(config=_config(voc=False))
+    from acop_basement.core import settings as settings_module
+
+    monkeypatch.setattr(settings_module, "get_settings",
+                        lambda: type("S", (), {"openai_api_key": "sk-test"})())
+    assert callable(build_classifier(config=_config(voc=False)))
 
 
-def test_disabled_voc_refuses_the_daily_batch(monkeypatch):
+def test_the_aggregation_batch_is_not_gated_by_voc(monkeypatch):
+    """★집계·급증 탐지도 코어 1 소유다 (v8 §7 재판정 · §16).
+
+    `voc: false` 는 판단층(Team)과 화면을 끄는 뜻이지 관측을 멈추라는 뜻이
+    아니다 — 멈추면 나중에 판단층을 켰을 때 급증 판정의 기준인 과거 7일
+    시계열이 비어 있고, 그 공백은 되돌릴 수 없다.
+
+    여기서는 **게이트가 없다**는 것만 본다: `ProjectConfigError` 가 아니라
+    날짜 연산에서 TypeError 가 나야 정상이다(DB 접근 단계까지 갔다는 뜻).
+    """
     import acop_basement.application.config_source as config_source
     from acop_basement.application.feedback_job import run_daily_feedback
 
     monkeypatch.setattr(config_source, "load_active_config",
                         lambda *a, **k: _config(voc=False))
-    with pytest.raises(ProjectConfigError, match="voc.*disabled"):
-        # 연결은 쓰이지 않는다 — 게이트가 DB 를 건드리기 전에 막는다.
+    with pytest.raises(TypeError):
         run_daily_feedback(None, report_date=None, tenant_id="demo")
 
 

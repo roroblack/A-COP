@@ -3,10 +3,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import inspect
+import logging
 from typing import Any, Callable
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from acop_basement.application.controller import ControllerError
@@ -16,8 +17,11 @@ from acop_basement.core.transition import transition_case
 from acop_basement.domain.events import EventType
 from acop_basement.infrastructure.db import repository
 from acop_basement.infrastructure.db.session import get_connection
+from acop_basement.application.classification import classify_case
 from acop_basement.application.proposal_guard import audit_payload, describe, recheck_before_execution
 from acop_basement.presentation.security import Principal, masked, require_scope
+
+logger = logging.getLogger(__name__)
 
 Classifier = Callable[[str], dict[str, str]]
 
@@ -69,10 +73,28 @@ def _view(case: dict[str, Any]) -> dict[str, Any]:
             "links": {"self": f"/v1/cases/{case['case_id']}"}}
 
 
+def _run_case_detached(controller: Any, *, tenant_id: str, case_id: UUID, actor_id: str) -> None:
+    """접수 응답을 보낸 **뒤에** 에이전트를 돌린다 (2026-09-03, cs 에서 이식).
+
+    ★왜 뗐나: 접수는 "받았다" 를 빨리 답하는 일이고 처리는 그 뒤의 일이다.
+      그 자리에서 기다리면 에이전트가 느려질 때 **문의를 받는 입구까지** 느려진다.
+
+    ★실패를 삼키지 않는다. 떼어낸 실행은 아무도 안 보므로 조용히 죽기 쉽다 —
+      `exception()` 으로 스택까지 남긴다. Case 는 `routing` 에 남아 보인다.
+    """
+    try:
+        outcome = controller.run_case(tenant_id=tenant_id, case_id=case_id, actor_id=actor_id)
+        if inspect.isawaitable(outcome):
+            asyncio.run(outcome)
+    except Exception:
+        logger.exception("detached run_case failed: tenant=%s case=%s", tenant_id, case_id)
+
+
 def build_router(classifier: Classifier | None = None, controller: Any | None = None) -> APIRouter:
     router = APIRouter()
     @router.post("/v1/cases", status_code=201)
-    def create(request: CreateCase, principal: Principal = Depends(require_scope("case:write"))):
+    def create(request: CreateCase, background: BackgroundTasks,
+               principal: Principal = Depends(require_scope("case:write"))):
         tenant = principal.tenant_id
         idem = idempotency_key(tenant_id=tenant, request_id=request.request_id, action_type="case.create", business_subject=f"{request.customer_id}:{request.message}")
         with get_connection() as conn:
@@ -86,34 +108,27 @@ def build_router(classifier: Classifier | None = None, controller: Any | None = 
                 case_id = repository.create_case(conn, tenant_id=tenant, customer_id=request.customer_id, subject=request.message, state_json={"request_id": request.request_id})
                 transition_case(conn, tenant_id=tenant, case_id=case_id, expected_version=0, event_type=EventType.CREATED,
                                 payload={"channel": request.channel, "message": request.message}, actor_type="api", actor_id=principal.key_id)
-                # ★버그사냥 2026-08-18 (라운드 08) — try 가 classifier() 뿐 아니라
-                #   뒤이은 CLASSIFIED transition_case() 호출까지 감싸고 있었다.
-                #   그 결과 전이 자체의 버그(StateConflict/InvalidTransition)도
-                #   전부 "classification_failed" 로 뭉개졌다 — 상태 충돌을 분류
-                #   실패로 보고하면 원인을 못 찾는다(CLAUDE.md §3). classifier
-                #   호출만 감싼다 — CLASSIFIED 전이 자체의 실패는 있는 그대로
-                #   드러낸다(test_create_does_not_relabel_a_transition_bug_as_classification_failure).
-                try:
-                    result = classifier(masked(request.message)) if classifier else None
-                    if not result or not all(k in result for k in ("intent", "issue_code", "sentiment")):
-                        raise ValueError("classifier unavailable")
-                except Exception:
-                    result = None
-                if result is not None:
-                    transition_case(conn, tenant_id=tenant, case_id=case_id, expected_version=1, event_type=EventType.CLASSIFIED,
-                                    payload=result, actor_type="api", actor_id=principal.key_id)
-                else:
-                    transition_case(conn, tenant_id=tenant, case_id=case_id, expected_version=1, event_type=EventType.CLASSIFICATION_FAILED,
-                                    payload={"failure_code": "classification_failed"}, actor_type="api", actor_id=principal.key_id)
+                # ★분류는 여기서 하지 않는다 — 트랜잭션 **밖**에서 한다
+                #   (2026-09-03, `final_project_cs` 에서 이식). 전에는 이 자리에서
+                #   LLM 을 불렀고, 그러면 커넥션을 잡은 채 외부 provider 를 기다리다
+                #   타임아웃이면 **Case 생성까지 롤백**된다 — 고객 문의가 통째로
+                #   사라진다. v8 §7-A 도 "Case 생성 transaction 밖에서" 로 고쳐졌다.
+                #
+                # ★2026-08-18 (라운드 08) 의 교훈은 그대로 지킨다: classifier 호출만
+                #   감싸고 CLASSIFIED 전이 자체의 실패는 드러낸다. 그 분리는 이제
+                #   `acop_basement/application/classification.py` 안에 있다.
                 repository.create_action_request(conn, tenant_id=tenant, case_id=case_id, action_type="case.create",
                                                 arguments={"request_id": request.request_id}, idempotency_key=idem)
+            # ── 생성 트랜잭션 끝 ──
+            classify_case(conn, tenant_id=tenant, case_id=case_id, text=request.message,
+                          classifier=classifier, actor_id=principal.key_id)
             view = _view(repository.get_case(conn, tenant_id=tenant, case_id=case_id))
         if controller is not None and view["status"] == "routing":
-            outcome = controller.run_case(tenant_id=tenant, case_id=case_id, actor_id=principal.key_id)
-            if inspect.isawaitable(outcome):
-                outcome = asyncio.run(outcome)
-            if isinstance(outcome, dict):
-                view.update({key: value for key, value in outcome.items() if key in {"status", "version", "run_id", "next_action", "resume_token"}})
+            # ★응답을 보낸 **뒤에** 돌린다. 진행은 `GET /v1/cases/{case_id}` 로 본다.
+            #   그래서 응답에 run 관련 필드가 들어가지 않는다 — 있다가 없다가 하는
+            #   필드를 두면 클라이언트가 "없으면 실패" 로 잘못 읽는다.
+            background.add_task(_run_case_detached, controller, tenant_id=tenant,
+                                case_id=case_id, actor_id=principal.key_id)
         return view
 
     @router.get("/v1/cases")

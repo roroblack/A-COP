@@ -31,10 +31,11 @@ from acop_basement.tools.read_tools import ReadToolbox
 def build_classifier(*, config: ProjectConfig | None = None):
     """Build the configured classifier, failing explicitly when unconfigured.
 
-    ★`voc` 모듈이 꺼져 있으면 여기서 실패한다. 인라인 분류가 Case 생성 경로에
-      붙어 있어서, 모듈만 끄고 조용히 넘어가면 `intent`·`sentiment` 가 빈 채로
-      Case 가 만들어지고 그 빈 값이 근거 조합을 거쳐 고객 답변까지 간다
-      (`CLAUDE.md` §1 — 인라인 분류는 선택 기능이 아니다).
+    ★**인라인 분류는 `voc` 모듈 소관이 아니다** — 진입·분류 층의 공통 처리다
+      (계획서 v7.1, v8 §0 표·§7-B). 2026-09-03 에 게이트를 뺐다.
+      "인라인 분류는 선택 기능이 아니다" 는 여전히 맞다 — 그건 **끌 수 없다는
+      뜻이지 voc 소관이라는 뜻이 아니다.** 실행 절차는 코어 1 이 갖는다
+      (`acop_basement/application/classification.py`).
 
     ★단 이 저장소는 `create_app(classifier=...)` 로 분류기를 주입할 수 있다.
       도메인을 갈아 끼우는 저장소라 그 구멍은 의도적으로 열려 있다. 그래서
@@ -44,7 +45,6 @@ def build_classifier(*, config: ProjectConfig | None = None):
     from acop_basement.core.settings import get_settings
 
     config = config or load_active_config()
-    config.require_module("voc", "inline classifier")
     if not get_settings().openai_api_key:
         raise RuntimeError("OpenAI API key is missing")
 

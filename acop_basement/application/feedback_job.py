@@ -36,7 +36,10 @@ def run_daily_feedback(conn: Connection, *, report_date: date, tenant_id: str) -
     """
     from acop_basement.application.config_source import load_active_config
 
-    load_active_config().require_module("voc", "daily feedback analytics job")
+    # ★집계·급증 탐지는 코어 1 소유다 (v8 §7 재판정 · §16). `voc: false` 는
+    #   판단층(Team)과 화면을 끄는 뜻이지 관측을 멈추라는 뜻이 아니다 —
+    #   멈추면 나중에 판단층을 켰을 때 급증 판정의 기준인 과거 7일 시계열이
+    #   비어 있고 그 공백은 되돌릴 수 없다. 2026-09-03 에 게이트를 뺐다.
     start = report_date - timedelta(days=7)
     with conn.cursor() as cur:
         cur.execute(
