@@ -464,3 +464,84 @@ A-COP의 `classify` / `explain` / `guardrails` / `judge·eval`이 그대로 엔�
 - [Meta account_status·disable_reason 모니터링](https://www.auditsocials.com/blog/meta-disabled-ad-account-recovery-2026-account-quality-appeals-review-path) · [Meta 제재 예방 가이드](https://adsinfra.io/guides/prevent-meta-ad-account-restrictions)
 - [쿠팡 판매자 서비스 이용약관](https://wing.coupang.com/sc-ui/account/privacy/termsService) · [쿠팡 정책 모음](https://www.coupang.com/np/policies/service) · [쿠팡이츠 사업자 약관](https://store.coupangeats.com/merchant/app/tnc)
 - [배달 플랫폼 표준 API 제정](https://www.etnews.com/20231114000285) · [배민 API 연동 사례](https://cm.asiae.co.kr/article/2025041414255195356)
+
+---
+
+# 5라운드: "사유를 아무도 안 알려준다" 반론 검증 (2026-09-03)
+
+## 0. 반론
+
+> 정지 사유 확인이 사실상 불가능한 것 아닌가. 구글 같은 데는 그냥 아무도 왜 그런지 안 알려준다.
+
+**맞다. 그리고 이 반론은 4라운드 제품 정의의 절반을 죽인다.**
+
+## 1. 확인된 사실
+
+| 플랫폼 | 실제로 주는 것 |
+|---|---|
+| **Google Ads** | "**무엇이 위반을 유발했는지 구체적 설명이 없고**, 반복 항소에도 계정이 여전히 위반 상태라는 정형 답변만 오며 실행 가능한 안내가 없다." Circumventing systems는 **사전 경고 없이 즉시 정지, 재광고 영구 불가** |
+| **Google Play** | 항소가 반복 거절되며 "최종 결정, 복구 불가" 통보. **2026년 오탐의 주범은 'Identity Association'(연관계정) 플래그.** 2026-01-28부터 **항소 시한 180일**, 거절 후 30일 재심 기회 |
+| **쿠팡** | "정지 사유는 **메일로 간략히 안내**되지만 상세한 이유는 직접 문의해야 파악 가능." 셀러들은 "무엇이 문제인지 모르겠다, **어떤 자료를 제출해야 하는지 알 수 없다**"고 호소 |
+
+정확한 형태는 이렇다. **정책 카테고리는 준다. 그 판단의 근거가 된 사실은 안 준다.** 어뷰징 회피를 막기 위한 의도적 설계이므로 앞으로도 안 준다.
+
+## 2. 이 반론이 죽이는 것
+
+**"AI가 정지 사유를 알아내 드립니다" 제품 — 사망.**
+
+사유를 맞혔는지 검증할 방법이 없다. 정답지가 없으니 우리 판정의 정확도를 측정할 수도, 개선할 수도 없다. 크몽 대행업자와 변호사가 파는 것도 실은 정답이 아니라 경험칙이다. 그 자리를 LLM으로 대체하면 **더 그럴듯하게 틀리는 제품**이 된다.
+
+## 3. 그런데 죽지 않는 것 3개
+
+### ① 승부처는 사유 특정이 아니라 심사자의 불확실성 감소
+
+Google Play 항소 실무의 핵심은 이렇게 정리된다 — **"무슨 일이 있었는지 보여주고, 무엇을 바꿨는지 보여주고, 왜 이 계정이 복구해도 안전한지 입증해 심사자의 불확실성을 줄이면 이긴다."**
+
+즉 소명은 **사유를 맞히는 게임이 아니라 결백을 입증하는 게임**이다. 사유를 몰라도 증거 패킷은 만들 수 있다. 다만 그 증거는 정지 이전 상태의 기록이므로 — **미리 저장해둔 쪽만 만들 수 있다.** 4라운드의 스냅샷 구독 결론과 정확히 같은 지점에서 만난다.
+
+### ② 연관계정(Identity Association) 오탐 — 유일하게 데이터로 반증 가능한 유형
+
+Google Play는 2026년 오탐의 주범으로 이걸 지목했고, 쿠팡에도 **연관계정 영구정지**가 그대로 존재한다. Google Ads의 circumventing systems도 흔한 원인이 "위반 이력이 있는 이메일·계정·웹사이트·IP와의 연관"이다.
+
+이 유형은 **추정이 아니라 반증**이다. 사업자번호, 정산계좌, 접속 IP, 기기, 도메인 소유 이력이 문제 계정과 다르다는 것을 자료로 제시하면 된다. **사유를 몰라도 답변할 수 있는 유일한 유형이고, 동시에 가장 억울하고 가장 치명적인 유형이다.** 제품의 첫 번째 칼날은 여기여야 한다.
+
+### ③ 예방은 사유 추정이 아예 필요 없다
+
+메타 `PENDING_RISK_REVIEW` / `IN_GRACE_PERIOD`, 쿠팡 판매자 점수 하락, 지재권 위험 상품 탐지 — 전부 정지 이전 신호다. 사유 추정과 무관하게 결정론적으로 가치가 있다.
+
+## 4. 콜드스타트 문제의 해법을 찾았다 — DSA Transparency Database
+
+4라운드에서 "어떤 소명이 통했는가 데이터를 아무도 안 갖고 있다"고 썼는데, **틀렸다. 공개 데이터가 존재한다.**
+
+EU 디지털서비스법(DSA) **제17조**는 호스팅 서비스 제공자에게 계정 정지·종료, 수익 지급 중단, 노출 제한 시 **"판단의 근거가 된 사실과 정황(the facts and circumstances relied on)"** 을 명시한 사유서(statement of reasons)를 제공하도록 의무화한다. 그리고 플랫폼은 그 사유서를 **DSA Transparency Database에 거의 실시간으로 제출**해야 한다.
+
+의미하는 바:
+
+1. **EU에서는 "사유를 안 알려주는 것"이 이미 위법이다.** 2026년은 집행 원년으로 글로벌 매출 6% 과징금이 걸려 있다
+2. **같은 플랫폼(메타·구글 등)의 제재 사유 코드 체계와 문구 패턴을 공개 DB에서 역설계할 수 있다.** 한국 셀러 케이스는 아니지만, 분류 체계는 플랫폼 단위로 공유된다
+3. 한국도 흐름이 같다 — 공정위가 2026년 배달앱 약관을 시정해 이의제기 절차권을 신설했다. **규제는 사유 공개 방향으로만 움직인다**
+
+## 5. 수정된 제품 정의
+
+4라운드까지의 정의를 폐기하고 다시 쓴다.
+
+| | 폐기 | 채택 |
+|---|---|---|
+| 이름 | 정지 사유 진단기 | **결백 증거 패킷 생성기** |
+| 핵심 질문 | "왜 정지됐나" | **"이 계정이 안전하다는 것을 무엇으로 보이나"** |
+| 첫 타깃 | 전체 제재 유형 | **연관계정 오탐** — 데이터로 반증 가능한 유일 유형 |
+| 데이터 | 소명 성공 사례(없음) | **평상시 스냅샷 + DSA Transparency DB의 사유 체계** |
+| 성과 지표 | 사유 적중률(측정 불가) | **항소 승인률 + 정지 이전 위험 경보 적중률** |
+
+이 정의는 "아무도 사유를 안 알려준다"는 사실과 충돌하지 않는다. **오히려 그 사실을 전제로 성립한다.**
+
+## 6. 남은 진짜 리스크
+
+Google Ads circumventing systems처럼 **사전 경고 없이 즉시 정지되고 영구 복구가 안 되는 유형**은 예방도 소명도 안 통한다. 이 유형의 비중이 크면 제품 가치가 깎인다. **유형별 비중 실측이 필요하다.**
+
+## 7. 5라운드 출처
+
+- [Google Ads circumventing systems 정지 실태](https://stubgroup.com/blog/how-to-fix-a-circumventing-systems-suspension/) · [구글 공식 정책](https://support.google.com/adspolicy/answer/15938075?hl=en) · [정지 원인 11가지 점검](https://zatomarketing.com/blog/11-things-to-check-google-ads-suspended-circumventing-systems-abusing-ad-network-policy)
+- [Google Play 항소 시한 180일](https://support.google.com/googleplay/android-developer/answer/16659089?hl=en) · [항소에서 이기는 법 — 불확실성 감소, Identity Association 오탐](https://www.12apptester.com/guides/google-play-developer-account-terminated-how-to-appeal-and-win)
+- [쿠팡 정지 사유 미고지 실태](https://leereword.com/%EC%BF%A0%ED%8C%A1-%ED%8C%90%EB%A7%A4%EC%9E%90-%EA%B3%84%EC%A0%95-%EC%A0%95%EC%A7%80-%ED%95%B4%EA%B2%B0-%EB%B0%A9%EB%B2%95%EA%B3%BC-%EC%98%88%EB%B0%A9-%EA%BF%80%ED%8C%81-%EB%AA%A8%EB%91%90-%EC%A0%95/) · [개선계획서 작성 실무](https://blog.refundy.co/%EC%BF%A0%ED%8C%A1-%EA%B3%84%EC%A0%95-%EC%A0%95%EC%A7%80-%EB%8C%80%EC%9D%91-%EB%B0%A9%EB%B2%95-%EA%B0%9C%EC%84%A0%EA%B3%84%ED%9A%8D%EC%84%9C-%EC%9E%91%EC%84%B1-%ED%8C%81-43967)
+- [DSA 제17조 statement of reasons](https://www.eu-digital-services-act.com/Digital_Services_Act_Article_17.html) · [DSA Transparency Database](https://transparency.dsa.ec.europa.eu/?lang=en) · [2026 DSA 집행 원년](https://atlasinstitute.org/dsa-enforcement-is-the-new-regulatory-shock-mapping-the-first-wave-of-platform-risk-in-2026/)
