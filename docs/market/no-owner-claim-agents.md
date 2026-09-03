@@ -708,3 +708,94 @@ DSA는 **EU에서 서비스를 운영하는 사업자**에게 적용된다. 따�
 - [선제 CS 인식 격차 61% vs 33%, AI 처리 30%→50%](https://www.salesforce.com/service/customer-service-trends/) · [선제 지원은 트리거의 체계](https://www.zendesk.com/blog/customer-service/support/proactive-customer-service/)
 - [봇이 사람 트래픽 추월 선언](https://www.forbes.com/sites/josipamajic/2026/06/04/bots-now-outnumber-humans-online-and-the-internet-was-never-built-for-this/) · [에이전트 트래픽 +8,000%](https://www.semrush.com/blog/ai-agent-bot-traffic/) · [Cloudflare CEO 예측보다 18개월 빠름](https://techcrunch.com/2026/03/19/online-bot-traffic-will-exceed-human-traffic-by-2027-cloudflare-ceo-says/embed/)
 - [굿스플로 배송추적 API](https://www.goodsflow.io/api) · [굿스플로 반품 자동화](https://www.goodsflow.com/return) · [스윗트래커 API 문서](https://info.sweettracker.co.kr/apidoc)
+
+---
+
+# 8라운드: 선제 CS 아이템 롱리스트 재탐색 (2026-09-03)
+
+## 1. 롱리스트 8개 → 1차 킬
+
+| # | 아이템 | 판정 | 사유 |
+|---|---|---|---|
+| C1 | **결제 실패 회수(dunning)** — 카드 만료·한도초과로 인한 비자발적 이탈 복구 | **KILL** | **포트원이 재시도·재예약을 기본 기능으로 제공**, 페이플도 정기결제 API 보유. PG 인프라 레이어가 흡수하는 자리다. 게다가 국내에는 '비자발적 이탈'을 분리 집계한 통계조차 없어 **시장 언어부터 만들어야 한다** = 교육비용 과다 |
+| C2 | 셀러 정산 차액 자동 설명 | 생존 → 2차에서 재판정 | |
+| C3 | **AI 답변 사실오류 모니터링** | **강한 생존** | |
+| C4 | 해외직구 통관 지연 선제 대응 | 생존 → 2차에서 재판정 | |
+| C5 | 리뷰 악평 선제 대응 | **KILL** | 리뷰 관리 솔루션 레드오션. 게다가 우리에게 리뷰 삭제 권한이 없다 — 책임주체가 플랫폼에 명확히 있는 영역 |
+| C6 | 렌탈·구독 상품 A/S 선제 | **KILL** | IoT 인프라 필요(인프라 없이 불가), 렌탈사가 이미 자체 운영 |
+| C7 | B2B SaaS 장애 선제 고지 | **KILL** | Statuspage·APM 레드오션 |
+| C8 | 콜센터 인입 예측·인력배치 | **KILL** | WFM 기존 시장이고 구매자가 대기업 콜센터 — 우리 사이즈가 아니다 |
+
+## 2. 생존 3개 심층
+
+### C2 — 셀러 정산 차액 자동 설명
+
+조사에서 나온 반전이 하나 있다. **셀러가 "정산 누락"이라고 느끼는 것의 대부분이 실제 오류가 아니라 이해 불능이다.**
+
+- 구매확정일과 정산 회차 차이 (주정산은 두 번에 나뉘고 월정산은 다음 달 후반)
+- 로켓그로스의 '마진 도둑 5가지' — 광고비 상계, 물류비 구간, 장기 보관료, 반품 비용
+- 정산 보류 사유 — 사업자정보·계좌 불일치, 환불·클레임, 빠른정산 한도 초과, 휴일 환산
+
+즉 제품은 "누락 찾기"가 아니라 **"내 정산금이 왜 이 금액인지 자동 설명"** 이어야 한다. **A-COP의 `explain_billing`이 도메인만 바꿔 그대로 들어간다.**
+
+- **Gap** — 셀러박스는 **마켓별 예정 정산금 조회**까지 한다. 차액 설명·대사는 안 한다. 포트원의 거래대사는 PG↔가맹점 영역이라 셀러↔플랫폼 정산과 다르다
+- **Buyer** — 셀러. 티메프 사태 이후 정산 불안이 크다
+- **Build** — 쿠팡·네이버 판매자 API 자체 발급으로 충분. 인프라 0
+- **약점** — **설명은 돈을 늘려주지 않는다.** 지불의사가 약하다
+
+### C3 — AI 답변 사실오류 모니터링
+
+**Pain** — Moffatt v. Air Canada에서 캐나다 BC 민사재판소는 챗봇이 **지어낸 환불정책을 항공사가 이행하라**고 판결했다. 항공사의 "챗봇은 별개 법인" 항변은 기각됐고, **챗봇의 부정확성이 과실 부실표시(negligent misrepresentation)에 해당**한다고 봤다. 이제 외부 AI가 우리 고객사의 정책을 틀리게 말하면 그건 CS 분쟁이자 법적 리스크다. 그리고 **에이전트가 사람보다 많아질수록 오답의 전파량이 폭증한다.**
+
+**Gap — 이게 핵심이다.** 국내(GPTO, 넥스트티 OptiGEO, 리드젠랩, PION)와 해외(Profound, Scrunch AI, Peec AI, Brand Radar, Semrush) 도구가 **전부 "언급됐는가·몇 번째인가"를 잰다. "맞게 말했는가"를 재는 곳은 없다.** 축이 완전히 다르다. GPTO조차 질문당 5회 반복 호출로 **언급률·순서·맥락**을 기록할 뿐이다. 참고로 AI 노출을 실제로 추적하는 조직은 **14%**에 불과하다(GoodFirms 2026).
+
+- **Buyer** — 정책이 복잡하고 분쟁 비용이 큰 업종(항공·여행·보험·통신·구독). **구매 조직이 마케팅이 아니라 CS·법무**라는 점이 GEO 업체와의 결정적 차이다
+- **Build** — 주요 AI에 질문 세트를 던져 답변 수집 → 고객사 정책 문서와 대조 → 불일치 리포트. **A-COP의 `judge`/`eval`이 정확히 이 구조다.** 제휴 0, 독점 데이터 0, 인프라 0
+- **Business** — 월 구독 (질문 세트 × 엔진 수 × 측정 주기). 구조적으로 반복 매출
+- **리스크** — GEO 업체가 '정확성'을 항목으로 추가하면 잠식된다. 다만 그들은 마케팅 예산에, 우리는 CS·법무 예산에 판다
+
+### C4 — 해외직구 통관 지연 선제 대응
+
+**Build가 만점이다.** 관세청 **화물통관진행정보 오픈API가 공공데이터포털에 공개**돼 있고, UNI-PASS 회원 가입 후 신청하면 쓸 수 있다(3년 이내 데이터). 관세청 오픈API는 월 15억 건이 이용 중이다. **제휴도 계약도 필요 없다.**
+
+지연 사유도 카테고리가 명확하다 — 물류 지연, 개인통관고유부호 명의자와 수취인 불일치, 수입요건 서류 미비.
+
+- **약점** — TAM 미확인(구매대행 셀러 시장 규모를 못 찾았다). 그리고 이건 결국 배송 문의의 하위 집합이다
+
+## 3. 2차 킬
+
+**C4 → 7라운드 A에 흡수.** 별도 제품이 아니다. 국내 배송과 통관은 같은 "사건 감시" 파이프에 얹히는 서로 다른 이벤트 소스일 뿐이다. 다만 **통관 API가 무료 공개라는 사실은 A의 Build 근거를 강화**한다.
+
+**C2 → KILL, 단 A의 사건 유형으로 흡수.** 설명만으로는 지불의사가 약하다. 살리려면 차액 중 실제 오류를 찾아 이의제기까지 가야 하는데, 그건 3~6라운드에서 온보딩 문제로 접은 "플랫폼 상대 소명" 구조로 되돌아가는 것이다. **다만 "정산 사건도 사건이다" — A의 감시 대상에 정산 이벤트를 넣으면 된다.**
+
+## 4. 최종 — 제품 2개
+
+두 개다. 하나가 아니다. 구매자가 다르기 때문이다.
+
+| | **① 사건 우선 CS 런타임** (7라운드 A+B 확장) | **② AI 답변 사실오류 모니터** (C3) |
+|---|---|---|
+| 감시 대상 | **우리 고객사에게 일어나는 사건** — 배송·통관·정산·결제 | **외부 AI가 우리 고객사를 어떻게 말하는지** |
+| 사건 소스 | 배송추적 API, 관세청 오픈API, 셀러 정산 API, 주문 API | ChatGPT·Claude·Gemini·Perplexity 답변 |
+| 구매자 | 셀러·브랜드 운영팀 | **CS·법무** (마케팅 아님) |
+| A-COP 재사용 | classify / propose_refund / guardrails / explain | **judge / eval** |
+| 인프라 | 없음 (통관 API는 공공데이터, 셀러 API는 자체 발급) | 없음 |
+| 수익 | 월 구독 + 처리 건당 | 월 구독 |
+| 최대 리스크 | 채널톡이 주문 이벤트로 진입 | GEO 업체가 정확성 항목 추가 |
+
+**공통점:** 둘 다 "고객이 문의하기 전에 먼저 잡는다"이고, 둘 다 1~7라운드에서 살아남은 같은 엔진(정책 컴파일 → 판정 → 근거 기록) 위에 선다. **②는 에이전트 과잉을 정면으로 이용하는 유일한 아이템이기도 하다** — 에이전트가 많아질수록 오답 전파가 늘고 우리 가치가 커진다.
+
+## 5. 검증 (2주)
+
+1. **②의 오답률 실측** — 국내 브랜드 10곳의 환불·교환 정책을 4개 AI 엔진에 질문 → 실제 정책과 대조해 오답률 산출. **오답률이 10% 미만이면 ② 사망**
+2. 항공·보험·통신 CS/법무 담당 5명 인터뷰: Air Canada형 리스크를 인지하고 있는가, 예산이 있는가
+3. GPTO·넥스트티에 '정확성 측정' 문의 → 로드맵 진입 여부 확인
+4. 관세청 오픈API 실제 신청·호출 (Build 리스크 해소)
+5. 채널톡 알프 릴리스 노트에서 주문 이벤트 기반 선제 발신 추적 (①의 1번 리스크)
+
+## 6. 8라운드 출처
+
+- [포트원 결제 실패 예방·재시도](https://blog.portone.io/prevention_of_payment_incidents/) · [정기결제 실패 복구 원가](https://wepick.kr/insight/subscription-payment-failure-recovery/) · [페이플 정기결제](https://agentic30.app/blog/payple-guide)
+- [쿠팡 로켓그로스 정산·마진 도둑](https://allra.co.kr/blogs/254) · [쿠팡 정산 지연 사유 6가지](https://sajangbu.com/blog/coupang-settlement-delay-reasons) · [네이버 정산 구조](https://www.dashpanda.io/blog/naver-settlement-explained) · [셀러박스](https://www.sellerbox.io/) · [포트원 PG 거래대사](https://blog.portone.io/opi_reconciliation/)
+- [Moffatt v. Air Canada 판례 해설](https://www.mccarthy.ca/en/insights/blogs/techlex/moffatt-v-air-canada-misrepresentation-ai-chatbot) · [ABA — 챗봇 정보에 대한 기업 책임](https://www.americanbar.org/groups/business_law/resources/business-law-today/2024-february/bc-tribunal-confirms-companies-remain-liable-information-provided-ai-chatbot/) · [Manatt 분석](https://www.manatt.com/insights/newsletters/advertising-law/ai-gone-wild-airline-has-to-honor-a-refund-policy)
+- [GPTO — 언급률·순서·맥락 측정](https://www.gpto.kr/guides/how-to-get-mentioned-in-chatgpt) · [넥스트티 AI 브랜드 언급](https://www.next-t.co.kr/blog/geo/ai-%EB%B8%8C%EB%9E%9C%EB%93%9C%EC%96%B8%EA%B8%89%EC%9D%B4%EB%9E%80-%EC%8B%A4%EC%A0%84-%EC%82%AC%EB%A1%80%EC%99%80-%EC%98%81%ED%96%A5%EB%A0%A5-%EB%B6%84%EC%84%9D) · [리드젠랩 AI 브랜드 모니터링](https://lead-gen.team/ai-brand-monitoring/) · [PION — 브랜드 노출 확인법](https://www.getpion.com/blog/check-brand-in-chatgpt-answers)
+- [관세청 화물통관진행정보 오픈API(공공데이터포털)](https://www.data.go.kr/data/15126268/openapi.do) · [관세청 오픈API 안내](https://customs.go.kr/kcs/openApi/view.do) · [유니패스 오픈API 신청 가이드](https://cloudlog.kr/docs/programming/api/unipass-openapi-introduce/) · [월 이용 15억 건 돌파](http://taxtimes.co.kr/news/article.html?no=245469)
