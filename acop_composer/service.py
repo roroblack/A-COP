@@ -33,6 +33,7 @@ import yaml
 from acop_basement.core.config_store import (
     ConfigStore, FileConfigStore, RevisionMismatch,
 )
+from acop_basement.core.revision_store import RevisionStore
 from acop_basement.core.project_config import (
     DEFAULT_PROJECT_CONFIG, KNOWN_IMPLEMENTATION_REFS, ProjectConfig,
     ProjectConfigError, config_from_declaration, load_project_config,
@@ -124,15 +125,25 @@ def validate_candidate(raw: dict[str, Any], *, path: str | Path | None = None,
 def apply_candidate(raw: dict[str, Any], *, base_revision: str,
                     path: str | Path | None = None,
                     store: ConfigStore | None = None,
-                    enforce_registry: bool = False) -> ProjectConfig:
+                    enforce_registry: bool = False,
+                    history: RevisionStore | None = None,
+                    actor: str = "", reason: str = "",
+                    event: str = "apply") -> ProjectConfig:
     """검증에 통과하면 **원자적으로, revision 이 맞을 때만** 쓴다.
 
     ★검증(validate)과 별개로 다시 한다 — 사람이 "검증" 버튼을 누른 뒤 "적용" 을
       누르는 사이에도 남이 파일을 바꿀 수 있다. 여기서 다시 확인한다.
 
+    ★`history` 를 주면 **쓴 직후 같은 잠금 아래에서** 이력을 한 줄 남긴다
+      (D-011, 2026-09-06). 쓰기 경로가 이 함수 하나뿐이라 여기서 한 번만 적으면
+      `/apply`·`/changes`·`/toggle`·`/restore` 전부의 이력이 빠짐없이 남는다.
+      첫 기록이면 **직전 상태를 `baseline` 으로 먼저** 남긴다 — 그래야 첫 변경
+      직후에도 "이전 revision 으로 되돌리기" 가 성립한다.
+
     raises:
         RevisionConflict — 지금 파일의 revision 이 base_revision 과 다르다
         ProjectConfigError — 후보가 유효하지 않다
+        RevisionStoreError — 저장은 됐는데 이력을 못 남겼다(호출부가 500 으로 올린다)
     """
     target_store = _store_for(path, store)
     with _WRITE_LOCK:
@@ -142,7 +153,8 @@ def apply_candidate(raw: dict[str, Any], *, base_revision: str,
         # ★lock 을 잡은 뒤 다시 읽는다 — lock 밖에서 읽은 revision 은 이미 낡았을 수 있다.
         #   ★중앙 저장소에서는 이 프로세스 락만으로 부족하다. 그래서 아래
         #   `store.write()` 가 **저장소에서 조건부로** 다시 검사한다(CAS).
-        current = config_from_declaration(target_store.read(), source="<current>")
+        current_raw = target_store.read()
+        current = config_from_declaration(current_raw, source="<current>")
         if current.revision != base_revision:
             raise RevisionConflict(current.revision)
 
@@ -154,4 +166,33 @@ def apply_candidate(raw: dict[str, Any], *, base_revision: str,
         except RevisionMismatch as exc:
             # 저장소가 최종 판정자다. 위 검사를 통과했어도 그 사이 남이 썼을 수 있다.
             raise RevisionConflict(exc.current_revision) from exc
+        if history is not None:
+            _record_history(history, previous_raw=current_raw, previous_revision=current.revision,
+                            raw=raw, revision=candidate.revision,
+                            actor=actor, reason=reason, event=event)
         return candidate
+
+
+def _record_history(history: RevisionStore, *, previous_raw: dict[str, Any],
+                    previous_revision: str, raw: dict[str, Any], revision: str,
+                    actor: str, reason: str, event: str) -> None:
+    """이력 한 줄. 직전 상태가 이력에 없으면 그것부터 `baseline` 으로 남긴다."""
+    stamp = _utc_now()
+    if history.find(previous_revision) is None:
+        history.append({
+            "revision": previous_revision, "previous_revision": None,
+            "declaration": previous_raw, "actor": "system",
+            "reason": "baseline — 첫 이력 직전의 상태", "event": "baseline",
+            "timestamp": stamp,
+        })
+    history.append({
+        "revision": revision, "previous_revision": previous_revision,
+        "declaration": raw, "actor": actor, "reason": reason, "event": event,
+        "timestamp": stamp,
+    })
+
+
+def _utc_now() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

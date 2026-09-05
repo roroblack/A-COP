@@ -53,6 +53,8 @@ def _cleanup(*deployment_ids: str) -> None:
                             (deployment_id,))
                 cur.execute("DELETE FROM composer_audit_events WHERE deployment_id = %s",
                             (deployment_id,))
+                cur.execute("DELETE FROM project_config_revisions WHERE deployment_id = %s",
+                            (deployment_id,))
 
 
 @pytest.fixture()
@@ -155,3 +157,34 @@ def test_catalog_works_per_deployment(service, deployments):
     assert response.status_code == 200
     ids = {e["implementation_id"] for e in response.json()["implementations"]}
     assert "team.declarative.v1" in ids
+
+
+# ── D-011: 중앙 모드에서도 이력·복원이 대상별로 격리된다 ────────────────
+def test_restore_is_scoped_to_the_deployment(service, deployments):
+    first, second = deployments
+    start = service.get("/composer/current", headers=_headers(first, "composer:read")).json()
+    changed = service.post("/composer/changes", headers=_headers(first), json={
+        "operation": "disable", "resource_type": "module", "instance_id": "vector_rag",
+        "base_revision": start["revision"], "reason": "central history",
+    })
+    assert changed.status_code == 200, changed.text
+    after = changed.json()["desired_revision"]
+
+    # 다른 대상에는 이력이 없다 — first 의 baseline 으로 second 를 되돌릴 수 없다
+    other = service.post("/composer/restore", headers=_headers(second, "composer:admin"), json={
+        "revision": start["revision"], "base_revision": start["revision"], "reason": "cross",
+    })
+    assert other.status_code in (404, 422)
+    assert service.get("/composer/revisions",
+                       headers=_headers(second, "composer:read")).json()["revisions"] == []
+
+    restored = service.post("/composer/restore", headers=_headers(first, "composer:admin"), json={
+        "revision": start["revision"], "base_revision": after, "reason": "undo",
+    })
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["revision"] == start["revision"]
+    now = service.get("/composer/current", headers=_headers(first, "composer:read")).json()
+    assert now["config"]["modules"]["vector_rag"]["enabled"] is True
+    events = [e["event"] for e in service.get(
+        "/composer/revisions", headers=_headers(first, "composer:read")).json()["revisions"]]
+    assert events == ["restore", "change", "baseline"]

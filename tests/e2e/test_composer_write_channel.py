@@ -72,6 +72,8 @@ def _client(path: Path) -> TestClient:
     # ★같은 이유로 audit 경로도 주입한다 — 아니면 이 테스트가 돌 때마다
     #   실제 var/audit/composer_events.jsonl 에 가짜 apply 이벤트가 쌓인다.
     app.state.composer_audit_path = path.with_name("composer_events.jsonl")
+    # ★이력도 같은 이유로 주입한다 — 아니면 var/audit/composer_revisions.jsonl 이 오염된다.
+    app.state.composer_revisions_path = path.with_name("composer_revisions.jsonl")
     return TestClient(app)
 
 
@@ -143,7 +145,7 @@ def test_write_channel_survives_every_html_ui_being_disabled(config_dir):
     assert body["config"]["modules"]["ops_ui"]["enabled"] is False
 
     body["config"]["modules"]["ops_ui"]["enabled"] = True
-    applied = client.post("/composer/apply", headers=_auth(), json={
+    applied = client.post("/composer/apply", headers=_auth("composer:admin"), json={
         "config": body["config"], "base_revision": body["revision"], "reason": "re-enable ops UI",
     })
     assert applied.status_code == 200
@@ -175,7 +177,7 @@ def test_apply_rejects_unimplementable_reference(config_dir):
     current = client.get("/composer/current", headers=_auth("composer:read")).json()
     current["config"]["teams"][0]["implementation_ref"] = "app.nonexistent:Missing"
 
-    response = client.post("/composer/apply", headers=_auth(), json={
+    response = client.post("/composer/apply", headers=_auth("composer:admin"), json={
         "config": current["config"], "base_revision": current["revision"], "reason": "test registry rejection",
     })
 
@@ -217,7 +219,7 @@ def test_concurrent_apply_one_wins_one_gets_409(config_dir):
     results: list = [None, None]
 
     def _apply(index: int, payload: dict) -> None:
-        results[index] = client.post("/composer/apply", headers=_auth(), json={
+        results[index] = client.post("/composer/apply", headers=_auth("composer:admin"), json={
             "config": payload, "base_revision": current["revision"], "reason": "concurrent test",
         })
 
@@ -232,3 +234,115 @@ def test_concurrent_apply_one_wins_one_gets_409(config_dir):
     assert statuses == [200, 409]
     conflict = next(r for r in results if r.status_code == 409)
     assert conflict.json()["error"]["code"] == "revision_conflict"
+
+
+# ── D-011 (2026-09-06): 통째 교체는 관리자 도구, 되돌리기는 이력에서 ────────
+def test_apply_needs_admin_scope_write_is_not_enough(config_dir):
+    """★운영자 scope(`composer:write`)로는 선언 전체를 갈아끼울 수 없다.
+
+    항목 하나 단위(`/toggle`·`/changes`)만 운영자 것이고, 전체 교체는 설치·복원·
+    이관용 관리자 도구다. 두 운영자가 전체본을 동시에 보내면 한쪽이 남의 변경을
+    덮거나 항상 409 로 튕긴다."""
+    path = _declaration(config_dir)
+    before = path.read_bytes()
+    client = _client(path)
+    current = client.get("/composer/current", headers=_auth("composer:read")).json()
+
+    response = client.post("/composer/apply", headers=_auth("composer:write"), json={
+        "config": current["config"], "base_revision": current["revision"], "reason": "should be denied",
+    })
+
+    assert response.status_code == 403
+    assert path.read_bytes() == before
+
+
+def test_every_write_leaves_history_and_restore_returns_the_previous_content(config_dir):
+    """★첫 변경 직후에도 되돌릴 수 있어야 한다 — 직전 상태가 `baseline` 으로 먼저 남는다.
+
+    복원은 이력을 되감는 것이 아니라 **앞으로 한 칸 더 가는 새 적용**이다. 그래서
+    복원 뒤 이력은 한 줄 더 늘고, 내용 해시인 revision 은 원래 값으로 돌아온다."""
+    path = _declaration(config_dir, ops_ui_enabled=False)
+    client = _client(path)
+    start = client.get("/composer/current", headers=_auth("composer:read")).json()
+
+    # 1) /changes 로 항목 하나 바꾼다 — 운영자 경로도 이력을 남겨야 한다
+    changed = client.post("/composer/changes", headers=_auth("composer:write"), json={
+        "operation": "enable", "resource_type": "module", "instance_id": "ops_ui",
+        "base_revision": start["revision"], "reason": "turn ops UI on",
+    })
+    assert changed.status_code == 200, changed.text
+    after_change = changed.json()["desired_revision"]
+    assert after_change != start["revision"]
+
+    history = client.get("/composer/revisions", headers=_auth("composer:read")).json()
+    assert history["current_revision"] == after_change
+    events = [(e["event"], e["revision"]) for e in history["revisions"]]
+    assert events == [("change", after_change), ("baseline", start["revision"])]
+    assert all("declaration" not in e for e in history["revisions"]), "전문은 내보내지 않는다"
+
+    # 2) baseline 으로 되돌린다 — 파일 내용이 원래대로, revision 도 원래 값
+    restored = client.post("/composer/restore", headers=_auth("composer:admin"), json={
+        "revision": start["revision"], "base_revision": after_change, "reason": "undo",
+    })
+    assert restored.status_code == 200, restored.text
+    body = restored.json()
+    assert body["applied"] is True
+    assert body["revision"] == start["revision"]
+    assert body["restored_from"] == start["revision"]
+    assert body["previous_revision"] == after_change
+    declaration = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert declaration["modules"]["ops_ui"]["enabled"] is False
+
+    history = client.get("/composer/revisions", headers=_auth("composer:read")).json()
+    assert [e["event"] for e in history["revisions"]] == ["restore", "change", "baseline"]
+    assert history["revisions"][0]["previous_revision"] == after_change
+
+    # 3) 감사에도 남는다 — 무엇으로부터 되돌렸는지까지
+    audit_lines = path.with_name("composer_events.jsonl").read_text(encoding="utf-8").splitlines()
+    last = __import__("json").loads(audit_lines[-1])
+    assert last["event"] == "composer.restore"
+    assert last["restored_from"] == start["revision"]
+
+
+def test_restore_needs_admin_scope(config_dir):
+    path = _declaration(config_dir)
+    client = _client(path)
+    current = client.get("/composer/current", headers=_auth("composer:read")).json()
+    response = client.post("/composer/restore", headers=_auth("composer:write"), json={
+        "revision": "whatever", "base_revision": current["revision"], "reason": "denied",
+    })
+    assert response.status_code == 403
+
+
+def test_restore_unknown_revision_is_404_and_stale_base_is_409(config_dir):
+    """★이력에 없는 내용은 이 경로로 들어올 수 없다(404). 그리고 되돌리기도
+    다른 변경과 경쟁한다 — base_revision 이 낡았으면 409 다."""
+    path = _declaration(config_dir)
+    client = _client(path)
+    current = client.get("/composer/current", headers=_auth("composer:read")).json()
+
+    missing = client.post("/composer/restore", headers=_auth("composer:admin"), json={
+        "revision": "no-such-revision", "base_revision": current["revision"], "reason": "x",
+    })
+    assert missing.status_code == 404
+    assert missing.json()["error"]["code"] == "revision_not_found"
+
+    # 이력을 하나 만든다
+    toggled = client.post("/composer/toggle", headers=_auth("composer:write"), json={
+        "target_type": "module", "target_id": "vector_rag", "active": False,
+        "base_revision": current["revision"], "reason": "make history",
+    })
+    assert toggled.status_code == 200, toggled.text
+
+    stale = client.post("/composer/restore", headers=_auth("composer:admin"), json={
+        "revision": current["revision"], "base_revision": "stale", "reason": "undo",
+    })
+    assert stale.status_code == 409
+    assert stale.json()["error"]["code"] == "revision_conflict"
+
+    same = client.post("/composer/restore", headers=_auth("composer:admin"), json={
+        "revision": toggled.json()["config_revision"],
+        "base_revision": toggled.json()["config_revision"], "reason": "noop",
+    })
+    assert same.status_code == 422
+    assert same.json()["error"]["code"] == "already_at_revision"

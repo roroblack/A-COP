@@ -32,6 +32,9 @@ from acop_basement.infrastructure.db.session import get_connection
 from acop_basement.core.config_store import (
     ConfigStore, ConfigStoreError, FileConfigStore, PostgresConfigStore,
 )
+from acop_basement.core.revision_store import (
+    FileRevisionStore, PostgresRevisionStore, RevisionStore, RevisionStoreError,
+)
 from acop_composer import catalog as catalog_mod
 from acop_composer.service import RevisionConflict, apply_candidate, read_current, validate_candidate
 from acop_basement.core.project_config import DEFAULT_PROJECT_CONFIG, ProjectConfigError
@@ -108,6 +111,23 @@ def _read_current(request: Request):
         raise _error(404, "deployment_not_registered", str(exc)) from exc
 
 
+def _revision_store(request: Request) -> RevisionStore:
+    """선언 이력을 어디에 남기는가 — 주입된 저장소, 중앙, 그다음 파일.
+
+    ★감사(`_audit_store`)와 같은 선택 규칙이다. 설정이 중앙이면 이력도 중앙에
+      있어야 복원이 중앙에서 된다. 파일 모드는 선언 파일 곁의 JSONL 이다.
+    """
+    injected = getattr(request.app.state, "composer_revision_store", None)
+    if injected is not None:
+        return injected
+    if (getattr(request.app.state, "multi_deployment", False)
+            or get_settings().config_source == "central"):
+        return PostgresRevisionStore(get_connection, _deployment_id(request))
+    default = Path(__file__).resolve().parents[3] / "var" / "audit" / "composer_revisions.jsonl"
+    selected = getattr(request.app.state, "composer_revisions_path", default)
+    return FileRevisionStore(Path(selected))
+
+
 def _audit_store(request: Request) -> AuditStore:
     """감사 이벤트를 어디에 남기는가 — 주입된 저장소, 설정, 그다음 파일.
 
@@ -136,6 +156,20 @@ class CandidatePayload(BaseModel):
 class ApplyPayload(CandidatePayload):
     #: ★적용 직전에 서버가 다시 확인한다. 이게 없으면 "마지막에 쓴 사람이 이긴다" 가
     #:   조용히 일어난다 — 남이 그 사이 바꾼 걸 알아채지 못하고 덮어쓴다.
+    base_revision: str
+    reason: str = Field(min_length=1)
+
+
+class RestorePayload(BaseModel):
+    """이력의 revision 하나로 되돌린다 (D-011, 2026-09-06).
+
+    ★"예전 설정 전체를 던져 넣기" 가 아니다 — 서버가 이력에서 그 revision 의
+      선언을 꺼내 **새 revision 으로 다시 적용**한다. 그래서 UI 는 선언 구조를
+      몰라도 되고, 이력에 없는 내용은 이 경로로 들어올 수 없다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    revision: str = Field(min_length=1)
     base_revision: str
     reason: str = Field(min_length=1)
 
@@ -361,13 +395,19 @@ def _perform_change(request: Request, _principal: Any, payload: ChangePayload,
 
     try:
         applied = apply_candidate(candidate, base_revision=payload.base_revision,
-                                  store=config_store, enforce_registry=True)
+                                  store=config_store, enforce_registry=True,
+                                  history=_revision_store(request), actor=_principal["sub"],
+                                  reason=payload.reason,
+                                  event="toggle" if event_name == "composer.toggle" else "change")
     except RevisionConflict as exc:
         raise _error(409, "revision_conflict",
                      "다른 변경이 먼저 적용됐다. 최신 구성을 다시 읽고 다시 시도하라.",
                      current_revision=exc.current_revision) from exc
     except ProjectConfigError as exc:
         raise _error(422, "invalid_declaration", str(exc)) from exc
+    except RevisionStoreError as exc:
+        raise _error(500, "history_failure",
+                     "change was applied but revision history recording failed") from exc
 
     result = {"change_id": str(uuid4()), "desired_revision": applied.revision,
               "activation_state": "pending_restart", "dry_run": False, "errors": []}
@@ -414,14 +454,71 @@ def validate(payload: CandidatePayload, request: Request,
 
 @router.post("/apply")
 def apply(payload: ApplyPayload, request: Request,
-         _principal=Depends(require_composer_scope("composer:write"))) -> dict[str, Any]:
-    """검증 통과 + revision 일치 시에만 **원자적으로** 쓴다."""
+         _principal=Depends(require_composer_scope("composer:admin"))) -> dict[str, Any]:
+    """선언 **전체**를 검증 통과 + revision 일치 시에만 원자적으로 쓴다.
+
+    ★scope 가 `composer:write` 가 아니라 **`composer:admin`** 이다 (D-011,
+      2026-09-06). 운영자 화면은 항목 하나 단위(`/toggle`·`/changes`)만 쓴다.
+      전체를 갈아끼우는 이 경로는 **처음 설치·복원·환경 간 이관** 용이라
+      관리자에게만 열고, 운영 UI 에는 버튼을 두지 않는다 — 두 운영자가 전체본을
+      동시에 보내면 한쪽이 남의 변경을 덮거나 항상 409 로 튕긴다.
+    """
+    return _apply_whole(request, _principal, payload.config, base_revision=payload.base_revision,
+                        reason=payload.reason, event="composer.apply", history_event="apply")
+
+
+@router.get("/revisions")
+def revisions(request: Request, limit: int = 50,
+              _principal=Depends(require_composer_scope("composer:read"))) -> dict[str, Any]:
+    """이 대상의 선언 이력, 최신부터. **선언 전문은 내보내지 않는다** — 되돌리기는
+    `/restore` 가 서버 안에서 한다. UI 가 전문을 받으면 다시 통째 교체로 돌아간다."""
+    if not 0 <= limit <= 500:
+        raise _error(422, "invalid_limit", "limit 은 0 이상 500 이하여야 한다")
+    current_config = _read_current(request)
+    try:
+        entries = _revision_store(request).recent(limit)
+    except RevisionStoreError as exc:
+        raise _error(500, "history_failure", str(exc)) from exc
+    return {
+        "current_revision": current_config.revision,
+        "revisions": [{k: e.get(k) for k in ("revision", "previous_revision", "actor",
+                                              "reason", "event", "timestamp")}
+                      for e in entries],
+    }
+
+
+@router.post("/restore")
+def restore(payload: RestorePayload, request: Request,
+            _principal=Depends(require_composer_scope("composer:admin"))) -> dict[str, Any]:
+    """이력의 revision 하나로 되돌린다 — 앞으로 한 칸 더 가는 새 적용이다."""
+    try:
+        entry = _revision_store(request).find(payload.revision)
+    except RevisionStoreError as exc:
+        raise _error(500, "history_failure", str(exc)) from exc
+    if entry is None:
+        raise _error(404, "revision_not_found",
+                     f"이력에 없는 revision 이다: {payload.revision}")
+    if payload.revision == payload.base_revision:
+        raise _error(422, "already_at_revision", "지금이 그 revision 이다. 되돌릴 것이 없다")
+    result = _apply_whole(request, _principal, entry["declaration"],
+                          base_revision=payload.base_revision, reason=payload.reason,
+                          event="composer.restore", history_event="restore",
+                          extra={"restored_from": payload.revision})
+    return {**result, "restored_from": payload.revision}
+
+
+def _apply_whole(request: Request, _principal: Any, declaration: dict[str, Any], *,
+                 base_revision: str, reason: str, event: str, history_event: str,
+                 extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """`/apply` 와 `/restore` 가 공유하는 전체 적용 경로."""
     try:
         config_store = _config_store(request)
         subject = getattr(config_store, "path", None) or getattr(config_store, "deployment_id", "?")
         previous = _read_current(request)
-        applied = apply_candidate(payload.config, base_revision=payload.base_revision,
-                                  store=config_store, enforce_registry=True)
+        applied = apply_candidate(declaration, base_revision=base_revision,
+                                  store=config_store, enforce_registry=True,
+                                  history=_revision_store(request), actor=_principal["sub"],
+                                  reason=reason, event=history_event)
     except RevisionConflict as exc:
         # ★409 다. 400 이 아니다 — 요청 자체는 유효했고, 그 사이 상태가 바뀐 것이다.
         raise _error(409, "revision_conflict",
@@ -429,18 +526,22 @@ def apply(payload: ApplyPayload, request: Request,
                      current_revision=exc.current_revision) from exc
     except ProjectConfigError as exc:
         raise _error(422, "invalid_declaration", str(exc)) from exc
-    event = {
-        "event": "composer.apply", "actor": _principal["sub"], "subject": str(subject),
+    except RevisionStoreError as exc:
+        raise _error(500, "history_failure",
+                     "config was applied but revision history recording failed") from exc
+    audit_event = {
+        "event": event, "actor": _principal["sub"], "subject": str(subject),
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "previous_revision": previous.revision, "revision": applied.revision,
         "changed_fields": _changed_fields(_declaration(previous), _declaration(applied)),
-        "reason": payload.reason, "correlation_id": str(uuid4()),
+        "reason": reason, "correlation_id": str(uuid4()), **(extra or {}),
     }
     try:
-        _append_audit(event, _audit_store(request))
+        _append_audit(audit_event, _audit_store(request))
     except AuditStoreError as exc:
         raise _error(500, "audit_failure", "config was applied but audit recording failed") from exc
-    return {"revision": applied.revision, "applied": True}
+    return {"revision": applied.revision, "applied": True,
+            "previous_revision": previous.revision}
 
 
 def _changed_fields(previous: Any, current: Any, prefix: str = "") -> list[str]:

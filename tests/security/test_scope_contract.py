@@ -9,11 +9,14 @@ def test_composer_scopes_are_guardrail_owned():
 
     ★`ops:reload`(2026-08-31)도 `composer:write` 와 분리한다 — 선언을 저장하는
       것과 살아 있는 프로세스의 조립을 갈아 끼우는 것은 다른 행위다. 저장은
-      되돌릴 수 있지만 반영은 그 순간 트래픽이 받는 것을 바꾼다."""
+      되돌릴 수 있지만 반영은 그 순간 트래픽이 받는 것을 바꾼다.
+
+    ★`composer:admin`(2026-09-06, D-011)도 `composer:write` 와 분리한다 — 항목 하나를
+      켜고 끄는 것과 선언 전체를 갈아끼우거나 되돌리는 것은 다른 행위다."""
     assert set(get_guardrails().get("security.scopes")) == {
         "case:read", "case:write", "subscription:read", "technical:read",
         "action:approve", "mcp:read", "ops:introspect", "composer:write",
-        "composer:read", "composer:validate", "ops:reload",
+        "composer:read", "composer:validate", "composer:admin", "ops:reload",
     }
 
 

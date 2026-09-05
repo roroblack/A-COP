@@ -226,8 +226,21 @@ class ComposerClient:
 
     def apply(self, config: dict[str, Any], *, base_revision: str,
               reason: str) -> ComposerResponse:
-        return self._call("/composer/apply", method="POST", scope="composer:write",
+        """선언 전체 교체. ★`composer:admin` 이다 — 설치·복원·이관용이지 운영자
+        화면의 버튼이 아니다(D-011, 2026-09-06)."""
+        return self._call("/composer/apply", method="POST", scope="composer:admin",
                           body={"config": config, "base_revision": base_revision,
+                                "reason": reason})
+
+    # ── 이력·복원 (D-011) ────────────────────────────────────────────
+    def revisions(self) -> ComposerResponse:
+        """이력 목록(최신부터). 선언 전문은 오지 않는다 — 복원은 서버가 한다."""
+        return self._call("/composer/revisions", method="GET", scope="composer:read")
+
+    def restore(self, *, revision: str, base_revision: str, reason: str) -> ComposerResponse:
+        """이력의 revision 하나로 되돌린다. 앞으로 한 칸 더 가는 새 적용이다."""
+        return self._call("/composer/restore", method="POST", scope="composer:admin",
+                          body={"revision": revision, "base_revision": base_revision,
                                 "reason": reason})
 
 
