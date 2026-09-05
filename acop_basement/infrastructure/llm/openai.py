@@ -11,7 +11,14 @@ from acop_basement.core.settings import get_settings
 class OpenAITeamLLM:
     """Injectable Team LLM adapter; settings and client are resolved per call."""
 
-    def __init__(self, *, timeout: float = 60.0) -> None:
+    def __init__(self, *, timeout: float | None = None) -> None:
+        # ★가드레일에서 읽는다. 60.0 이 박혀 있어
+        #   `reliability.llm_call_timeout_seconds: 20` 이 **아무것도 통제하지
+        #   못했다** — 선언 20초, 실제 60초였다(2026-09-05, cs 에서 먼저 발견).
+        #   설정에 값이 있으면 그게 지켜지는 줄 알게 된다.
+        if timeout is None:
+            from acop_basement.core.settings import get_guardrails
+            timeout = float(get_guardrails().get('reliability.llm_call_timeout_seconds'))
         self.timeout = timeout
 
     async def complete(self, prompt_key: str, input_text: str, context: dict[str, Any]) -> dict[str, Any]:

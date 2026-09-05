@@ -23,8 +23,17 @@ def _ratio(numerator: int, denominator: int) -> float:
 
 
 def is_surge(today: int, avg7: float) -> bool:
-    """§4 verbatim: both the ratio and absolute-difference conditions apply."""
-    return today >= max(5, 1.5 * avg7) and today - avg7 >= 3
+    """§4 verbatim: both the ratio and absolute-difference conditions apply.
+
+    ★수치는 가드레일에서 읽는다. 5·1.5·3 이 박혀 있어
+      `feedback_analytics.surge_*` 를 고쳐도 판정이 안 바뀌었다.
+    """
+    from acop_basement.core.settings import get_guardrails
+
+    g = get_guardrails()
+    return (today >= max(float(g.get("feedback_analytics.surge_min_count")),
+                         float(g.get("feedback_analytics.surge_ratio")) * avg7)
+            and today - avg7 >= float(g.get("feedback_analytics.surge_min_delta")))
 
 
 def run_daily_feedback(conn: Connection, *, report_date: date, tenant_id: str) -> dict[str, Any]:
