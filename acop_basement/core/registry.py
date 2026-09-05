@@ -86,7 +86,9 @@ class TeamRegistry:
             for capability in entry.manifest.capabilities:
                 if capability.lower() == intent or capability.lower().startswith(intent + "."):
                     return capability
-        return entry.manifest.capabilities[0]
+        # ★팀이 선언한 기본값을 먼저 본다. 없을 때만 첫 번째로 떨어진다 —
+        #   그 경우에도 "왜 그건지" 는 여전히 안 적힌 상태라는 뜻이다.
+        return entry.manifest.default_capability or entry.manifest.capabilities[0]
 
     def manifests(self) -> tuple[TeamManifest, ...]:
         return tuple(entry.manifest for entry in self._teams.values())
