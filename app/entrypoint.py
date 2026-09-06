@@ -16,8 +16,14 @@ uvicorn 실행 대상: `app.entrypoint:app`.
 """
 from __future__ import annotations
 
+from app.composer_host import composer_host
 from acop_basement.presentation.api.app import create_app
-from acop_composer.api import router as composer_write_router
-from acop_composer.auth import router as composer_auth_router
+from acop_composer.api import create_composer_router
+from acop_composer.auth import create_auth_router
 
-app = create_app(composer_write_router=composer_write_router, composer_auth_router=composer_auth_router)
+#: ★이 저장소가 자기 스키마·등록표·저장소·인증을 넘긴다. 패키지는 이 객체가 준
+#:  것만 쓴다 — `final_project_cs` 도 자기 것을 담아 같은 두 줄을 쓰면 된다.
+_host = composer_host()
+
+app = create_app(composer_write_router=create_composer_router(_host),
+                 composer_auth_router=create_auth_router(_host))

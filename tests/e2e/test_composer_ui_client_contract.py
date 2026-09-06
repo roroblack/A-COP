@@ -29,8 +29,9 @@ from acop_composer_ui import ComposerClient  # noqa: E402
 
 from acop_basement.core.settings import get_settings  # noqa: E402
 from acop_basement.presentation.api.app import create_app  # noqa: E402
-from acop_composer.api import router as composer_write_router  # noqa: E402
-from acop_composer.auth import router as composer_auth_router  # noqa: E402
+from app.composer_host import composer_host  # noqa: E402
+from acop_composer.api import create_composer_router  # noqa: E402
+from acop_composer.auth import create_auth_router  # noqa: E402
 
 
 @pytest.fixture()
@@ -52,8 +53,9 @@ def client(config_dir):
     declaration.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
                            encoding="utf-8")
 
-    app = create_app(composer_write_router=composer_write_router,
-                     composer_auth_router=composer_auth_router)
+    _host = composer_host()
+    app = create_app(composer_write_router=create_composer_router(_host),
+                     composer_auth_router=create_auth_router(_host))
     app.state.project_config_path = declaration
     app.state.composer_audit_path = declaration.with_name("composer_events.jsonl")
     http = TestClient(app)
@@ -184,7 +186,7 @@ def test_central_mode_targets_a_deployment_through_the_config_service(config_dir
     declaration = yaml.safe_load(Path("config/project.yaml").read_text(encoding="utf-8"))
     PostgresConfigStore(get_connection, deployment_id).create(declaration)
 
-    service = TestClient(create_config_service_app())
+    service = TestClient(create_config_service_app(composer_host()))
 
     def transport(method, url, headers, body):
         response = service.request(method, url, headers=headers, content=body)
@@ -219,7 +221,7 @@ def test_central_mode_without_a_deployment_id_is_refused_by_the_service(config_d
     """★대상을 안 밝히면 설정 서비스가 거부한다 — 남의 설정을 건드리지 않는다."""
     from acop_composer.service_app import create_config_service_app
 
-    service = TestClient(create_config_service_app())
+    service = TestClient(create_config_service_app(composer_host()))
 
     def transport(method, url, headers, body):
         response = service.request(method, url, headers=headers, content=body)

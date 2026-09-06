@@ -20,8 +20,9 @@ from fastapi.testclient import TestClient
 
 from acop_basement.core.settings import get_settings
 from acop_basement.presentation.api.app import create_app
-from acop_composer.api import router as composer_write_router
-from acop_composer.auth import router as composer_auth_router
+from app.composer_host import composer_host
+from acop_composer.api import create_composer_router
+from acop_composer.auth import create_auth_router
 
 
 def _auth(scope: str = "composer:write") -> dict[str, str]:
@@ -53,8 +54,9 @@ def _declaration(tmp: Path) -> Path:
 
 
 def _client(path: Path) -> TestClient:
-    app = create_app(composer_write_router=composer_write_router,
-                     composer_auth_router=composer_auth_router)
+    _host = composer_host()
+    app = create_app(composer_write_router=create_composer_router(_host),
+                     composer_auth_router=create_auth_router(_host))
     app.state.project_config_path = path
     app.state.composer_audit_path = path.with_name("composer_events.jsonl")
     return TestClient(app)
@@ -336,8 +338,9 @@ def test_audit_goes_to_the_injected_store_not_a_file(config_dir):
     store = PostgresAuditStore(get_connection, deployment_id)
 
     path = _declaration(config_dir)
-    app = create_app(composer_write_router=composer_write_router,
-                     composer_auth_router=composer_auth_router)
+    _host = composer_host()
+    app = create_app(composer_write_router=create_composer_router(_host),
+                     composer_auth_router=create_auth_router(_host))
     app.state.project_config_path = path
     app.state.composer_audit_store = store          # ★파일이 아니라 저장소를 주입
     app.state.composer_audit_path = path.with_name("should_not_be_used.jsonl")
@@ -373,8 +376,9 @@ def test_idempotency_is_resolved_through_the_store(config_dir):
     store = PostgresAuditStore(get_connection, deployment_id)
 
     path = _declaration(config_dir)
-    app = create_app(composer_write_router=composer_write_router,
-                     composer_auth_router=composer_auth_router)
+    _host = composer_host()
+    app = create_app(composer_write_router=create_composer_router(_host),
+                     composer_auth_router=create_auth_router(_host))
     app.state.project_config_path = path
     app.state.composer_audit_store = store
     http = TestClient(app)

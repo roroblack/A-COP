@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from app.composer_host import composer_host
 from acop_basement.core import config_store
 from acop_composer import service as composer_service
 from acop_composer.service import apply_candidate
@@ -26,7 +27,7 @@ def declaration(tmp_path: Path) -> Path:
 
 def test_staged_file_is_removed_when_os_replace_fails(declaration, monkeypatch):
     raw = yaml.safe_load(declaration.read_text(encoding="utf-8"))
-    current = composer_service.read_current(declaration)
+    current = composer_service.read_current(composer_host(), declaration)
 
     def _boom(*_args, **_kwargs):
         raise OSError("simulated disk failure")
@@ -37,9 +38,9 @@ def test_staged_file_is_removed_when_os_replace_fails(declaration, monkeypatch):
     monkeypatch.setattr(config_store.os, "replace", _boom)
 
     with pytest.raises(OSError, match="simulated disk failure"):
-        apply_candidate(raw, base_revision=current.revision, path=declaration)
+        apply_candidate(raw, composer_host(), base_revision=current.revision, path=declaration)
 
     leftovers = list(declaration.parent.glob(f".{declaration.stem}.*"))
     assert leftovers == [], f"임시 파일이 정리되지 않고 남았다: {leftovers}"
     # ★원본은 손대지 않았어야 한다 - os.replace() 가 실패했으니 revision 이 그대로다.
-    assert composer_service.read_current(declaration).revision == current.revision
+    assert composer_service.read_current(composer_host(), declaration).revision == current.revision

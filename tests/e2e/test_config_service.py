@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 from acop_basement.core.config_store import PostgresConfigStore
 from acop_basement.core.settings import get_settings
 from acop_basement.infrastructure.db.session import get_connection
+from app.composer_host import composer_host
 from acop_composer.api import DEPLOYMENT_HEADER
 from acop_composer.service_app import create_config_service_app
 
@@ -59,7 +60,7 @@ def _cleanup(*deployment_ids: str) -> None:
 
 @pytest.fixture()
 def service():
-    return TestClient(create_config_service_app())
+    return TestClient(create_config_service_app(composer_host()))
 
 
 @pytest.fixture()
@@ -76,7 +77,7 @@ def deployments():
 # ── 이 앱이 무엇이 아닌지 ────────────────────────────────────────────
 def test_the_config_service_does_not_serve_the_customer_api(service):
     """★고객 API 가 여기 있으면 안 된다 — 구성 관리 전용이다."""
-    paths = create_config_service_app().openapi()["paths"]
+    paths = create_config_service_app(composer_host()).openapi()["paths"]
 
     assert "/composer/changes" in paths and "/auth/token" in paths
     assert not [p for p in paths if p.startswith("/v1/")], f"고객 API 가 섞였다: {paths}"

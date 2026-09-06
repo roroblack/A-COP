@@ -19,7 +19,7 @@
   릴리즈 때 마이그레이션 없이 중앙으로 시작할 수 있고, 지금은 서버를 안 켜니
   운영 부담이 0이다.
 
-실행 대상: `acop_composer.service_app:app`
+실행 대상: 호스트가 만든다(sample 은 `app.config_service:app`)
 """
 from __future__ import annotations
 
@@ -27,18 +27,23 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from acop_composer.api import router as composer_write_router
-from acop_composer.auth import router as composer_auth_router
+from acop_composer.api import create_composer_router
+from acop_composer.auth import create_auth_router
+from acop_composer.host import ComposerHost
 
 
-def create_config_service_app() -> FastAPI:
-    """Composer 와 토큰 발급만 있는 앱. 고객 API 는 없다."""
+def create_config_service_app(host: ComposerHost) -> FastAPI:
+    """Composer 와 토큰 발급만 있는 앱. 고객 API 는 없다.
+
+    ★`host` 를 받는다 — 이 앱이 어느 제품의 선언을 다루는지는 **부르는 쪽이**
+      정한다. 패키지가 특정 제품을 import 하면 그 제품에서만 뜨는 앱이 된다.
+    """
     app = FastAPI(title="A-COP Config Service")
     # ★이 플래그가 "대상을 요청에서 받는다" 를 켠다(`acop_composer.api`).
     app.state.multi_deployment = True
 
-    app.include_router(composer_write_router)
-    app.include_router(composer_auth_router)
+    app.include_router(create_composer_router(host))
+    app.include_router(create_auth_router(host))
 
     @app.exception_handler(HTTPException)
     async def http_error(_request: Request, exc: HTTPException):
@@ -64,6 +69,4 @@ def create_config_service_app() -> FastAPI:
     return app
 
 
-app = create_config_service_app()
-
-__all__ = ["create_config_service_app", "app"]
+__all__ = ["create_config_service_app"]

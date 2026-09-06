@@ -30,8 +30,10 @@ from uuid import uuid4
 
 import yaml
 
-from acop_composer.stores import ConfigStore, RevisionMismatch, RevisionStore, StoreError
-from acop_composer.host import ComposerHost, ConfigInvalid
+from acop_composer.stores import (
+    ConfigStore, RevisionMismatch, RevisionStore, StoreTarget,
+)
+from acop_composer.host import ComposerHost, ConfigInvalid, HostIncomplete
 
 #: ★단일 프로세스 안에서만 동시 쓰기를 막는다. 여러 워커·여러 인스턴스에 걸친
 #:  잠금은 아직 없다 — 지금은 로컬 단일 개발자 도구다. 인스턴스 레지스트리가
@@ -87,10 +89,13 @@ def _store_for(path: str | Path | None, store: ConfigStore | None,
     """
     if store is not None:
         return store
-    if host.config_store_for is None:
-        raise StoreError(
-            "저장소가 없다 — 호스트가 `store` 를 주거나 `config_store_for` 를 넘겨야 한다")
-    return host.config_store_for(Path(path or host.default_config_path))
+    if host.stores is None:
+        raise HostIncomplete(
+            "저장소가 없다 — 호스트가 `store` 를 주거나 `stores` 를 넘겨야 한다")
+    # ★`central=False` 다. 경로를 지목해 부른 것이므로 호스트 설정이 이를
+    #   뒤집어 중앙 DB 를 열면 안 된다 — 부른 쪽이 말한 파일을 다룬다.
+    return host.stores.config_store(
+        StoreTarget(config_path=Path(path or host.default_config_path), central=False))
 
 
 def read_current(host: ComposerHost, path: str | Path | None = None, *,
