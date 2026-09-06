@@ -42,6 +42,14 @@ from acop_composer.auth import require_composer_scope
 
 router = APIRouter(prefix="/composer", tags=["composer-write"])
 
+#: 이 저장소의 루트. ★`parents[N]` 을 세지 않는다 — `final_project_cs` 에서
+#:  옮겨올 때 그 저장소는 이 파일이 `app/presentation/api/` 에 있어 `parents[3]`
+#:  이 루트였는데, 여기서는 `acop_composer/` 라 **두 단계 얕다.** 그대로 가져온
+#:  탓에 감사·이력이 저장소 **밖**(Documents/var/audit)으로 쌓이고 있었다
+#:  (2026-09-06 실측: 감사 9건·이력 62건이 거기 있었다).
+#:  숫자 대신 이 파일 기준으로 한 번만 계산하고, 바뀌면 여기만 고친다.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def _path(request: Request) -> Path:
     """읽고 쓸 선언 파일. ★HTML 라우터(`app/presentation/ui/composer.py`)와
@@ -57,7 +65,7 @@ def _audit_path(request: Request) -> Path:
     테스트용 가짜 apply 이벤트가 쌓인다(버그사냥 2026-08-18. 감사 로그는
     "누가 언제 무엇을 적용했는지" 를 남기는 것인데, 테스트 실행이 매번
     그 기록을 오염시키면 감사로서의 가치가 없다)."""
-    default = Path(__file__).resolve().parents[3] / "var" / "audit" / "composer_events.jsonl"
+    default = REPO_ROOT / "var" / "audit" / "composer_events.jsonl"
     selected = getattr(request.app.state, "composer_audit_path", default)
     return Path(selected)
 
@@ -123,7 +131,7 @@ def _revision_store(request: Request) -> RevisionStore:
     if (getattr(request.app.state, "multi_deployment", False)
             or get_settings().config_source == "central"):
         return PostgresRevisionStore(get_connection, _deployment_id(request))
-    default = Path(__file__).resolve().parents[3] / "var" / "audit" / "composer_revisions.jsonl"
+    default = REPO_ROOT / "var" / "audit" / "composer_revisions.jsonl"
     selected = getattr(request.app.state, "composer_revisions_path", default)
     return FileRevisionStore(Path(selected))
 
