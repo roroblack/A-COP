@@ -30,14 +30,8 @@ from uuid import uuid4
 
 import yaml
 
-from acop_basement.core.config_store import (
-    ConfigStore, FileConfigStore, RevisionMismatch,
-)
-from acop_basement.core.revision_store import RevisionStore
-from acop_basement.core.project_config import (
-    DEFAULT_PROJECT_CONFIG, KNOWN_IMPLEMENTATION_REFS, ProjectConfig,
-    ProjectConfigError, config_from_declaration, load_project_config,
-)
+from acop_composer.stores import ConfigStore, RevisionMismatch, RevisionStore, StoreError
+from acop_composer.host import ComposerHost, ConfigInvalid
 
 #: ★단일 프로세스 안에서만 동시 쓰기를 막는다. 여러 워커·여러 인스턴스에 걸친
 #:  잠금은 아직 없다 — 지금은 로컬 단일 개발자 도구다. 인스턴스 레지스트리가
@@ -56,11 +50,17 @@ class RevisionConflict(RuntimeError):
 @dataclass(frozen=True)
 class ValidationResult:
     valid: bool
-    config: ProjectConfig | None
+    config: Any | None
     errors: list[str]
 
 
-def _validate_http_registry(raw: dict[str, Any]) -> list[str]:
+def _validate_http_registry(raw: dict[str, Any], host: ComposerHost) -> list[str]:
+    """HTTP 로 들어온 선언이 **이 호스트가 등록한 구현만** 쓰는지 본다.
+
+    ★allowlist 는 호스트가 준다. 2026-09-06 이전에는 이 파일이 sample 코어의
+      `KNOWN_IMPLEMENTATION_REFS` 를 직접 import 했다 — 그대로 다른 제품에
+      설치하면 그 제품의 Team 이 전부 "미등록" 으로 거부된다.
+    """
     teams = raw.get("teams")
     if not isinstance(teams, list):
         return []
@@ -69,7 +69,7 @@ def _validate_http_registry(raw: dict[str, Any]) -> list[str]:
         if not isinstance(team, dict) or team.get("active") is not True:
             continue
         ref = team.get("implementation_ref")
-        if ref not in KNOWN_IMPLEMENTATION_REFS:
+        if ref not in host.known_refs:
             errors.append(
                 f"team '{team.get('team_id', index)}' implementation_ref '{ref}' "
                 "is not registered in the implementation registry"
@@ -77,7 +77,8 @@ def _validate_http_registry(raw: dict[str, Any]) -> list[str]:
     return errors
 
 
-def _store_for(path: str | Path | None, store: ConfigStore | None) -> ConfigStore:
+def _store_for(path: str | Path | None, store: ConfigStore | None,
+               host: ComposerHost) -> ConfigStore:
     """어디에 쓸 것인가 — 주입된 저장소, 없으면 파일.
 
     ★중앙 설정 저장소로 옮기는 중이다
@@ -86,18 +87,21 @@ def _store_for(path: str | Path | None, store: ConfigStore | None) -> ConfigStor
     """
     if store is not None:
         return store
-    return FileConfigStore(Path(path or DEFAULT_PROJECT_CONFIG))
+    if host.config_store_for is None:
+        raise StoreError(
+            "저장소가 없다 — 호스트가 `store` 를 주거나 `config_store_for` 를 넘겨야 한다")
+    return host.config_store_for(Path(path or host.default_config_path))
 
 
-def read_current(path: str | Path | None = None, *,
-                 store: ConfigStore | None = None) -> ProjectConfig:
-    if store is not None:
-        return config_from_declaration(store.read(), source="<store>")
-    # ★파일 경로는 캐시가 있는 로더를 그대로 쓴다(mtime 키) — 읽기가 잦다.
-    return load_project_config(path or DEFAULT_PROJECT_CONFIG)
+def read_current(host: ComposerHost, path: str | Path | None = None, *,
+                 store: ConfigStore | None = None) -> Any:
+    """현재 선언. ★검증은 **호스트 스키마**가 한다 — 패키지는 구조를 모른다."""
+    source = _store_for(path, store, host)
+    return host.codec.from_declaration(source.read(), source="<store>")
 
 
-def validate_candidate(raw: dict[str, Any], *, path: str | Path | None = None,
+def validate_candidate(raw: dict[str, Any], host: ComposerHost, *,
+                       path: str | Path | None = None,
                        store: ConfigStore | None = None,
                        enforce_registry: bool = False) -> ValidationResult:
     """후보 선언을 검증만 한다. **저장하지 않는다.**
@@ -106,7 +110,7 @@ def validate_candidate(raw: dict[str, Any], *, path: str | Path | None = None,
       않는다. 검증기가 실제 로더와 다르면 "검증은 통과했는데 기동은 실패" 가 생긴다.
       스키마·활성 Team import·Port 호환성까지 여기서 전부 확인된다.
     """
-    registry_errors = _validate_http_registry(raw) if enforce_registry else []
+    registry_errors = _validate_http_registry(raw, host) if enforce_registry else []
     if registry_errors:
         return ValidationResult(valid=False, config=None, errors=registry_errors)
     try:
@@ -116,19 +120,19 @@ def validate_candidate(raw: dict[str, Any], *, path: str | Path | None = None,
         #   덤으로 "검증만 했는데 디스크에 임시 파일이 생긴다" 는 성질이 사라져,
         #   검증이 대상 디렉터리에 쓰기 권한을 요구하지 않게 됐다(중앙 저장소
         #   모드에서는 애초에 그런 디렉터리가 없다).
-        config = config_from_declaration(raw, source="<candidate>")
+        config = host.codec.from_declaration(raw, source="<candidate>")
         return ValidationResult(valid=True, config=config, errors=[])
-    except ProjectConfigError as exc:
+    except ConfigInvalid as exc:
         return ValidationResult(valid=False, config=None, errors=[str(exc)])
 
 
-def apply_candidate(raw: dict[str, Any], *, base_revision: str,
+def apply_candidate(raw: dict[str, Any], host: ComposerHost, *, base_revision: str,
                     path: str | Path | None = None,
                     store: ConfigStore | None = None,
                     enforce_registry: bool = False,
                     history: RevisionStore | None = None,
                     actor: str = "", reason: str = "",
-                    event: str = "apply") -> ProjectConfig:
+                    event: str = "apply") -> Any:
     """검증에 통과하면 **원자적으로, revision 이 맞을 때만** 쓴다.
 
     ★검증(validate)과 별개로 다시 한다 — 사람이 "검증" 버튼을 누른 뒤 "적용" 을
@@ -142,33 +146,34 @@ def apply_candidate(raw: dict[str, Any], *, base_revision: str,
 
     raises:
         RevisionConflict — 지금 파일의 revision 이 base_revision 과 다르다
-        ProjectConfigError — 후보가 유효하지 않다
+        ConfigInvalid — 후보가 유효하지 않다(호스트 스키마가 거부했다)
         RevisionStoreError — 저장은 됐는데 이력을 못 남겼다(호출부가 500 으로 올린다)
     """
-    target_store = _store_for(path, store)
+    target_store = _store_for(path, store, host)
     with _WRITE_LOCK:
-        registry_errors = _validate_http_registry(raw) if enforce_registry else []
+        registry_errors = _validate_http_registry(raw, host) if enforce_registry else []
         if registry_errors:
-            raise ProjectConfigError("; ".join(registry_errors))
+            raise ConfigInvalid("; ".join(registry_errors))
         # ★lock 을 잡은 뒤 다시 읽는다 — lock 밖에서 읽은 revision 은 이미 낡았을 수 있다.
         #   ★중앙 저장소에서는 이 프로세스 락만으로 부족하다. 그래서 아래
         #   `store.write()` 가 **저장소에서 조건부로** 다시 검사한다(CAS).
         current_raw = target_store.read()
-        current = config_from_declaration(current_raw, source="<current>")
-        if current.revision != base_revision:
-            raise RevisionConflict(current.revision)
+        current = host.codec.from_declaration(current_raw, source="<current>")
+        current_revision = host.codec.revision(current)
+        if current_revision != base_revision:
+            raise RevisionConflict(current_revision)
 
         # 실패하면 여기서 던진다 — 저장소를 건드리기 전이다.
-        candidate = config_from_declaration(raw, source="<candidate>")
+        candidate = host.codec.from_declaration(raw, source="<candidate>")
         try:
             target_store.write(raw, base_revision=base_revision,
-                               new_revision=candidate.revision)
+                               new_revision=host.codec.revision(candidate))
         except RevisionMismatch as exc:
             # 저장소가 최종 판정자다. 위 검사를 통과했어도 그 사이 남이 썼을 수 있다.
             raise RevisionConflict(exc.current_revision) from exc
         if history is not None:
-            _record_history(history, previous_raw=current_raw, previous_revision=current.revision,
-                            raw=raw, revision=candidate.revision,
+            _record_history(history, previous_raw=current_raw, previous_revision=current_revision,
+                            raw=raw, revision=host.codec.revision(candidate),
                             actor=actor, reason=reason, event=event)
         return candidate
 
