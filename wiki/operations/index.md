@@ -24,7 +24,8 @@ dist/basement/                            배포본
 
 ## 문서
 
-`[실측]` **네 문서 다 실제로 띄워 보고 썼다.** 2026-09-02.
+`[실측]` **앞 네 문서는 실제로 띄워 보고 썼다.** 2026-09-02.
+sweeper 문서는 2026-09-07 에 더했다 — 스케줄러 고리는 cs 에서 실측했다.
 
 | 문서 | 답하는 질문 |
 |---|---|
@@ -32,6 +33,7 @@ dist/basement/                            배포본
 | [run.md](run.md) | 떴는지 어떻게 확인하나 |
 | [packaging.md](packaging.md) | `dist/` 가 어떻게 만들어지나 |
 | [troubleshooting.md](troubleshooting.md) | 안 될 때 |
+| [stuck-case-sweeper.md](stuck-case-sweeper.md) | 멈춘 Case 를 어떻게 되잡나 (2026-09-07 신설) |
 
 ## 실측 요약
 
