@@ -8,7 +8,7 @@ tags: [architecture, data, contract]
 
 # 도메인을 갈아 끼우는 절차
 
-`[실측]` `final_project_cs/docs/handoff/10_도메인_교체_가이드.md` 에서 이관.
+`[실측]` `final_project_cs/wiki/records/handoff/10_도메인_교체_가이드.md` 에서 이관.
 
 **이 문서가 sample 이 혼자 서는 것의 실무 절차다.** [another-domain.md](another-domain.md) 가 "된다"를 증명한다면, 여기는 "어떻게 하나"다.
 

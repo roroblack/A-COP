@@ -1,6 +1,6 @@
 """Verify the v5 Definition of Done against evidence and the test suite.
 
-This checker is intentionally read-only with respect to ``docs/evidence``.
+This checker is intentionally read-only with respect to ``wiki/records/evidence``.
 It reports the state of every DoD item and returns non-zero until all items
 have an explicit passing judgement and the test suite has no failures.
 """
@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE_DIR = ROOT / "docs" / "evidence"
+EVIDENCE_DIR = ROOT / "wiki" / "records" / "evidence"
 
 ITEMS = (
     ("원본 v4 hash 불변", "DoD-01"),
@@ -100,7 +100,7 @@ def _evidence(prefix: str) -> EvidenceResult:
 
 def _run_tests() -> tuple[str, int, int, int, int, int]:
     # ★"tests" 로 경로를 좁히면 eval/tests/ 의 7건이 병합 게이트에서 빠진다
-    #   (docs/reports/debugs/2026-08-17_동시_apply_테스트가_flaky했다.md 조사 중 발견).
+    #   (wiki/records/reports/debugs/2026-08-17_동시_apply_테스트가_flaky했다.md 조사 중 발견).
     #   경로를 안 주면 pytest.ini 의 rootdir 발견 규칙을 그대로 따라 전체를 돈다.
     command = [sys.executable, "-m", "pytest", "-q"]
     completed = subprocess.run(

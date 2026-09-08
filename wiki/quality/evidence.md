@@ -8,7 +8,7 @@ tags: [testing, evaluation]
 
 # DoD 증거 색인
 
-`[실측]` 2026-09-03. 원본 30건은 `final_project_sample/docs/evidence/` 에 있다.
+`[실측]` 2026-09-03. 원본 30건은 `final_project_sample/wiki/records/evidence/` 에 있다.
 
 ## 원본이 정본이다
 

@@ -1,6 +1,6 @@
 # A-COP — 작업 규칙 (도메인)
 
-이 저장소의 세부 설계·운영 사실은 [`wiki/index.md`](wiki/index.md)가 정본이다(2026-09-07 전환, 허브는 워크스페이스 루트 `wiki/`). 계획서(v9)는 범위·결정·일정만 맡는다. **읽는 순서는 wiki 먼저, `docs/`는 그다음이다** — `docs/`는 작업 기록(evidence·리포트·handoff)이라 근거를 확인할 때 연다.
+이 저장소의 세부 설계·운영 사실은 [`wiki/index.md`](wiki/index.md)가 정본이다(2026-09-07 전환, 허브는 워크스페이스 루트 `wiki/`). 계획서(v9)는 범위·결정·일정만 맡는다. **읽는 순서는 wiki 본문 먼저다.** 작업 기록(evidence·리포트·옛 handoff)은 `wiki/records/`에 있고(2026-09-08 `docs/` 통합), 근거를 확인할 때 연다. 리포트는 `wiki/records/reports/`에 계속 쓰고, wiki 에는 결론 한 줄 + 링크만 적는다.
 
 **A-COP**(AI Customer Operations Platform)는 고객 메시지를 업무 **Case** 로 바꾸고,
 현재 상태·정책·이력·피드백 분류를 **Context Pack** 으로 조합하여
@@ -20,7 +20,7 @@ v5~v8 등 이전 버전은 `../program/plan/archive/`의 보존본이며 수정�
 
 **모든 작업은 파일을 변경하기 전에 루트 `RULE.md` 전체를 반드시 읽고 따른다.**
 이 문서는 **도메인 안전 원칙**을, `RULE.md` 는 **계획·검증·리포트·분업 절차**를 정한다.
-작업 대상과 직접 관련된 `docs/handoff/` 계약도 함께 확인하며,
+작업 대상과 직접 관련된 `wiki/records/handoff/` 계약도 함께 확인하며,
 적용 문서를 확인하지 못하면 변경을 시작하지 않는다.
 
 ---
@@ -94,7 +94,7 @@ eval/reports/  run_id + seed + model + prompt snapshot 을 파일명·메타에 
 
 ## 2. 계약 원칙
 
-- `app/core/contracts.py` 는 `docs/handoff/01_계약_Pydantic.md` 의 **구현체**다. 둘이 어긋나면 결함이다.
+- `app/core/contracts.py` 는 `wiki/records/handoff/01_계약_Pydantic.md` 의 **구현체**다. 둘이 어긋나면 결함이다.
 - 모든 계약 모델은 `model_config = ConfigDict(extra='forbid')` 를 쓴다. 조용한 필드 유입을 막는다.
 - **Core 는 Team 내부를 import 하지 않는다.** `TeamManifest` 와 `execute()` 만 쓴다.
 - Team 은 `TeamManifest.allowed_tools` 밖의 tool 을 호출할 수 없다. Registry 가 거부한다.
@@ -132,39 +132,39 @@ eval/reports/  run_id + seed + model + prompt snapshot 을 파일명·메타에 
 | 단계 | 상태 |
 |---|---|
 | 저장소 골격 | **완료** — `RULE.md`·`CLAUDE.md`·`docs/` 9개 폴더. git init(main) |
-| 실행계획서 | **완료** — `docs/plans/2026-08-12_1507_A-COP_실행계획서_v1.md` (P0~P10, DoD 18항목 배분) |
-| handoff 계약 | **완료** — `docs/handoff/01`~`06` + `_prompts/` |
+| 실행계획서 | **완료** — `wiki/records/plans/2026-08-12_1507_A-COP_실행계획서_v1.md` (P0~P10, DoD 18항목 배분) |
+| handoff 계약 | **완료** — `wiki/records/handoff/01`~`06` + `_prompts/` |
 | 환경 (실측 2026-08-12) | **PostgreSQL 16.14** `127.0.0.1:5433` (conda env `pgv`, 서비스 아님) · `vector`·`pgcrypto` **설치 완료** · **Docker 없음** · Python 3.12.7 · codex CLI 있음 |
 | DB 스키마 | **완료** — `acop` DB. **18 테이블**(v6 §22 의 14 + mock 4). UNIQUE 3종·인덱스 3종·extension 2종 **DB 직접 조회로 확인**. 마이그레이션 재실행 안전 |
 | seed 데이터 | **완료** — demo customers 10 · subscriptions 10 · payments 30(14일 분포) · entitlements 10 · incidents 3. 시나리오1(해지 후 결제) 2명 · 시나리오2(Pro/Free 불일치) 1명. 테스트 후 `tenants=1`(격리 확인) |
-| REST / MCP | **인수** — route **6개**(2026-08-17: `/v1/outbox/{message_id}/resolve` 추가) + `/health`, MCP tool 3개 전부 `mcp:read`. 테스트 **74건**(scope matrix 6종 parametrize · 동일요청 10회→`action_requests` 1행 · 남의 Case→404 · MCP 가 payments/subscriptions 를 안 건드림 · 409 렌더링). ★1차는 `os.getenv` 로 설정을 읽어 **인증 전 요청이 500** 이었다 → [디버그](docs/reports/debugs/2026-08-12_1830_S-API가_실행되지_않는다.md) |
+| REST / MCP | **인수** — route **6개**(2026-08-17: `/v1/outbox/{message_id}/resolve` 추가) + `/health`, MCP tool 3개 전부 `mcp:read`. 테스트 **74건**(scope matrix 6종 parametrize · 동일요청 10회→`action_requests` 1행 · 남의 Case→404 · MCP 가 payments/subscriptions 를 안 건드림 · 409 렌더링). ★1차는 `os.getenv` 로 설정을 읽어 **인증 전 요청이 500** 이었다 → [디버그](wiki/records/reports/debugs/2026-08-12_1830_S-API가_실행되지_않는다.md) |
 | Core 런타임 | **완료** — 계약(v6 §21 전체)·전이표(21 이벤트/24 전이)·순수 리듀서·`transition_case()` 단일 진입점. **테스트 57건 통과** |
 | RAG corpus | ★**v5 재작업 중 — 4회 거부.** v1 보일러플레이트 / v2 중앙유사도 0.460 / v3 **지표 우회**(무작위 토큰 주입) / v4 문체는 맞았으나 **청크 평균 56자**(계약 200~600). 인수 게이트 = `python -m scripts.check_corpus` |
 | Context Broker | **완료** — 12,000 토큰 tiktoken **실측** 절삭, 섹션별 예산·제거 순서, `degraded`/`omissions` 강제 |
-| RAG 적재·검색 | **완료** — `knowledge_documents` 25 · `knowledge_chunks` **300** · 1536d. 시나리오 질의가 정답 문서를 **1·2위**로 검색(doc_06 0.52 / doc_14 0.41), scope 필터·tenant 격리 동작. ★검색이 한동안 **100% 실패**하고 있었다(`%s::vector` 캐스트 누락) → [디버그](docs/reports/debugs/2026-08-12_2010_RAG검색이_한번도_동작한적이_없다.md) |
+| RAG 적재·검색 | **완료** — `knowledge_documents` 25 · `knowledge_chunks` **300** · 1536d. 시나리오 질의가 정답 문서를 **1·2위**로 검색(doc_06 0.52 / doc_14 0.41), scope 필터·tenant 격리 동작. ★검색이 한동안 **100% 실패**하고 있었다(`%s::vector` 캐스트 누락) → [디버그](wiki/records/reports/debugs/2026-08-12_2010_RAG검색이_한번도_동작한적이_없다.md) |
 | Agent Team | **예시 보존** — Billing/Technical 2종은 `examples/`로 이동해 Team 플러그인 구조가 실제 동작한 예시로만 보존. 10주 착수 목록에는 포함하지 않음 |
 | Feedback Analytics | **완료** — 인라인 분류(실패 시 `classification_failed`+escalated) + 일일 배치. 급증식은 v6 §7-A 그대로 |
-| Controller · WAIT/RESUME · Outbox | **완료** — 통합테스트 8종. ★`resuming→completed` 를 상태기계가 런타임 거부해 **진짜 결함을 잡았다** → [디버그](docs/reports/debugs/2026-08-12_2230_Controller가_resuming에서_resumed를_건너뛴다.md) |
+| Controller · WAIT/RESUME · Outbox | **완료** — 통합테스트 8종. ★`resuming→completed` 를 상태기계가 런타임 거부해 **진짜 결함을 잡았다** → [디버그](wiki/records/reports/debugs/2026-08-12_2230_Controller가_resuming에서_resumed를_건너뛴다.md) |
 | 운영 UI | **완료** — `/ui/{cases,approvals,voc,trace}` 4개 화면 200 확인. VOC 데이터 없을 때 "없음"을 정직하게 표시 |
 | 평가 하네스 | **완료** — golden **60** / holdout **20**(보존), runner 3종, judge rubric, bootstrap/McNemar |
 | A2A / Graph (신계획서) | **완료** — `TeamExecutorPort`·`LocalTeamExecutor`·`A2ATeamExecutor`·Agent Card·`GraphStorePort`·`SqlGraphAdapter`(재귀 CTE) **7/7**. Controller 가 Port 경유(`LOCAL`↔`A2A` 교체점) |
-| 모듈화 | **완료** — `config/project.yaml` 이 조립의 단일 입력. 모듈 6 / 컴포넌트 9 / Port 6 (`docs/handoff/08`). ★**`/ui/composer`(HTML GUI)는 폐기됨(2026-08-18)** — 인증 없이 고객 접근 가능한 이 앱에 물려 있던 것을 실측으로 확인, 제거했다. 같은 기능은 `final_project_ui`가 인증된 `/composer/*` API로 제공한다 |
+| 모듈화 | **완료** — `config/project.yaml` 이 조립의 단일 입력. 모듈 6 / 컴포넌트 9 / Port 6 (`wiki/records/handoff/08`). ★**`/ui/composer`(HTML GUI)는 폐기됨(2026-08-18)** — 인증 없이 고객 접근 가능한 이 앱에 물려 있던 것을 실측으로 확인, 제거했다. 같은 기능은 `final_project_ui`가 인증된 `/composer/*` API로 제공한다 |
 | 평가 실행 | **완료** — 3군 × 180행 = **540 관측.** A 0/180 · B 6/180 · **Proposed 40/180**, grounding 0.00 / 2.22 / **3.98**. ★결함 5건을 벗겨낸 뒤의 수치다(DoD-15) |
 | ablation | **완료** — 5종. ★RAG·Context Broker 제거 시 grounding **3.98→0.00**, 총점 13→5, degraded 60/60. 나머지 3종은 **이 지표로 차이 미관측** — "효과 없음"이 아니라 **지표가 재지 않는 것**이다(DoD-15) |
 | judge 검증 | **부분** — 540행 전량에서 **근거 없이 grounding 점수를 받은 행 0건**(`eval/check_judge.py`, 0 아니면 exit 1). ★**사람 라벨 20건은 여전히 미측정** — 기계 검사는 agreement 를 대신하지 못한다 |
 | 발표 시나리오 seed | **완료** — `scripts/seed_demo_cases.py`. case_id 를 `uuid5` 로 고정해 재실행해도 URL 이 안 죽는다. 시나리오1 은 `waiting_approval` 에서 멈춰 둔다(발표에서 사람이 누른다) |
 | 운영 UI 품질 | **완료** — 디자인 시스템(`app/presentation/ui/theme.py`), 상태별 의미색·다크모드·375px 가로밀림 0. ★JSON 덤프를 표·분포로. `unknown` 은 가장 센 위험색(돈이 나갔는지 모르는 상태) |
-| ~~Composer GUI~~ | **폐기됨(2026-08-18)** — 모듈·Port·Team 편집 UI 자체는 `final_project_ui`로 이전됐다. 이 저장소엔 인증된 API만 남는다. 옛 계약 `docs/handoff/09`(폐기 표시됨) |
-| ★**개발 콘솔 분리** | **완료** (2026-08-17) — 조립 조회·DoD·평가 대시보드(`/ui/`·`/ui/quality`·`/ui/experiments`·`/ui/runs`·`/ui/admin`, `app/console/**`)를 **전부 지웠다.** 별도 프로그램 `final_project_ui` 가 read-only 로 그 역할을 한다. basement 에 남긴 건 `GET /introspection`(scope `ops:introspect`) 하나뿐 — 조립 상태를 JSON 으로 낸다. 계약 `docs/handoff/11`·`12` |
-| ★**Composer 쓰기 채널** | **완료** (2026-08-17) — `POST /composer/validate`·`/composer/apply`(scope `composer:write`)가 `composer_service.py`를 통해 검증·원자적 쓰기(`os.replace`)·`base_revision` 낙관적 동시성(불일치 시 `409 revision_conflict`)을 제공하는 **유일한** 쓰기 통로다. ★`/ui/composer` HTML 폼은 이후(2026-08-18) 인증 부재가 드러나 완전히 제거됐다 — 이제 이 API만 남는다. Codex 교차검증 `docs/reports/2026-08-17_S-COMPOSER-WRITE-CHANNEL_검토.md`, 계약 `docs/handoff/13` |
+| ~~Composer GUI~~ | **폐기됨(2026-08-18)** — 모듈·Port·Team 편집 UI 자체는 `final_project_ui`로 이전됐다. 이 저장소엔 인증된 API만 남는다. 옛 계약 `wiki/records/handoff/09`(폐기 표시됨) |
+| ★**개발 콘솔 분리** | **완료** (2026-08-17) — 조립 조회·DoD·평가 대시보드(`/ui/`·`/ui/quality`·`/ui/experiments`·`/ui/runs`·`/ui/admin`, `app/console/**`)를 **전부 지웠다.** 별도 프로그램 `final_project_ui` 가 read-only 로 그 역할을 한다. basement 에 남긴 건 `GET /introspection`(scope `ops:introspect`) 하나뿐 — 조립 상태를 JSON 으로 낸다. 계약 `wiki/records/handoff/11`·`12` |
+| ★**Composer 쓰기 채널** | **완료** (2026-08-17) — `POST /composer/validate`·`/composer/apply`(scope `composer:write`)가 `composer_service.py`를 통해 검증·원자적 쓰기(`os.replace`)·`base_revision` 낙관적 동시성(불일치 시 `409 revision_conflict`)을 제공하는 **유일한** 쓰기 통로다. ★`/ui/composer` HTML 폼은 이후(2026-08-18) 인증 부재가 드러나 완전히 제거됐다 — 이제 이 API만 남는다. Codex 교차검증 `wiki/records/reports/2026-08-17_S-COMPOSER-WRITE-CHANNEL_검토.md`, 계약 `wiki/records/handoff/13` |
 | 개발 서버 | **완료** — `.claude/launch.json` 의 `acop-ui`(`--reload`). `/` → `/ops/cases` 307 |
-| 릴리스 체크리스트 | **완료** — `docs/release_checklist.md`. ★판정은 **RC 아님** |
+| 릴리스 체크리스트 | **완료** — `wiki/records/release_checklist.md`. ★판정은 **RC 아님** |
 | ★**할루시네이션 방어** (v7 §9-E) | **완료** — 제안의 식별자·금액을 **DB 와 대조**해 실행 전 차단. 검증 2회(제안 시점 + 승인 직전). 거부 시 `escalated` + 실패필드·**hash** 감사. `app/core/verification.py`(순수) + `proposal_guard.py`(재조회) |
 | VOC Team | **완료** (v7 §0 변경 4) — `FeedbackAnalyticsTeam` 이 `run_daily_feedback()` 을 감싼다. `accepted_case_types=[]` 로 Controller 라우팅 격리. `scripts/run_daily_feedback.py` 는 Team 을 거치되 CLI 출력 계약은 그대로(DoD-10) |
-| ★**Composer 쓰기채널 v2** (`docs/handoff/13`) | **완료** (2026-08-18, Codex) — VPN/SSH 전제 + 단명 HMAC JWT(`/auth/token`, `app/presentation/composer_auth.py`), scope 3분화(`composer:read`/`validate`/`write`), `apply` 성공 시 `var/audit/composer_events.jsonl` append(actor·revision·changed_fields·reason), `implementation_ref` 는 registry ID(`KNOWN_IMPLEMENTATION_REFS`) 대조로만 HTTP 경로에서 통과. 설계·구현 결함은 없었으나, 계약 문서(handoff/13)가 약속한 **JWT 만료/위조 테스트가 실제로는 없어서** 추가했다(`test_expired_token_is_rejected`/`test_forged_signature_is_rejected`) |
-| ★**Response Generation & Review Team** (DoD-29, v8 §8-B) | **완료** (2026-08-18, Codex+Claude) — `app/modules/customer_ops/response_review.py`. **톤 결정(규칙, `decide_tone(sentiment)`) → GEN 초안 → 결정론 REV(금칙어·`refund_amount`/`policy_ref` 사실대조·PII, `app/core/verification.py` 재사용) → LLM 톤 REV → 완료**. 최대 3회 재시도, PII 는 즉시 escalate. `accepted_case_types=[]`(Controller 자동배선 범위 밖, `config/project.yaml` 미등록 — 사용자 판단 몫). ★검수 중 **실제 결함 2건 발견해 수정**: (1) 최초 구현이 REV 규칙(금칙어·PII)을 **생성된 응답이 아니라 고객 원문**(`task.input_text`=`case["subject"]`)에 먼저 적용해, 고객이 연락처만 적어도 응답 생성 시도 없이 escalate 시켰다 → preflight 제거. (2) v8 §8-B 흐름 1단계 "톤 결정(규칙)" 이 통째로 빠져 톤 REV 가 항상 `professional` 로 하드코딩돼 있었다 → `case["sentiment"]` 기반 규칙 추가. [디버그](docs/reports/debugs/2026-08-18_Composer_v2_ResponseReview_검수.md) |
+| ★**Composer 쓰기채널 v2** (`wiki/records/handoff/13`) | **완료** (2026-08-18, Codex) — VPN/SSH 전제 + 단명 HMAC JWT(`/auth/token`, `app/presentation/composer_auth.py`), scope 3분화(`composer:read`/`validate`/`write`), `apply` 성공 시 `var/audit/composer_events.jsonl` append(actor·revision·changed_fields·reason), `implementation_ref` 는 registry ID(`KNOWN_IMPLEMENTATION_REFS`) 대조로만 HTTP 경로에서 통과. 설계·구현 결함은 없었으나, 계약 문서(handoff/13)가 약속한 **JWT 만료/위조 테스트가 실제로는 없어서** 추가했다(`test_expired_token_is_rejected`/`test_forged_signature_is_rejected`) |
+| ★**Response Generation & Review Team** (DoD-29, v8 §8-B) | **완료** (2026-08-18, Codex+Claude) — `app/modules/customer_ops/response_review.py`. **톤 결정(규칙, `decide_tone(sentiment)`) → GEN 초안 → 결정론 REV(금칙어·`refund_amount`/`policy_ref` 사실대조·PII, `app/core/verification.py` 재사용) → LLM 톤 REV → 완료**. 최대 3회 재시도, PII 는 즉시 escalate. `accepted_case_types=[]`(Controller 자동배선 범위 밖, `config/project.yaml` 미등록 — 사용자 판단 몫). ★검수 중 **실제 결함 2건 발견해 수정**: (1) 최초 구현이 REV 규칙(금칙어·PII)을 **생성된 응답이 아니라 고객 원문**(`task.input_text`=`case["subject"]`)에 먼저 적용해, 고객이 연락처만 적어도 응답 생성 시도 없이 escalate 시켰다 → preflight 제거. (2) v8 §8-B 흐름 1단계 "톤 결정(규칙)" 이 통째로 빠져 톤 REV 가 항상 `professional` 로 하드코딩돼 있었다 → `case["sentiment"]` 기반 규칙 추가. [디버그](wiki/records/reports/debugs/2026-08-18_Composer_v2_ResponseReview_검수.md) |
 | **테스트 총계** | **368 passed · skipped 0 · failed 0** (2026-08-18, `python -m scripts.verify_dod` 재실행 확인 — Composer JWT 만료/위조 테스트 2건 + 톤 결정 규칙 테스트 2건 추가분 포함) |
-| ★**Docker · AWS 배포 모듈화** | **1단계 완료, 2단계는 초안(가정 명시, 확정 아님)** (둘 다 Codex, 2026-08-17). 1단계: `Dockerfile` + `docker/compose.yml`(conda `pgv` 경로 병행, 대체 아님) + 배포 계약 `docs/handoff/14`. 2단계: `infra/aws/`(Terraform 골격 — ECS Fargate·RDS+pgvector·Secrets Manager 가정) + `.github/workflows/deploy.yml`. ★이 기계엔 Docker·Terraform 둘 다 미설치라 build/run/validate/apply 전부 미검증 — 문법·정적 확인만 했다. AWS 컴퓨트·매니지드 서비스 교체·비밀 관리·CI/CD 는 **가정일 뿐 사용자 확답 전** — 확답 오면 `infra/aws/`만 갱신, 계획 `docs/plans/2026-08-17_Docker_AWS_배포_모듈화_계획.md` §2 |
+| ★**Docker · AWS 배포 모듈화** | **1단계 완료, 2단계는 초안(가정 명시, 확정 아님)** (둘 다 Codex, 2026-08-17). 1단계: `Dockerfile` + `docker/compose.yml`(conda `pgv` 경로 병행, 대체 아님) + 배포 계약 `wiki/records/handoff/14`. 2단계: `infra/aws/`(Terraform 골격 — ECS Fargate·RDS+pgvector·Secrets Manager 가정) + `.github/workflows/deploy.yml`. ★이 기계엔 Docker·Terraform 둘 다 미설치라 build/run/validate/apply 전부 미검증 — 문법·정적 확인만 했다. AWS 컴퓨트·매니지드 서비스 교체·비밀 관리·CI/CD 는 **가정일 뿐 사용자 확답 전** — 확답 오면 `infra/aws/`만 갱신, 계획 `wiki/records/plans/2026-08-17_Docker_AWS_배포_모듈화_계획.md` §2 |
 | **DoD (v8 §27, 29항목)** | **evidence 29/29 · 통과 25 · 부분통과 4 · 미착수 0** (`python -m scripts.verify_dod` 재실행 2026-08-18 확인). 남은 4건 = **15·17**(둘 다 같은 차단항목 — 사람 라벨 20건 대비 judge agreement 미측정. ★도구는 준비됨: `eval/label_holdout_template.py` + `eval/stats/agreement.py`(exact-match+Cohen's kappa), 이 저장소 유일한 사람이 `eval/reports/holdout_human_labels_template.jsonl` 20건을 채워야 판정이 바뀐다 — 라벨 값은 지어내지 않았다) · **23**(consumer idempotency, 대상 1종뿐 — ★게이트 추가함 `tests/architecture/test_consumer_idempotency_gate.py`, 새 consumer 가 테스트 없이 늘면 즉시 실패. 판정 자체는 여전히 부분통과, consumer 가 하나뿐이라는 사실은 안 바뀜) · **28**(방어지표 5종은 완료, 파인튜닝 자체는 미착수). **29**는 이번에 신설·평가되어 통과로 반영됐다(범위: Team 단독 GEN→REV 계약 — 실 LLM 검증·Controller 자동배선은 한계로 남아 있다) |
 | **M1·M2·M3 게이트** | **전부 도달**. ★단 **RC 는 아니다** — judge 가 사람과 얼마나 맞는지 모르는 상태로 내보낼 수 없다 |
 
@@ -187,7 +187,7 @@ final_workspace/.tmp/        ← 변환·렌더링 등 워크스페이스 임시
 ### 환경 주의사항
 
 - **PostgreSQL 은 Windows 서비스가 아니다.** conda env `pgv` 에서 뜬 프로세스다.
-  재부팅 후 안 떠 있을 수 있다 → `docs/manuals/` 참조.
+  재부팅 후 안 떠 있을 수 있다 → `wiki/records/manuals/` 참조.
 - **Docker 가 설치돼 있지 않다.** `docker/compose.yml` 로 DB 를 띄우는 v6 §13 전제는
   이 기계에서 성립하지 않는다. 로컬 PG 를 쓰고, compose 파일은 재현용으로만 남긴다.
 - OpenAI 임베딩 `text-embedding-3-small` = **1536차원** 으로 v6 §22 DDL `vector(1536)` 과 일치한다.
@@ -219,8 +219,8 @@ python -m eval.stats.mcnemar --input eval/reports/pairs.jsonl
 
 - 프로세스 규칙: `RULE.md` (**작업 전 필독**)
 - 기준선 계획: `../program/plan/A-COP_구현계획서_v9.md` (읽기 전용, v8 이하는 `../program/plan/archive/`의 보존본)
-- 실행계획: `docs/plans/`
-- 계약: `docs/handoff/`
-- 리포트: `docs/reports/` · 결함: `docs/reports/debugs/`
-- DoD 검증 로그: `docs/evidence/`
+- 실행계획: `wiki/records/plans/`
+- 계약: `wiki/records/handoff/`
+- 리포트: `wiki/records/reports/` · 결함: `wiki/records/reports/debugs/`
+- DoD 검증 로그: `wiki/records/evidence/`
 - 결정 기록은 **리포트로 남긴다.** 코드 주석만으로는 "왜"가 사라진다.
