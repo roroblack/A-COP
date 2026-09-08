@@ -90,6 +90,17 @@ DOMAIN_WORDS = (
 
 **cs와 sample이 같은 규칙을 지키는 게 이식 가능성의 근거다.** 그리고 **sample이 혼자 설 수 있는 근거이기도 하다** — basement는 도메인을 모르므로 cs가 없어도 성립한다.
 
+## 기록 구역 `records/` (2026-09-08)
+
+옛 `docs/`가 이 wiki 아래 `records/`로 합쳐졌다. **읽는 순서는 wiki 본문 먼저**, `records/`는 본문이 인용한 근거를 확인할 때 연다.
+
+| `records/` | 지위 |
+|---|---|
+| `evidence/` · `reports/` | 계속 쓴다 — 재현 출력과 작업 리포트. 날짜 파일명 그대로, 고치지 않는다 |
+| `handoff/` · `history/` · `plans/` · `vision/` 등 | 동결된 기록. 현재 계약·계획·결정은 wiki 본문 |
+
+규칙은 허브 [governance/work-loop.md](../../wiki/governance/work-loop.md) 2026-09-08 절. 검사기는 `records/`를 면제한다.
+
 ## 관계
 
 - [../../wiki/architecture/core-vs-team.md](../../wiki/architecture/core-vs-team.md) — 이 저장소가 구현하는 계약

@@ -29,7 +29,7 @@ def test_project_yaml_contract_reads_real_file_and_rejects_removed_field():
 
 
 def test_dod_contract_reads_real_files_and_rejects_renamed_fixture():
-    files = sorted((ROOT / "docs/evidence").glob("DoD-*.md"))
+    files = sorted((ROOT / "wiki/records/evidence").glob("DoD-*.md"))
     assert files
     for path in files:
         text = path.read_text(encoding="utf-8")
