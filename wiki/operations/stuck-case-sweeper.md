@@ -3,7 +3,7 @@ type: guide
 title: 멈춘 Case 되잡기 (sweeper)
 description: 접수·분류·실행을 나눈 대가로 생긴 잔류 Case를 주기적으로 다시 처리한다
 status: draft
-tags: [release, operations]
+tags: [release]
 ---
 
 # 멈춘 Case 되잡기 (sweeper)
