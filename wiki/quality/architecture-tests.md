@@ -4,6 +4,8 @@ title: 아키텍처 테스트가 지키는 다섯 경계
 description: 아키텍처 테스트 5종이 각각 어떤 위반을 어떻게 탐지하는지 설명한다.
 status: draft
 tags: [testing, architecture]
+domain: neutral
+domain_note: 아키텍처 가드 목록이다. 커머스 낱말은 금지 목록으로 나온다
 ---
 
 ## 결론

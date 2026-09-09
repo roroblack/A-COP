@@ -4,6 +4,7 @@ title: 도메인을 갈아 끼우는 절차
 description: basement 를 새 도메인에 복사할 때 무엇을 바꾸고 무엇을 안 바꾸나. 순서가 있다
 status: draft
 tags: [architecture, data, contract]
+domain: neutral
 ---
 
 # 도메인을 갈아 끼우는 절차

@@ -4,6 +4,7 @@ title: Team과 Core의 실행 경계
 description: Team이 넘지 말아야 할 경계와 코드 및 테스트가 실제로 막는 범위를 설명한다.
 status: draft
 tags: [architecture, contract, testing, security]
+domain: neutral
 ---
 
 Team은 근거 없는 답변이나 승인 대기 없는 승인 대상 제안을 반환하면 안 된다. 선언형 Team은 읽기 작업만 수행하고 `ActionProposal`을 만들지 않는다. `[실측]` 다만 일반 `TeamModule.execute()` 내부의 직접적인 부수 효과까지 막는 검사는 지정된 코드에서 확보되지 않았다. `[미확보]`

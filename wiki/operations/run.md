@@ -4,6 +4,7 @@ title: 떴는지 확인하기
 description: 실제로 호출해 확인한 경로와 응답 코드. 인증 없이 볼 수 있는 것과 아닌 것
 status: draft
 tags: [release, api]
+domain: neutral
 ---
 
 # 떴는지 확인하기

@@ -4,6 +4,7 @@ title: Composer 인증 주체와 scope 판정
 description: 누가 Composer 기능을 호출할 수 있으며 요청 scope를 어떻게 판정하는지 설명한다.
 status: draft
 tags: [architecture, api, security]
+domain: neutral
 ---
 
 # Composer 인증 주체와 scope 판정

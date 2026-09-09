@@ -4,6 +4,7 @@ title: v3 설계 대비 구현 격차
 description: 항목 11개를 대조했더니 일치 1건이었다. 토글 전용 계약이 구현되지 않았다
 status: draft
 tags: [architecture, api, contract]
+domain: neutral
 ---
 
 # v3 설계 대비 구현 격차

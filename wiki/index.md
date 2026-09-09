@@ -3,6 +3,7 @@ type: guide
 title: final_project_sample 지식 지도
 description: Core/Team 계약의 참조 구현. cs가 릴리스로 나간 뒤에도 혼자 정확히 돌아야 한다
 status: draft
+domain: neutral
 ---
 
 # final_project_sample 지식 지도

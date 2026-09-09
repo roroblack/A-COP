@@ -4,6 +4,7 @@ title: 배포본 만들기
 description: basement를 다른 프로젝트가 쓸 수 있게 내보내는 경로. 내용 주소 매니페스트가 붙는다
 status: draft
 tags: [release, architecture]
+domain: neutral
 ---
 
 # 배포본 만들기

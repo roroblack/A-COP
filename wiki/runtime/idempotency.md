@@ -4,6 +4,7 @@ title: 중복 요청의 멱등성 키
 description: 반복된 action 요청을 식별하는 서버 키의 구성과 확인된 중복 처리 결과를 설명한다.
 status: draft
 tags: [architecture, contract, data]
+domain: neutral
 ---
 
 action 제안의 최종 멱등성 키는 Team이 정하지 않는다. Controller가 tenant, 원 요청 ID, action 종류, 업무 대상을 이용해 서버 경계에서 다시 계산한다. 같은 네 입력은 같은 64자리 SHA-256 hex 키를 만든다. `[실측]` `core/idempotency.py:8-18`, `application/controller.py:244-252`

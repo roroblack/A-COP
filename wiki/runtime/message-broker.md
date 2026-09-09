@@ -4,6 +4,7 @@ title: 메시지를 어떻게 내보내나
 description: outbox 에 쌓고 worker 가 집어 간다. 실패를 실패로 남기고 자동 재실행하지 않는다
 status: draft
 tags: [architecture, state]
+domain: neutral
 ---
 
 # 메시지를 어떻게 내보내나

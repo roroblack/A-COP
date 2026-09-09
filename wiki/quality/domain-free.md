@@ -4,6 +4,8 @@ title: Basement의 도메인 독립성 강제
 description: basement가 업무 도메인을 모른다는 경계를 어떤 검사들이 강제하는지 설명한다.
 status: draft
 tags: [testing, architecture]
+domain: neutral
+domain_note: 코어에 도메인 어휘가 없는지 보는 가드다. 커머스 낱말은 금지 목록이다
 ---
 
 ## 결론

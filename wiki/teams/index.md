@@ -4,6 +4,7 @@ title: Team을 어떻게 끼우나
 description: Team-플러그인 구조의 참조 구현. 예시 Team은 계약이 성립한다는 증거이지 제품이 아니다
 status: draft
 tags: [architecture, contract]
+domain: neutral
 ---
 
 # Team — 어떻게 끼우나

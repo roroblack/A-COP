@@ -4,6 +4,7 @@ title: 상태 충돌의 재시도와 포기 조건
 description: optimistic concurrency 충돌 뒤 Controller가 재시도하는 횟수와 중단 조건을 설명한다.
 status: draft
 tags: [architecture, state, testing]
+domain: neutral
 ---
 
 `transition_case()` 자체는 충돌을 재시도하지 않는다. Controller의 일부 전이만 `_transition_with_retry()`를 사용하며, 설정된 재계산 횟수만큼 다시 시도한 뒤 마지막 `StateConflict`를 그대로 올린다. `[실측]` `core/transition.py:143-176`, `application/controller.py:91-105`

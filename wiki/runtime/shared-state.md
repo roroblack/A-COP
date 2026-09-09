@@ -4,6 +4,7 @@ title: Case 공유 상태의 동시 쓰기
 description: 같은 Case를 두 실행 주체가 동시에 변경할 때 충돌을 감지하고 일관성을 지키는 방법을 설명한다.
 status: draft
 tags: [architecture, state, data]
+domain: neutral
 ---
 
 두 쓰기 주체가 같은 version의 Case를 동시에 변경하면 하나만 성공한다. 다른 하나는 `StateConflict`를 받으며, 먼저 성공한 변경을 덮어쓰지 않는다. `[실측]` `core/transition.py:61-69`, `tests/integration/controller/test_controller_integration.py:432-449`

@@ -4,6 +4,7 @@ title: Composer UI 패키지의 경계
 description: UI가 넘지 말아야 할 구현 경계와 이를 검사하는 장치를 설명한다.
 status: draft
 tags: [architecture, contract, testing, security]
+domain: neutral
 ---
 
 # Composer UI 패키지의 경계

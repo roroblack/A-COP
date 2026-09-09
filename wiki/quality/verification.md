@@ -4,6 +4,7 @@ title: 제안을 사실과 대조하는 규칙
 description: 제안의 필드를 무엇과 대조하며 대조할 수 없는 필드를 어떻게 처리하는지 설명한다.
 status: draft
 tags: [testing, contract, data]
+domain: neutral
 ---
 
 ## 결론

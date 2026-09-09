@@ -4,6 +4,7 @@ title: DoD 증거 색인
 description: 30건이 어디서 무엇을 증명하나. cs 와 판정이 갈리는 항목이 있다
 status: draft
 tags: [testing, evaluation]
+domain: neutral
 ---
 
 # DoD 증거 색인

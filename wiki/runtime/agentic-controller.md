@@ -4,6 +4,7 @@ title: Controller 가 Case 를 어떻게 굴리나
 description: 한 트랜잭션 안에서 라우팅·실행·결과 적용을 한다. 두 개의 시계가 따로 돈다
 status: draft
 tags: [architecture, state, agent]
+domain: neutral
 ---
 
 # Controller 가 Case 를 어떻게 굴리나

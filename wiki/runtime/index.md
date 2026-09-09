@@ -4,6 +4,7 @@ title: Case가 어떻게 흘러가나
 description: basement의 실행 기반. 도메인을 모르는 채로 상태·동시성·멱등을 다룬다
 status: draft
 tags: [architecture, state]
+domain: neutral
 ---
 
 # 런타임 — Case가 어떻게 흘러가나

@@ -4,6 +4,7 @@ title: 예시 Team 이 무엇을 보여주나
 description: 계약이 성립한다는 증거다. 제품이 아니다. 코드 없이 Team 을 늘리는 경로가 여기 있다
 status: draft
 tags: [architecture, contract, security]
+domain: neutral
 ---
 
 # 예시 Team 이 무엇을 보여주나

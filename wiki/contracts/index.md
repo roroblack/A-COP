@@ -3,6 +3,7 @@ type: guide
 title: 선검증 계약
 description: sample에서 먼저 검증하고 cs로 이식하는 계약. validated/ 는 검증이 끝난 것
 status: draft
+domain: neutral
 ---
 
 # 선검증 계약

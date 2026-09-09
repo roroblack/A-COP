@@ -4,6 +4,7 @@ title: Case 생명주기와 상태 전이
 description: Case 상태의 종류와 확인된 전이 규칙, 상태를 쓸 수 있는 주체를 설명한다.
 status: draft
 tags: [architecture, state, contract]
+domain: neutral
 ---
 
 Case 상태는 12개다. 상태 변경은 이벤트를 순수 리듀서에 적용한 뒤 `transition_case()`를 통해 저장하는 방식이다. `[실측]` `core/contracts.py:53`, `core/transition.py:119`

@@ -4,6 +4,7 @@ title: Team 입출력 계약
 description: Team이 받는 작업과 반환하는 결과, 그리고 필수 필드를 설명한다.
 status: draft
 tags: [architecture, contract, api]
+domain: neutral
 ---
 
 Team은 `manifest`를 공개하고 `execute(TeamTask) -> TeamResult`를 비동기로 구현하는 객체다. `[실측]` Core가 요구하는 표면은 이 두 가지뿐이다. (`acop_basement/core/contracts.py:320`)

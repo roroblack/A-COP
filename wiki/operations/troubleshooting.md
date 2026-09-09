@@ -4,6 +4,7 @@ title: 안 될 때
 description: 실제로 겪은 실패와 그 원인. 겪지 않은 것은 적지 않는다
 status: draft
 tags: [release, testing]
+domain: neutral
 ---
 
 # 안 될 때

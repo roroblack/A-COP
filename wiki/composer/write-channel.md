@@ -4,6 +4,7 @@ title: Composer의 단일 쓰기 경로
 description: 설정 변경을 한 경로로 모으는 이유와 그 경로가 적용 전에 검사하는 조건을 설명한다.
 status: draft
 tags: [architecture, state, api, testing]
+domain: neutral
 ---
 
 # Composer의 단일 쓰기 경로

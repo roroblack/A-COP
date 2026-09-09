@@ -4,6 +4,7 @@ title: 무엇이 이 구조를 강제하나
 description: sample이 혼자 설 수 있다는 주장을 테스트가 증명한다. 특히 다른 도메인을 물리는 테스트
 status: draft
 tags: [testing, architecture]
+domain: commerce
 ---
 
 # 품질 — 무엇이 이 구조를 강제하나

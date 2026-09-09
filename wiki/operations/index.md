@@ -4,6 +4,7 @@ title: 어떻게 띄우나
 description: sample을 혼자 실행하는 법. cs 없이 성립해야 하므로 여기가 자족적이어야 한다
 status: draft
 tags: [release]
+domain: neutral
 ---
 
 # 운영 — 어떻게 띄우나

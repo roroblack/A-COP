@@ -4,6 +4,7 @@ title: sample 이 깨면 안 되는 것
 description: 테스트가 실제로 강제하는 규칙만 적는다. 선언만 있고 강제가 없는 것은 여기 없다
 status: draft
 tags: [testing, architecture, contract]
+domain: neutral
 ---
 
 # sample 이 깨면 안 되는 것

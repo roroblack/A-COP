@@ -4,6 +4,7 @@ title: 설정을 누가 어떻게 바꾸나
 description: Composer는 basement 설정을 바꾸는 유일한 통제 입구다. sample이 먼저 검증하고 cs로 이식한다
 status: draft
 tags: [architecture, api, security]
+domain: neutral
 ---
 
 # Composer — 쓰기채널

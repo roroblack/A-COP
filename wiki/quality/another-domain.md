@@ -4,6 +4,8 @@ title: 다른 도메인으로 검증한 범용 엔진
 description: 같은 검증 엔진에 쇼핑몰 도메인을 연결하는 테스트가 무엇을 증명하는지 설명한다.
 status: draft
 tags: [testing, architecture, contract]
+domain: neutral
+domain_note: 코어가 다른 도메인도 태우는지 보는 시험이다. 커머스는 그 시험의 재료다
 ---
 
 ## 결론

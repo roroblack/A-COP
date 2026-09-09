@@ -4,6 +4,7 @@ title: 처음부터 띄우기
 description: sample을 로컬에서 실행하는 데 필요한 것과 실제로 확인된 절차
 status: draft
 tags: [release]
+domain: neutral
 ---
 
 # 처음부터 띄우기

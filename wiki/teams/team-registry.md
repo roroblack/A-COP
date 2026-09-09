@@ -4,6 +4,7 @@ title: capability 기반 Team 탐색
 description: 레지스트리가 case type과 capability 의도로 Team을 선택하고 실패를 표현하는 방식을 설명한다.
 status: draft
 tags: [architecture, contract, api]
+domain: neutral
 ---
 
 `TeamRegistry.resolve()`는 capability만으로 Team을 직접 조회하지 않는다. 필수 `case_type`으로 활성 Team 후보를 만든 뒤 선택적인 `intent`를 manifest의 capability와 대조하고, 최종 후보가 정확히 하나일 때만 반환한다. `[실측]` (`acop_basement/core/registry.py:54`)

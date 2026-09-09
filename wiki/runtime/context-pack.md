@@ -4,6 +4,7 @@ title: 모델 입력용 ContextPack 조립
 description: Controller와 Context Broker가 근거 맥락을 구성하고 예산 초과 시 제거하는 순서를 설명한다.
 status: draft
 tags: [architecture, contract, agent]
+domain: neutral
 ---
 
 Context Broker는 답변을 만들지 않고, 입력 재료를 12,000 token 예산 안의 `ContextPack`으로 조립한다. token은 문자 수로 추정하지 않고 `cl100k_base` tiktoken 인코더로 센다. `[실측]` `core/context.py:1-12`, `core/context.py:39-46`, `core/context.py:86-87`
