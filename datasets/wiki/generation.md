@@ -5,6 +5,8 @@ description: REPORT는 wiki로 옮기지 않는다. 생성 명령과 입력만 �
 status: draft
 tags: [data, documentation]
 owners: [human:미배정]
+domain: neutral
+domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인이 바뀌어도 이 데이터 문서는 그대로다
 ---
 
 # REPORT 재생성

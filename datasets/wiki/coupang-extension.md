@@ -5,6 +5,8 @@ description: 목록은 __NEXT_DATA__, 상세·배송은 같은 탭의 문서 이
 status: draft
 tags: [data, testing]
 owners: [human:미배정]
+domain: commerce
+domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인이 바뀌어도 이 데이터 문서는 그대로다
 ---
 
 # 쿠팡 확장 — 지금 구조와 버린 구조

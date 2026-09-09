@@ -4,6 +4,8 @@ title: 배포본을 만들 때 가리는 것
 description: 팀 합본과 배포 ZIP에서 무엇을 빼고 무엇을 가리는가. 집 열쇠 위치가 51건 들어 있었다
 status: draft
 tags: [data, security]
+domain: commerce
+domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인이 바뀌어도 이 데이터 문서는 그대로다
 ---
 
 # 배포본을 만들 때 가리는 것

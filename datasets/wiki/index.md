@@ -3,6 +3,8 @@ type: guide
 title: datasets 지식 지도
 description: 데이터셋 목록과 재생성 방법. REPORT는 이관하지 않고 재생성한다
 status: draft
+domain: commerce
+domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인이 바뀌어도 이 데이터 문서는 그대로다
 ---
 
 # datasets 지식 지도

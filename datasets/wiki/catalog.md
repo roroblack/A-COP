@@ -7,6 +7,8 @@ tags: [data]
 owners: [human:미배정]
 size_exempt: true
 size_exempt_reason: 데이터셋 카탈로그. 찾을 때 한 파일에서 검색하는 게 빠르다
+domain: commerce
+domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인이 바뀌어도 이 데이터 문서는 그대로다
 ---
 
 # 데이터셋 목록

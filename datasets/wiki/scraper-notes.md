@@ -5,6 +5,8 @@ description: 쿠팡 주문 화면의 실제 구조와 PII 수집 금지 항목. 
 status: draft
 tags: [data, security]
 owners: [human:미배정]
+domain: commerce
+domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인이 바뀌어도 이 데이터 문서는 그대로다
 ---
 
 # 스크래퍼 관측 기록

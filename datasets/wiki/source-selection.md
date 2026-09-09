@@ -4,6 +4,8 @@ title: 소스를 왜 이걸로 골랐나
 description: 독립 조사와 완결성 점검으로 목록을 검증했다. 결론은 "더 찾는 것보다 정리가 급하다"였다
 status: draft
 tags: [data, evaluation]
+domain: commerce
+domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인이 바뀌어도 이 데이터 문서는 그대로다
 ---
 
 # 소스를 왜 이걸로 골랐나
