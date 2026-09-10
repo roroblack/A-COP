@@ -4,6 +4,7 @@ title: 선검증 계약
 description: sample에서 먼저 검증하고 cs로 이식하는 계약. validated/ 는 검증이 끝난 것
 status: draft
 domain: neutral
+domain_note: 두 저장소의 금지 어휘 목록을 비교하는 규칙 문서다. 여행 낱말은 cs 가 더한 목록을 보이려고 나온다
 ---
 
 # 선검증 계약
