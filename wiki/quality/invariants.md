@@ -67,7 +67,7 @@ Guard the set of messaging consumers covered by idempotency evidence.
 
 ## 세어 보면
 
-`[실측]` 강제하는 테스트 함수 **68개**가 위 12개 불변식을 받친다.
+`[실측]` 강제하는 테스트 함수 **68개**가 위 12개 불변식을 받친다. `[2026-09-10]` 같은 네 폴더를 지금 세면 **87개**다(architecture 29 · contract 50 · contracts 5 · security 3). 68 은 그때 값이다.
 
 ```
 architecture  22    contract  38
@@ -76,7 +76,7 @@ contracts      5    security   3
 
 ## ★ 강제되지 않는 것
 
-`[미확보]` **선언은 있는데 테스트가 없는 경계가 하나 확인됐다.**
+`[미확보]` **선언은 있는데 테스트가 없는 경계가 하나 확인됐다.** `[정정 2026-09-10]` **지금은 테스트가 있다** — `tests/architecture/test_composer_package_boundary.py` 5건.
 
 > `acop_composer` 와 `acop_basement` 의 **패키지 경계**
 

@@ -35,6 +35,8 @@ domain: neutral
 
 ```
 migrations/002_domain_<이전>.sql  →  002_domain_<새것>.sql
+# [2026-09-10] sample 의 도메인 SQL 은 config/migrations/ 에 있다(지금 002_domain_customer_ops.sql).
+#   Core SQL(acop_basement/infrastructure/db/migrations/)과 합쳐 파일명순으로 적용한다 — collect_migration_files()
 ```
 
 `[실측]` **`001_schema.sql`(Core 14 테이블)은 손대지 않는다.**

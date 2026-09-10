@@ -17,7 +17,7 @@ domain: neutral
 
 ```
 acop_basement/presentation/api/app.py     API 진입점
-acop_composer/service_app.py              Composer 독립 실행
+app/config_service.py (uvicorn app.config_service:app)   # [정정 2026-09-10] acop_composer/service_app.py 는 factory 만 준다              Composer 독립 실행
 dist/basement/                            배포본
 ```
 

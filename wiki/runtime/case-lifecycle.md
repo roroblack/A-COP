@@ -11,6 +11,8 @@ Case 상태는 12개다. 상태 변경은 이벤트를 순수 리듀서에 적�
 
 ## 상태
 
+`[2026-09-10]` **이 문서의 `controller.py:NNN` 줄 번호는 낡았다** — Controller 가 커밋을 셋으로 나눈 뒤 밀렸다. 함수 이름으로 찾는다(`acop_basement/application/controller.py`): `_task` :79 · `_transition_with_retry` :95 · `run_case` :130 · `_apply_result` :237 · `_reject_unverified` :243 · `_event_for_result` :297 · `resume` :330. `[실측 2026-09-10]`
+
 `[실측]` `CaseStatus`에 선언된 상태는 다음과 같다. `core/contracts.py:53-65`
 
 | 상태 | 의미를 코드에서 확인한 범위 |

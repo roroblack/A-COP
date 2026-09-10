@@ -1,13 +1,15 @@
 ---
 type: concept
 title: Controller 가 Case 를 어떻게 굴리나
-description: 한 트랜잭션 안에서 라우팅·실행·결과 적용을 한다. 두 개의 시계가 따로 돈다
+description: 시작 기록·Team 실행·결과 반영을 나눠 커밋한다. 두 개의 시계가 따로 돈다
 status: draft
 tags: [architecture, state, agent]
 domain: neutral
 ---
 
 # Controller 가 Case 를 어떻게 굴리나
+
+`[2026-09-10]` **이 문서의 `controller.py:NNN` 줄 번호는 낡았다** — Controller 가 커밋을 셋으로 나눈 뒤 밀렸다. 함수 이름으로 찾는다(`acop_basement/application/controller.py`): `_task` :79 · `_transition_with_retry` :95 · `run_case` :130 · `_apply_result` :237 · `_reject_unverified` :243 · `_event_for_result` :297 · `resume` :330. `[실측 2026-09-10]`
 
 `run_case()` 하나가 전부다. `application/controller.py:107-163`
 
@@ -20,7 +22,7 @@ domain: neutral
   ⑤ 결과 적용
 ```
 
-**전부 한 트랜잭션이다.** 중간에 실패하면 아무것도 안 남는다.
+`[정정 2026-09-10]` 「**전부 한 트랜잭션이다.** 중간에 실패하면 아무것도 안 남는다」는 옛 동작이다. 지금 `run_case()` 는 **시작 기록을 커밋 → 트랜잭션 밖에서 Team 실행 → 결과 반영을 따로 커밋**한다(같은 함수 안에 `conn.transaction()`·`conn.commit()` 이 여러 번 있다). Team 실행 중 실패해도 시작 기록은 남는다.
 
 ## ★ 시계가 둘이다
 

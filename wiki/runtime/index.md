@@ -31,7 +31,8 @@ domain: neutral
 하위 패키지도 있다.
 
 ```
-case_runtime/  access_action/  graph_retrieval/  remote_team/  shared/
+graph_retrieval/  remote_team/
+# [정정 2026-09-10] case_runtime/·access_action/·shared/ 는 없다(acop_basement/core/ 실측)
 ```
 
 ## `verification.py`가 도메인 무관인 방식
@@ -61,13 +62,13 @@ VerificationPolicy(
 | [agentic-controller.md](agentic-controller.md) | Controller 가 Case 를 어떻게 굴리나 | 시계가 둘이다 |
 | [message-broker.md](message-broker.md) | 메시지를 어떻게 내보내나 | **지금은 아무 데도 안 보낸다** |
 
-`[실측]` **다섯 문서는 sample 코드만 읽고 썼다.** cs wiki 를 열지 않았다 — 열면 경로만 바꾼 사본이 나온다.
+`[실측]` **잎 문서들은 sample 코드만 읽고 썼다**(`[정정 2026-09-10]` 「다섯」으로 적혀 있었는데 잎 문서는 일곱이다). cs wiki 를 열지 않았다 — 열면 경로만 바꾼 사본이 나온다.
 
 ### 아직 안 쓴 것
 
 | 문서 | 답할 질문 |
 |---|---|
-| — | 없다. 다섯 문서로 이 영역은 닫혔다 |
+| — | 없다. 잎 문서 일곱으로 이 영역은 닫혔다 |
 
 ## 여기서 드러난 것 둘
 

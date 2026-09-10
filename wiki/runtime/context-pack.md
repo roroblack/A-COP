@@ -11,6 +11,8 @@ Context Broker는 답변을 만들지 않고, 입력 재료를 12,000 token 예�
 
 ## Controller가 넘기는 재료
 
+`[2026-09-10]` **이 문서의 `controller.py:NNN` 줄 번호는 낡았다** — Controller 가 커밋을 셋으로 나눈 뒤 밀렸다. 함수 이름으로 찾는다(`acop_basement/application/controller.py`): `_task` :79 · `_transition_with_retry` :95 · `run_case` :130 · `_apply_result` :237 · `_reject_unverified` :243 · `_event_for_result` :297 · `resume` :330. `[실측 2026-09-10]`
+
 Controller는 Team을 선택한 뒤 정책 검색과 현재 Case 상태를 모아 `ContextInputs`를 만든다. `[실측]` `application/controller.py:68-89`
 
 현재 상태에는 다음 값이 들어간다. `[실측]` `application/controller.py:78-81`

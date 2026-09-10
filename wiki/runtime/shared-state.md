@@ -11,6 +11,8 @@ domain: neutral
 
 ## 동시성 게이트
 
+`[2026-09-10]` **이 문서의 `controller.py:NNN` 줄 번호는 낡았다** — Controller 가 커밋을 셋으로 나눈 뒤 밀렸다. 함수 이름으로 찾는다(`acop_basement/application/controller.py`): `_task` :79 · `_transition_with_retry` :95 · `run_case` :130 · `_apply_result` :237 · `_reject_unverified` :243 · `_event_for_result` :297 · `resume` :330. `[실측 2026-09-10]`
+
 각 Case projection에는 version이 있다. 호출자는 자신이 읽은 version을 `expected_version`으로 전달한다. `[실측]` `core/transition.py:119-136`
 
 `transition_case()`는 먼저 현재 projection을 읽고 현재 version과 `expected_version`을 비교한다. 이미 다르면 DB 변경 전에 `StateConflict`를 발생시킨다. `[실측]` `core/transition.py:100-116`, `core/transition.py:143-149`
@@ -60,6 +62,8 @@ outbox 쓰기는 `(tenant_id, topic, dedupe_key)` 충돌 시 새 행을 만들�
 version 비교는 같은 Case의 projection 손실 갱신을 막는다. 서로 다른 Case 사이의 업무 불변식이나 여러 Case를 아우르는 잠금은 지정된 코드에서 확인하지 못했다. `[미확보]`
 
 충돌 이후 다시 시도할지 여부는 `transition_case()`가 아니라 호출자가 정한다. `[실측]` `core/transition.py:145-176`, `application/controller.py:91-105`
+
+`[정정 2026-09-10]` **Controller 실행 전체가 한 트랜잭션이 아니다** — Team 실행은 트랜잭션 밖이고 시작·결과 반영을 나눠 커밋한다 → [agentic-controller.md](agentic-controller.md).
 
 ## 관계
 

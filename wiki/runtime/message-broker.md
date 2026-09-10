@@ -1,13 +1,17 @@
 ---
 type: concept
 title: 메시지를 어떻게 내보내나
-description: outbox 에 쌓고 worker 가 집어 간다. 실패를 실패로 남기고 자동 재실행하지 않는다
+description: outbox 에 쌓고 worker 가 집어 간다. 시간초과·연결 오류는 unknown 으로 남기고 그 밖의 예외는 한도까지 다시 시도한다
 status: draft
 tags: [architecture, state]
 domain: neutral
 ---
 
 # 메시지를 어떻게 내보내나
+
+`[2026-09-10]` **이 문서의 `controller.py:NNN` 줄 번호는 낡았다** — Controller 가 커밋을 셋으로 나눈 뒤 밀렸다. 함수 이름으로 찾는다(`acop_basement/application/controller.py`): `_task` :79 · `_transition_with_retry` :95 · `run_case` :130 · `_apply_result` :237 · `_reject_unverified` :243 · `_event_for_result` :297 · `resume` :330. `[실측 2026-09-10]`
+
+`[정정 2026-09-10]` **「실패를 실패로 남기고 자동 재실행하지 않는다」는 일반화다.** `infrastructure/messaging/worker.py` 는 `TimeoutError`·`ConnectionError` 만 `unknown` 으로 남기고, **그 밖의 예외는 `pending` 으로 되돌려 다시 시도**한다 — 시도 횟수가 `max_attempts` 에 닿으면 `dead_letter` 다.
 
 **상태 전이와 메시지 발행이 한 트랜잭션 안에서 일어난다.** 그래서 "상태는 바뀌었는데 알림이 안 나갔다"가 생기지 않는다.
 
@@ -95,7 +99,7 @@ claim 커밋 후 · publisher() 완료 전에 워커가 죽는다
 
 ## 빈 패키지
 
-`[실측]` `core/case_runtime/messaging/` 에 `.py` 가 없다. **실제 구현은 `infrastructure/messaging/` 에 있다.**
+`[실측]` `core/case_runtime/messaging/` 에 `.py` 가 없다(`[2026-09-10]` 지금은 `core/case_runtime/` 폴더 자체가 없다). **실제 구현은 `infrastructure/messaging/` 에 있다.**
 
 ## 관계
 

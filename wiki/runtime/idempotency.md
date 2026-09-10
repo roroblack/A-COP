@@ -11,6 +11,10 @@ action 제안의 최종 멱등성 키는 Team이 정하지 않는다. Controller
 
 ## 키 입력
 
+`[2026-09-10]` **이 문서의 `controller.py:NNN` 줄 번호는 낡았다** — Controller 가 커밋을 셋으로 나눈 뒤 밀렸다. 함수 이름으로 찾는다(`acop_basement/application/controller.py`): `_task` :79 · `_transition_with_retry` :95 · `run_case` :130 · `_apply_result` :237 · `_reject_unverified` :243 · `_event_for_result` :297 · `resume` :330. `[실측 2026-09-10]`
+
+★**sample 의 멱등 키 대상은 `case_id` 다**(`_event_for_result` 안 `idempotency_key(...)`, :318). v11 §4-E 는 **서버가 인자에서 꺼내 확인한 대상 객체 id** 로 정했다 — sample 은 그와 다른 구현이다. cs 도 아직 `case_id` 다.
+
 키 입력은 순서대로 다음 네 문자열이다. `[실측]` `core/idempotency.py:8-18`
 
 1. `tenant_id`

@@ -11,6 +11,8 @@ domain: neutral
 
 ## 충돌 조건
 
+`[2026-09-10]` **이 문서의 `controller.py:NNN` 줄 번호는 낡았다** — Controller 가 커밋을 셋으로 나눈 뒤 밀렸다. 함수 이름으로 찾는다(`acop_basement/application/controller.py`): `_task` :79 · `_transition_with_retry` :95 · `run_case` :130 · `_apply_result` :237 · `_reject_unverified` :243 · `_event_for_result` :297 · `resume` :330. `[실측 2026-09-10]`
+
 다음 경우 `StateConflict`가 발생한다. `[실측]`
 
 - tenant와 Case ID로 projection을 찾지 못한 경우: `core/transition.py:100-106`
@@ -23,7 +25,7 @@ tenant가 다른 Case도 “찾을 수 없음”과 같은 `StateConflict`로 �
 
 Controller는 `concurrency.max_recompute_attempts` 설정을 `N`으로 읽고 `range(N + 1)`만큼 `transition_case()`를 호출할 수 있다. 따라서 최초 시도는 1회이고, 충돌 후 재시도는 최대 `N`회이며, 전체 시도는 최대 `N + 1`회다. `[실측]` `application/controller.py:91-101`
 
-`[실측]` **`N` 은 2다.** `config/guardrails.yaml:60`
+`[실측]` **`N` 은 2다.** `config/guardrails.yaml:74`
 
 ```yaml
 max_recompute_attempts: 2      # StateConflict 시 최신 Case 를 읽어 재계산

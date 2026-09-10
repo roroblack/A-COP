@@ -13,7 +13,7 @@ domain: neutral
 
 ## ★ 혼동하면 안 되는 것
 
-sample에 Billing·Technical Team이 구현돼 있고 Core 격리 위반이 0이다.
+`[정정 2026-09-10]` 「sample 에 Billing·Technical Team 이 구현돼 있고 Core 격리 위반이 0」은 옛 문장이다 — 지금 sample `app/modules/customer_ops/` 에는 `feedback.py`·`feedback_team.py` 만 있다. 「위반 0」은 `tests/contract/test_core_isolation.py` 의 `test_core_does_not_import_modules` 가 보는 범위(Core 의 지정 import)이고, 이 수정에서 다시 돌리지 않았다.
 
 **그건 구조가 동작한다는 증거일 뿐 cs의 착수 목록이 아니다.** → [../index.md](../index.md)
 

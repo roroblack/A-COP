@@ -30,7 +30,7 @@ UI는 대상의 검증 모델, 서버 구현, Python 구현 경로를 소유하�
 
 ## UI가 대신 사용하는 계약
 
-`[실측]` UI는 구현 Python 경로 대신 서버 카탈로그가 제공하는 `implementation_id`를 사용한다. ID와 Python 경로의 매핑은 Composer 서버의 `IMPLEMENTATION_IDS`에만 있다. `acop_composer/catalog.py:22-27`, `acop_composer/catalog.py:52-57`
+`[실측]` UI는 구현 Python 경로 대신 서버 카탈로그가 제공하는 `implementation_id`를 사용한다. ID와 Python 경로의 매핑은 Composer 서버에만 있다. `[정정 2026-09-10]` `IMPLEMENTATION_IDS` 상수는 없다 — 매핑은 `ComposerHost.implementations` 로 주입되고 `acop_composer/catalog.py` 의 `ref_for()`·`id_for()` 가 읽는다
 
 `[실측]` 카탈로그 응답은 `implementation_id`, 종류, 표시 이름, 설명, 입력 스키마, 재시작 필요 여부를 제공하지만 Python 경로를 포함하지 않는다. `acop_composer/catalog.py:68-105`
 
@@ -38,7 +38,7 @@ UI는 대상의 검증 모델, 서버 구현, Python 구현 경로를 소유하�
 
 `[실측]` UI가 인스턴스를 변경할 때는 전체 선언 구조를 재구성하지 않고 작업 종류, 자원 종류, 인스턴스 ID와 필요한 입력값을 `/composer/changes`에 보낸다. 서버가 현재 선언을 읽어 대상 하나만 바꾼 후보를 만든다. `acop_composer/api.py:143-160`, `acop_composer/api.py:259-314`
 
-`[실측]` 토글은 대상 종류, 대상 ID, 활성 상태, 기준 revision과 사유만 받는다. 서버가 이를 `enable` 또는 `disable` 변경으로 변환한다. `acop_composer/api.py:164-179`, `acop_composer/api.py:202-215`
+`[실측]` 토글은 대상 종류, 대상 ID, 활성 상태, 기준 revision과 사유만 받는다. 서버가 이를 `enable` 또는 `disable` 변경으로 변환한다. `acop_composer/api.py` 의 `POST /toggle`(:313 — `[정정 2026-09-10]` 줄 번호가 164·202 로 낡아 있었다)
 
 ## 검증 책임이 서버에 남는 방식
 
