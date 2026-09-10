@@ -74,7 +74,7 @@ sample에 Billing/Technical Team이 있고 Core 격리 위반이 0이다. 그건
 | [quality/](quality/index.md) | 무엇이 이 구조를 강제하나 |
 | [operations/](operations/index.md) | 어떻게 띄우나 |
 
-`[미확보]` **잎 문서는 아직 안 썼다.** 위 영역 index만 있다. 무엇을 써야 하는지는 각 index에 적혀 있다.
+`[실측 2026-09-10]` **잎 문서가 있다** — 기록(`records/`)을 뺀 **34문서 중 index 가 아닌 것이 27개**다. `[정정]` 「잎 문서는 아직 안 썼다. 영역 index 만 있다」로 적혀 있었다.
 
 ## 여기도 지키는 불변식
 

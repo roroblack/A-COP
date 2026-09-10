@@ -60,7 +60,7 @@ POST /composer/toggle  GET  /health
 
 v3 가 금지한 **전체 `ProjectConfig` 재구성**이 지금 쓰이고 있다. 토글 하나 바꾸려고 파일 전체를 갈아끼운다.
 
-**2. 경계를 검사하는 테스트가 없다.**
+**2. 경계를 검사하는 테스트가 없다.** ★`[정정 2026-09-10]` **지금은 있다** — `tests/architecture/test_composer_package_boundary.py` 와 `test_composer_ui_package_boundary.py` 가 생겼다. 아래는 그 전 대조 결과다.
 
 `[실측]` 도메인 격리는 [test-basement-is-domain-free](../quality/domain-free.md) 가 강제한다. **그런데 Composer 와 basement 의 패키지 경계는 아무도 안 지킨다.**
 
