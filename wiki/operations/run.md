@@ -82,7 +82,9 @@ curl -H "Authorization: Bearer $KEY" http://127.0.0.1:8077/v1/cases
 ## Composer 확인
 
 ```bash
-python -m uvicorn acop_composer.service_app:app --port 8078
+python -m uvicorn app.config_service:app --port 8078
+# [정정 2026-09-10] acop_composer.service_app:app 로 적혀 있었다 — 그 모듈엔 app 객체가 없고
+#   팩토리 create_config_service_app(host) 만 있다. 실행 대상은 app/config_service.py 의 app 이다
 ```
 
 | 응답 | 경로 |

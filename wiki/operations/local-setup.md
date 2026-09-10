@@ -77,7 +77,9 @@ INFO:     Uvicorn running on http://127.0.0.1:8077
 Composer 는 따로 띄운다.
 
 ```bash
-python -m uvicorn acop_composer.service_app:app --port 8078
+python -m uvicorn app.config_service:app --port 8078
+# [정정 2026-09-10] acop_composer.service_app:app 로 적혀 있었다 — 그 모듈엔 app 객체가 없고
+#   팩토리 create_config_service_app(host) 만 있다. 실행 대상은 app/config_service.py 의 app 이다
 ```
 
 **두 프로세스다.** basement 가 실행 기반이고 Composer 가 설정을 바꾸는 입구다. → [../composer/write-channel.md](../composer/write-channel.md)
