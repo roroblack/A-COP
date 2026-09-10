@@ -9,20 +9,22 @@ domain: neutral
 
 Team은 근거 없는 답변이나 승인 대기 없는 승인 대상 제안을 반환하면 안 된다. 선언형 Team은 읽기 작업만 수행하고 `ActionProposal`을 만들지 않는다. `[실측]` 다만 일반 `TeamModule.execute()` 내부의 직접적인 부수 효과까지 막는 검사는 지정된 코드에서 확보되지 않았다. `[미확보]`
 
-Core 쪽 경계는 Team 구현을 주입받고 계약을 통해 다루는 구조와 정적 import 검사로 형성된다. `[실측]` (`acop_basement/core/registry.py:7`, `acop_basement/core/registry.py:32`, `acop_basement/core/contracts.py:320`)
+Core 쪽 경계는 Team 구현을 주입받고 계약을 통해 다루는 구조와 정적 import 검사로 형성된다. `[실측]` (`acop_basement/core/registry.py:7`, `acop_basement/core/registry.py:32`, `acop_basement/core/contracts.py` 의 `TeamModule`(`[2026-09-10]` 320 으로 적혀 있었다 — 지금 328))
 
 ## 결과 계약이 막는 것
 
 `TeamResult`는 다음 출력을 모델 검증 단계에서 거부한다. `[실측]`
 
-- 답변은 있지만 evidence가 없는 결과 (`acop_basement/core/contracts.py:272`)
-- 승인 대상 제안이 있으면서 `next_action`이 `WAIT_FOR_APPROVAL`이 아닌 결과 (`acop_basement/core/contracts.py:278`)
-- 결과에 없는 evidence를 제안의 근거로 참조한 결과 (`acop_basement/core/contracts.py:287`)
-- `RESPOND`인데 답변이 없는 결과 (`acop_basement/core/contracts.py:264`)
-- `WAIT_FOR_INPUT`인데 입력 스키마나 지정된 대기 사유가 없는 결과 (`acop_basement/core/contracts.py:248`)
-- `WAIT_FOR_APPROVAL`인데 제안이나 지정된 대기 사유가 없는 결과 (`acop_basement/core/contracts.py:254`)
-- `HANDOFF`인데 대상 capability가 없는 결과 (`acop_basement/core/contracts.py:260`)
-- `ESCALATE`인데 실패 코드와 경고가 모두 없는 결과 (`acop_basement/core/contracts.py:268`)
+- 답변은 있지만 evidence가 없는 결과 (`acop_basement/core/contracts.py` 의 `TeamResult._next_action_consistency`)
+- 승인 대상 제안이 있으면서 `next_action`이 `WAIT_FOR_APPROVAL`이 아닌 결과 (`acop_basement/core/contracts.py` 의 `TeamResult._next_action_consistency`)
+- 결과에 없는 evidence를 제안의 근거로 참조한 결과 (`acop_basement/core/contracts.py` 의 `TeamResult._next_action_consistency`)
+- `RESPOND`인데 답변이 없는 결과 (`acop_basement/core/contracts.py` 의 `TeamResult._next_action_consistency`)
+- `WAIT_FOR_INPUT`인데 입력 스키마나 지정된 대기 사유가 없는 결과 (`acop_basement/core/contracts.py` 의 `TeamResult._next_action_consistency`)
+- `WAIT_FOR_APPROVAL`인데 제안이나 지정된 대기 사유가 없는 결과 (`acop_basement/core/contracts.py` 의 `TeamResult._next_action_consistency`)
+- `HANDOFF`인데 대상 capability가 없는 결과 (`acop_basement/core/contracts.py` 의 `TeamResult._next_action_consistency`)
+- `ESCALATE`인데 실패 코드와 경고가 모두 없는 결과 (`acop_basement/core/contracts.py` 의 `TeamResult._next_action_consistency`)
+
+★`[정정 2026-09-10]` 위 여덟 줄은 **줄번호로 가리키고 있었는데 전부 2~5줄씩 밀려 있었다.** 줄번호 대신 **검증기 이름**으로 바꿨다 — 코드가 늘어도 다시 밀리지 않는다.
 
 계약 테스트는 이 거부 조건을 `ValidationError` 기대값으로 검사한다. `[실측]` (`tests/contract/test_contracts.py:112`, `tests/contract/test_contracts.py:120`, `tests/contract/test_contracts.py:125`, `tests/contract/test_contracts.py:137`, `tests/contract/test_contracts.py:144`, `tests/contract/test_contracts.py:165`, `tests/contract/test_contracts.py:183`, `tests/contract/test_contracts.py:195`)
 
