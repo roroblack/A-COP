@@ -99,6 +99,8 @@ fact는 `observed_at` 최신순으로 정렬한다. 같은 `(source_id, claim)`�
 
 정책 청크는 similarity score가 높은 순으로 검사한다. section 예산에 들어가지 않는 청크는 `policy_rag:low_score:<source_id>`로 기록하므로 낮은 점수의 청크가 먼저 제외되는 결과가 된다. `[실측]` `core/context.py:140-154`
 
+`[정정 2026-09-10]` **「낮은 점수 청크가 먼저 빠진다」는 보장이 아니다.** `_fit_policy()` 는 넘치는 청크를 건너뛰고(`continue`) 다음 청크를 계속 본다 — 그래서 **큰 고득점 청크가 빠지고 그보다 작은 저득점 청크가 남을 수 있다**(`acop_basement/core/context.py` `_fit_policy`).
+
 ### History
 
 history 입력은 최신 항목 우선이라는 계약을 전제로 순서대로 유지한다. 예산에 들어가지 않는 항목은 index와 함께 `history_summary:detail` omission으로 기록한다. `[실측]` `core/context.py:64-77`, `core/context.py:156-170`
