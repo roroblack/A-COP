@@ -36,10 +36,10 @@ sample 에 Team 이 구현돼 있고 Core 격리 위반이 0이다. **그건 Tea
 ```
 app/modules/customer_ops/
   feedback_team.py · response_review.py · verification_policy.py
-  team_modules/  local_team_a · local_team_b · remote_team_demo
+  team_modules/  local_team_a · local_team_b · remote_team_demo   ← [정정 2026-09-10] 이 폴더는 지금 없다
 ```
 
-`[실측]` **`team_modules/` 셋은 이름이 곧 목적이다** — 로컬 둘과 원격 하나. **Team 이 어디에 있든 같은 계약으로 붙는다**를 보이려고 있다. → [../runtime/agentic-controller.md](../runtime/agentic-controller.md)
+★`[실측 2026-09-10]` **`app/modules/customer_ops/team_modules/` 가 지금 없다** — 그 폴더엔 `feedback`·`feedback_team`·`read_tools`·`response_review`·`response_review_policy`·`verification_policy` 만 있다. 아래 로컬 둘·원격 하나 설명은 그 폴더가 있던 때 것이다. `[실측]` **`team_modules/` 셋은 이름이 곧 목적이다** — 로컬 둘과 원격 하나. **Team 이 어디에 있든 같은 계약으로 붙는다**를 보이려고 있다. → [../runtime/agentic-controller.md](../runtime/agentic-controller.md)
 
 ## ★ 코드 없이 Team 을 늘리는 경로
 

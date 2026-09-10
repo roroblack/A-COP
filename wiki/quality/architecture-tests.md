@@ -1,7 +1,7 @@
 ---
 type: concept
-title: 아키텍처 테스트가 지키는 다섯 경계
-description: 아키텍처 테스트 5종이 각각 어떤 위반을 어떻게 탐지하는지 설명한다.
+title: 아키텍처 테스트가 지키는 일곱 경계
+description: 아키텍처 테스트 7종이 각각 어떤 위반을 어떻게 탐지하는지 설명한다.
 status: draft
 tags: [testing, architecture]
 domain: neutral
@@ -10,7 +10,7 @@ domain_note: 아키텍처 가드 목록이다. 커머스 낱말은 금지 목록
 
 ## 결론
 
-`[실측]` 다섯 테스트 파일은 도메인 독립성, 다른 도메인 수용성, export 선언의 완전성, 메시지 소비자의 멱등성 증거, UI 패키지의 격리를 각각 검사한다.
+`[정정 2026-09-10]` **테스트 파일은 일곱이다** — 이 문서는 다섯을 싣고 `test_composer_package_boundary.py`·`test_records_live_in_wiki.py` 를 빠뜨렸다(표 끝에 더했다). `[실측]` 처음 다섯 테스트 파일은 도메인 독립성, 다른 도메인 수용성, export 선언의 완전성, 메시지 소비자의 멱등성 증거, UI 패키지의 격리를 각각 검사한다.
 
 | 테스트 | 잡는 위반 | 검사 방식 |
 |---|---|---|
@@ -19,6 +19,8 @@ domain_note: 아키텍처 가드 목록이다. 커머스 낱말은 금지 목록
 | `test_basement_manifest_covers_every_package.py` | 실제 패키지와 export 선언의 불일치 | `[실측]` `acop_basement` 바로 아래 디렉터리 집합과 `BASEMENT_COMPONENTS`를 양방향으로 비교한다. 실제로만 존재하면 누락, 선언에만 존재하면 stale 항목으로 실패한다. `tests/architecture/test_basement_manifest_covers_every_package.py:17`, `tests/architecture/test_basement_manifest_covers_every_package.py:20`, `tests/architecture/test_basement_manifest_covers_every_package.py:25`, `tests/architecture/test_basement_manifest_covers_every_package.py:32` |
 | `test_consumer_idempotency_gate.py` | 멱등성 증거 없이 추가된 메시지 소비자 | `[실측]` 메시징 Python 파일에서 이름이 `Worker` 또는 `Consumer`로 끝나는 클래스를 찾고, 검증 완료 목록과 발견 목록의 차집합을 양방향으로 검사한다. `tests/architecture/test_consumer_idempotency_gate.py:12`, `tests/architecture/test_consumer_idempotency_gate.py:13`, `tests/architecture/test_consumer_idempotency_gate.py:19`, `tests/architecture/test_consumer_idempotency_gate.py:31` |
 | `test_composer_ui_package_boundary.py` | UI 프로세스에 대상 런타임이나 검증 모델이 섞이는 결합 | `[실측]` 검사할 소스의 존재, 금지 import, Core 모델 이름의 재구현, 비어 있지 않은 의존성, 제품 배포판 포함을 각각 실패시킨다. `tests/architecture/test_composer_ui_package_boundary.py:19`, `tests/architecture/test_composer_ui_package_boundary.py:30`, `tests/architecture/test_composer_ui_package_boundary.py:36`, `tests/architecture/test_composer_ui_package_boundary.py:49`, `tests/architecture/test_composer_ui_package_boundary.py:61`, `tests/architecture/test_composer_ui_package_boundary.py:69` |
+| `test_composer_package_boundary.py` | 선택 패키지가 제품 코드를 끌어오는 것 | `[실측]` 다섯 검사 — 패키지 소스가 있다 · 어느 제품도 import 하지 않는다 · **코어가 그 패키지를 import 하지 않는다**(Composer 없이도 뜬다) · 제품 쪽에서 패키지를 아는 곳은 조립부 하나 · 모듈마다 단독 import 된다 |
+| `test_records_live_in_wiki.py` | 작업 기록이 제자리 밖에 생기는 것 | `[실측]` 두 검사 — **`docs/` 가 다시 생기지 않는다** · 기록이 규칙대로 `wiki/records/` 에 있다(2026-09-08 통합 게이트) |
 
 ## 각 게이트의 판정 기준
 

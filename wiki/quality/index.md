@@ -41,7 +41,9 @@ MALL_POLICY = VerificationPolicy(
 
 **이 테스트가 없었으면 안 드러났을 종류다.** 선언은 그대로였고 코드만 어긋나 있었다.
 
-## 아키텍처 테스트 5종
+## 아키텍처 테스트 7종
+
+`[정정 2026-09-10]` 5종으로 적혀 있었다 — 아래 마지막 두 줄이 빠져 있었다.
 
 `[실측]` `tests/architecture/`
 
@@ -52,6 +54,8 @@ MALL_POLICY = VerificationPolicy(
 | `test_basement_manifest_covers_every_package.py` | 배포 매니페스트 누락 |
 | `test_composer_ui_package_boundary.py` | UI가 basement를 직접 만지는 것 |
 | `test_consumer_idempotency_gate.py` | 중복 소비 |
+| `test_composer_package_boundary.py` | 선택 패키지 `acop_composer` 가 제품 코드를 끌어오는 것 · 코어가 그 패키지 없이 못 뜨는 것 |
+| `test_records_live_in_wiki.py` | 작업 기록이 `wiki/records/` 밖에 생기는 것 · `docs/` 가 다시 생기는 것 |
 
 ## 도메인 어휘 차단 목록
 
@@ -77,7 +81,7 @@ DOMAIN_WORDS = (
 
 | 문서 | 답하는 질문 |
 |---|---|
-| [architecture-tests.md](architecture-tests.md) | 아키텍처 테스트 5종이 각각 무엇을 잡나 |
+| [architecture-tests.md](architecture-tests.md) | 아키텍처 테스트 7종이 각각 무엇을 잡나 |
 | [domain-free.md](domain-free.md) | "basement 는 도메인을 모른다"를 무엇이 강제하나 |
 | **[another-domain.md](another-domain.md)** | **같은 엔진에 다른 도메인을 물리면 도나** |
 | [verification.md](verification.md) | 제안을 무엇과 대조하나 |
