@@ -5,7 +5,7 @@ description: 독립 조사와 완결성 점검으로 목록을 검증했다. 결
 status: draft
 tags: [data, evaluation]
 domain: commerce
-domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인이 바뀌어도 이 데이터 문서는 그대로다
+domain_note: 조사 원본은 datasets/voc/sources_catalog/ 이고 쇼핑몰 CS 용 VOC 소스를 골랐다. 여행 도메인에서는 쓰이지 않는다 — 기록으로 남긴다
 ---
 
 # 소스를 왜 이걸로 골랐나

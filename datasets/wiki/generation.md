@@ -13,7 +13,7 @@ domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인�
 
 ## 왜 이관하지 않나
 
-`[실측]` `datasets/` 에 md 문서가 44개 있다. **wiki로 옮기지 않는다.**
+`[실측 2026-09-10]` `datasets/` 에 md 문서가 **44개** 있다 — **`datasets/wiki/` 를 뺀 작업 트리 기준**이다(전체 작업 트리 52 · git 42, wiki 제외 git 34). **wiki로 옮기지 않는다.**
 
 세 가지 이유다.
 

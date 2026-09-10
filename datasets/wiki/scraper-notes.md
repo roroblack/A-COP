@@ -124,7 +124,7 @@ excluded.tracking_number_missing_boxes:   1   (송장번호 미기재)
 | 인증 | 로그인 없음. 네이버 검색 페이지 HTML에서 `passportKey`를 얻어 재사용 |
 | 호출 | **`fetch`를 쓰지 않는다.** 같은 페이지에 JSONP `<script>` 태그를 주입한다 |
 | 키 갱신 | `timeout`·`script_error`·`key_expired`가 **연속 3회**면 다음 조회 전에 키를 다시 받는다 |
-| 간격 | 조회마다 2.0~5.0초 사이에서 새로 뽑는다(옵션, 최소 1.0초) |
+| 간격 | 조회마다 **0.8~2.0초** 사이에서 새로 뽑는다(`--delay-min`·`--delay-max`, **최소 0.5초**) — `scripts/track.py`. `[정정 2026-09-10]` 「2.0~5.0초, 최소 1.0초」로 적혀 있었다 |
 | 택배사 | `courier_codes.json`. 이름은 공백·문장부호·대소문자를 지운 뒤 비교 |
 
 ### 오류 여섯 가지 — `no_history`는 오류가 아닐 수 있다

@@ -25,7 +25,7 @@ domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인�
 
 ## 지금 구조 — 목록은 JSON, 상세·배송은 문서 이동
 
-`[실측]` 5.4.1. 두 단계로 나뉜다.
+`[실측 2026-09-10]` 지금 `manifest.json` 은 **5.4.6** 이다 `[정정]` 5.4.1 로 적혀 있었다. 아래 구조 설명은 5.4.1 때 것이다 — 두 단계로 나뉜다.
 
 ```
 ① 목록:  __NEXT_DATA__.props.pageProps.domains.desktopOrder.orderList

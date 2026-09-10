@@ -37,7 +37,7 @@ domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인�
 
 **결과가 5개까지 늘었다.** 축이 추가될 때마다 파일이 커진다.
 
-### `voc/aihub_102_smb_order_qa/REPORT.md` (105줄)
+### `voc/aihub_102_smb_order_qa/REPORT.md` (104줄 `[정정 2026-09-10]` 105 로 적혀 있었다)
 
 | 절 | 성격 |
 |---|---|
@@ -46,7 +46,7 @@ domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인�
 
 **날짜가 제목에 붙은 절이 신호다.** 그건 시점 기록이다.
 
-### `voc/sources_catalog/PLAN.md` (279줄)
+### `voc/sources_catalog/PLAN.md` (278줄 `[정정 2026-09-10]` 279 로 적혀 있었다 — 아래 표는 278)
 
 | 절 | 성격 |
 |---|---|
@@ -82,7 +82,7 @@ domain_note: datasets/commerce/ 의 데이터 자체가 커머스다. 도메인�
 
 `[실측]` → [9차 검증](../../wiki/governance/type-verification/round-9.md)
 
-**이관 대상 28건 중 10건이 분할이었다.** 40%다.
+**이관 대상 28건 중 10건이 분할이었다.** **35.7%** 다(10/28). `[정정 2026-09-10]` 40% 로 적혀 있었다.
 
 | 대상 | 줄 | 신호 |
 |---|---|---|
