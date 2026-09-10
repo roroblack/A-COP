@@ -23,7 +23,7 @@ Controller가 action request를 만들 때는 다음 값을 사용한다. `[실�
 - `tenant_id`: 현재 Case의 tenant
 - `request_id`: `request_id_for_case(case)` 결과
 - `action_type`: Team proposal의 action 종류
-- `business_subject`: 현재 `case_id`의 문자열
+- `business_subject`: 현재 `case_id`의 문자열 — ★`[2026-09-10]` **sample 자신의 동작이고 맞다.** cs 는 v11 §4-E 가 이 칸을 **서버가 확인한 대상 객체 id** 로 바꾸기로 정했다(한 Case 의 둘째 제안이 사라지므로 — cs 구현은 아직). **sample 은 그 사양을 따르지 않는다** — 이 코드를 cs 로 이식할 때 걸리는 자리다
 
 `request_id_for_case()`는 `state_json.request_id`가 있으면 그 값을 사용하고, 없으면 `case_id`를 fallback으로 사용한다. `[실측]` `core/idempotency.py:21-24`
 
