@@ -13,12 +13,11 @@ domain: neutral
 
 ## 무엇이 나오나
 
-`[실측]` `dist/` 안에 셋이 있다.
+`[정정 2026-09-10]` `dist/` 바로 아래는 **`basement/` 하나**이고 그 안에 둘이 있다(「dist 안에 셋」으로 적혀 있었다).
 
 ```
-dist/basement/       내보낸 소스
-dist/files/
-dist/manifest.json   내용 주소 매니페스트
+dist/basement/files/          내보낸 소스
+dist/basement/manifest.json   내용 주소 매니페스트
 ```
 
 `scripts/export_basement.py` 가 만든다.

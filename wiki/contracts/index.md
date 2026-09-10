@@ -54,7 +54,7 @@ Core 격리 위반 0을 보여주는 자료이지, cs의 착수 목록에 없다
 
 ## 같은 규칙을 지킨다
 
-sample에도 cs와 같은 아키텍처 테스트가 있다.
+sample에도 cs와 같은 아키텍처 테스트가 있다. ★`[실측 2026-09-10]` **다만 금지 목록은 이제 같지 않다** — sample 은 구독·결제 5 + 커머스 5 = **10개**, cs 는 여기에 여행 5개(`booking`·`itinerary`·`lodging`·`supplier_booking`·`traveller`)를 더해 **15개**다. 아래는 sample 목록이다. **규칙(코어에 도메인 어휘가 없다)은 같고, 금지 목록은 도메인마다 누적된다.**
 
 ```python
 DOMAIN_WORDS = (

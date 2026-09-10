@@ -46,7 +46,7 @@ domain: neutral
 `capability_for(entry, intent)`는 선택된 Team에서 실제 사용할 capability 문자열을 정한다. `[실측]` (`acop_basement/core/registry.py:81`)
 
 - intent와 정확히 같거나 intent namespace 아래인 첫 capability를 manifest 순서대로 반환한다. `[실측]`
-- 일치값이 없거나 intent가 없으면 manifest의 첫 capability를 반환한다. `[실측]`
+- 일치값이 없거나 intent가 없으면 **`default_capability` 가 있으면 그것을, 없으면** manifest의 첫 capability를 반환한다(`acop_basement/core/registry.py:91`). `[정정 2026-09-10]` `default_capability` 단계가 빠져 있었다
 - `TeamManifest.capabilities`는 최소 한 항목을 요구하므로 정상 manifest에서는 첫 항목이 존재한다. `[실측]`
 
 근거: `acop_basement/core/registry.py:84`, `acop_basement/core/contracts.py:310`

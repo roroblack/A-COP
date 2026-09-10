@@ -26,7 +26,7 @@ class TeamModule(Protocol):
 | 구분 | 필드 |
 |---|---|
 | 생성 시 필수 `[실측]` | `team_id`, `display_name`, `contract_name`, `supported_contract_versions`, `capabilities`, `accepted_case_types`, `required_context`, `allowed_tools`, `knowledge_scope`, `implementation_revision` |
-| 기본값이 있는 필드 `[실측]` | `max_steps=6`, `active=True` |
+| 기본값이 있는 필드 `[실측]` | `max_steps=6`, `active=True`, **`default_capability=None`**(`acop_basement/core/contracts.py:324`) `[정정 2026-09-10]` 셋째가 빠져 있었다 |
 | 고정값 `[실측]` | `contract_name`은 `"a_cop.team_task"` |
 | 제한값 `[실측]` | `capabilities`는 최소 1개, `max_steps`는 1 이상 12 이하 |
 | `required_context` 허용값 `[실측]` | `"case_state"`, `"policy"`, `"db_facts"`, `"history"` |
