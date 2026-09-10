@@ -61,7 +61,7 @@ Composer 권한은 JWT의 `scope` 목록에 필요한 문자열이 정확히 들
 
 ## 변경할 수 있는 대상
 
-`[실측]` `composer:write` 토큰은 `/apply`, `/changes`, `/toggle`을 호출할 수 있다. 성공한 변경의 감사 이벤트에는 JWT의 `sub`가 `actor`로 기록된다. `acop_composer/api.py:317-319`, `acop_composer/api.py:375-383`, `acop_composer/api.py:415-437`
+`[정정 2026-09-10]` 이 줄은 「`composer:write` 토큰은 `/apply`, `/changes`, `/toggle` 을 호출할 수 있다」고 적고 있었다 — **`/apply` 가 틀렸다.** `/toggle`·`/changes` 는 **`composer:write`**, `/apply`·`/restore` 는 **`composer:admin`** 이다(`acop_composer/api.py` — 각 경로의 `require_composer_scope`). 항목 하나를 켜고 끄는 것과 **선언 전체를 갈아끼우거나 되돌리는 것**은 다른 행위라 권한을 갈랐다(D-011). 성공한 변경의 감사 이벤트에는 JWT의 `sub`가 `actor`로 기록된다. `acop_composer/api.py:317-319`, `acop_composer/api.py:375-383`, `acop_composer/api.py:415-437`
 
 `[실측]` 중앙 설정 서비스에서 실제 변경 대상은 JWT claim이 아니라 `X-Deployment-Id` 헤더가 정한다. 헤더가 없으면 요청을 거부한다. `acop_composer/api.py:62-83`, `acop_composer/service_app.py:34-41`
 

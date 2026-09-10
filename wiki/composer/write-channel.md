@@ -26,7 +26,7 @@ Composer의 HTTP 명령은 `/composer/apply`, `/composer/changes`, `/composer/to
 ## 적용 전에 검사하는 것
 
 - `[실측]` 요청 모델은 선언되지 않은 추가 필드를 거부하며, `reason`과 대상 ID에는 최소 한 글자를 요구한다. 작업과 자원 종류도 허용된 문자열로 제한한다. `acop_composer/api.py:131-160`, `acop_composer/api.py:174-179`
-- `[실측]` 모든 변경 엔드포인트는 `composer:write` scope를 요구한다. 검증 전용 엔드포인트는 `composer:validate`, 현재 선언과 카탈로그 조회는 `composer:read`를 요구한다. `acop_composer/api.py:202-204`, `acop_composer/api.py:228-230`, `acop_composer/api.py:317-319`, `acop_composer/api.py:392-401`, `acop_composer/api.py:415-417`
+- `[정정 2026-09-10]` 「모든 변경 엔드포인트는 `composer:write`」가 아니다 — `/toggle`·`/changes` 는 **`composer:write`**, `/apply`·`/restore` 는 **`composer:admin`** 이다(`acop_composer/api.py` — 각 경로의 `require_composer_scope`). 항목 하나를 켜고 끄는 것과 **선언 전체를 갈아끼우거나 되돌리는 것**은 다른 행위라 권한을 갈랐다(D-011). 검증 전용 엔드포인트는 `composer:validate`, 현재 선언과 카탈로그 조회는 `composer:read`를 요구한다. `acop_composer/api.py:202-204`, `acop_composer/api.py:228-230`, `acop_composer/api.py:317-319`, `acop_composer/api.py:392-401`, `acop_composer/api.py:415-417`
 - `[실측]` 중앙 설정 서비스에서는 `X-Deployment-Id` 헤더가 비어 있으면 400 `deployment_required`로 거부한다. 파일 방식과 중앙 방식의 저장소 선택도 요청 처리 전에 이루어진다. `acop_composer/api.py:62-96`
 - `[실측]` HTTP 쓰기 경로는 `enforce_registry=True`로 적용한다. 별도 registry 검사는 활성 Team의 `implementation_ref`가 `KNOWN_IMPLEMENTATION_REFS`에 들어 있는지 확인한다. `acop_composer/service.py:62-76`, `acop_composer/api.py:363-364`, `acop_composer/api.py:423-424`
 - `[실측]` 후보 전체는 별도 UI 검증기가 아니라 서버의 `config_from_declaration()`에 전달된다. `/validate`와 실제 적용이 같은 정규 검증 진입점을 사용한다. `acop_composer/service.py:99-121`, `acop_composer/service.py:149-150`
